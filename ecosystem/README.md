@@ -1,0 +1,101 @@
+# CloudsForge — the ecosystem programme
+
+The plan for turning nine loosely-related repositories into one platform: one account, one
+identity, one wallet experience, one portfolio, one activity history, one internal economy,
+multiple products, a marketplace, a developer platform, community and governance, and the
+operational and financial controls a platform holding customer money owes its customers.
+
+---
+
+> ## ⚠ Repository policy — read this before writing any code
+>
+> **No existing repository is modified, deleted, archived or renamed by this programme.**
+>
+> `repos/platform`, `repos/forge-pay`, `repos/forge-keyvault`, `repos/forge-mint`,
+> `repos/crucible`, `repos/ninety-days-after`, `repos/hearth`, `repos/asset-forge`,
+> `repos/shared-libs`, `infra/lantern` and `infra/beacon` **stay exactly as they are** and keep
+> running. They are the reference implementation and the fallback.
+>
+> **All new work goes into a new, parallel set of repositories under the `micro-` prefix**,
+> checked out into `stack/micro/`:
+>
+> ```
+> stack/
+>   repos/        ← the existing estate. READ ONLY for this programme. Never edited.
+>   micro/        ← the new microservice estate. All work happens here.
+>     identity/       (repo: micro-identity)
+>     ledger/         (repo: micro-ledger)
+>     custody/        (repo: micro-custody)
+>     hub-web/        (repo: micro-hub-web)
+>     ...
+> ```
+>
+> **Naming.** Where this documentation names a repository `cloudsforge-<name>` — which it does
+> throughout, and in [03-repository-responsibilities.md](03-repository-responsibilities.md) in
+> particular — the actual repository is **`micro-<name>`** and the local checkout is
+> **`stack/micro/<name>/`**. The mapping is exactly that substitution, with no other change.
+>
+> **Consequences that follow, and must not be quietly dropped:**
+>
+> 1. **Nothing is "extracted" in the destructive sense.** Code is *copied forward* into a new
+>    repository. The source repository is left untouched and keeps building and deploying.
+> 2. **`git subtree split` becomes a read-only operation** — it produces history for the new
+>    repository and does not alter the source. See
+>    [10-migration-strategy.md](10-migration-strategy.md).
+> 3. **The two estates run side by side.** Cutover is by gateway routing and the release
+>    manifest, not by deleting the old service. The old service stays deployable for as long as
+>    it takes to trust the new one, and longer.
+> 4. **Rollback is always "route back to `repos/`".** This is a materially stronger position
+>    than the plan originally assumed, and it lowers the risk of every decomposition phase.
+> 5. **Archiving is not a phase exit criterion.** Any exit criterion in
+>    [06-ecosystem-workflow.md](06-ecosystem-workflow.md) that says "old repositories archived"
+>    is superseded by this policy and means only "no longer receiving new work".
+>
+> This policy overrides any statement to the contrary anywhere else in this directory.
+
+---
+
+## Read in this order
+
+| # | Document | What it answers |
+| --- | --- | --- |
+| **00** | [current-state](00-current-state.md) | What exists today, verified against source. The defect register, the functionality inventory, the technical debt. **Read this first.** |
+| **01** | [product-vision](01-product-vision.md) | What CloudsForge is for. The eleven tests that define "one platform". |
+| **02** | [target-architecture](02-target-architecture.md) | The 21 architecture decisions, with alternatives rejected. The service catalogue. The observability stack. Status pages, dashboards and graphs. **Has decision authority.** |
+| **03** | [repository-responsibilities](03-repository-responsibilities.md) | The 46 repositories, what each owns, what each must never contain. |
+| **04** | [domain-model](04-domain-model.md) | The shared language: entities, ownership, states, invariants. |
+| **05** | [user-journeys](05-user-journeys.md) | End-to-end journeys, including the failure journeys. |
+| **06** | [ecosystem-workflow](06-ecosystem-workflow.md) | **The main deliverable.** Fourteen executable phases, P0–P13. |
+| **07** | [dependency-map](07-dependency-map.md) | What calls what, what blocks what, and the critical path. |
+| **08** | [prioritised-backlog](08-prioritised-backlog.md) | 203 items with acceptance criteria. The P0 list and the critical path. |
+| **09** | [release-roadmap](09-release-roadmap.md) | Release trains, environments, milestones, and what v1.0 means. |
+| **10** | [migration-strategy](10-migration-strategy.md) | How each move happens without losing anything. |
+| **11** | [data-and-contract-strategy](11-data-and-contract-strategy.md) | Contract packages, versioning, retention, privacy boundaries. |
+| **12** | [security-decisions](12-security-decisions.md) | Every major security decision and its rationale. The debt register. |
+| **13** | [operational-model](13-operational-model.md) | Telemetry, dashboards, SLOs, alerting, on-call, analytics, DR. |
+| **14** | [testing-strategy](14-testing-strategy.md) | How correctness is established across repositories no single CI can span. |
+| **15** | [monetisation-model](15-monetisation-model.md) | What is charged for, what is free forever, and why. |
+| **16** | [risks-and-open-decisions](16-risks-and-open-decisions.md) | 55 risks, and what this plan deliberately does not decide. |
+| **17** | [definition-of-done](17-definition-of-done.md) | What "done" means at every level. |
+
+**Assets.** [assets/](assets/) holds the design-system extension: the
+[chart palette](assets/chart-palette.md) (validated, not eyeballed), the
+[design system](assets/design-system.md) with the corrected product accents, six brand marks as
+SVG, and a rendered [contact sheet](assets/marks-preview.html).
+
+## If you are picking up one phase
+
+1. Read **00** for the baseline and **02** for the decisions. Do not skip either.
+2. Read your phase in **06**. It names its entry criteria, exit criteria and rollback.
+3. Find your items in **08** by phase. Each has acceptance criteria and test requirements.
+4. Check **07** for what you block and what blocks you.
+5. Check **12** for the security decisions that constrain your work.
+6. Work in `stack/micro/`, per the policy above. Never edit `stack/repos/`.
+
+## Ground rules for this documentation
+
+- Every claim about current behaviour was verified against source, not read from
+  documentation. Several repository `MAP.md` files are materially wrong; **00** §7 lists which.
+- Where a document disagrees with **02**, **02** wins.
+- Where any document disagrees with the repository policy above, the policy wins.
+- Estimates are relative durations and complexity, never calendar dates.

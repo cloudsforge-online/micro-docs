@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"
+     fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+     role="img" aria-label="Forge Network">
+  <title>Forge Network</title>
+  <!-- ash ridge -->
+  <path d="M2 19 L7 19 M17 19 L22 19" stroke="currentColor" opacity=".55"/>
+  <!-- hearth: the fire the estate is built around -->
+  <path d="M12 2.5 C15.5 6 17 8.6 17 11.4 C17 14.5 14.8 16.6 12 16.6
+           C9.2 16.6 7 14.5 7 11.4 C7 8.6 8.5 6 12 2.5 Z"
+        stroke="var(--cf-accent, #d6412f)"/>
+  <!-- inner flame -->
+  <path d="M12 9 C13.3 10.6 13.8 11.6 13.8 12.5 C13.8 13.6 13 14.3 12 14.3
+           C11 14.3 10.2 13.6 10.2 12.5 C10.2 11.6 10.7 10.6 12 9 Z"
+        fill="var(--cf-accent, #d6412f)" stroke="none" opacity=".5"/>
+  <!-- hearthstone -->
+  <path d="M7 19 L17 19" stroke="currentColor"/>
+</svg>

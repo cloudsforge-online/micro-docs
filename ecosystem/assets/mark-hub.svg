@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"
+     fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+     role="img" aria-label="Forge Hub">
+  <title>Forge Hub</title>
+  <!-- ash ridge: the ground line present in every CloudsForge mark -->
+  <path d="M2 18 L8 11 L12 15 L16 9 L22 18" stroke="currentColor" opacity=".55"/>
+  <!-- ember spark, centred: home -->
+  <path d="M12 3.5 C13.6 5.4 14.4 6.9 14.4 8.1 C14.4 9.7 13.3 10.8 12 10.8
+           C10.7 10.8 9.6 9.7 9.6 8.1 C9.6 6.9 10.4 5.4 12 3.5 Z"
+        fill="var(--cf-ember, #e8622c)" stroke="none"/>
+</svg>

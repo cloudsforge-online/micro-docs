@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"
+     fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+     role="img" aria-label="Forge Market">
+  <title>Forge Market</title>
+  <!-- ash ridge: the stall floor -->
+  <path d="M2 20 L22 20" stroke="currentColor" opacity=".55"/>
+  <!-- the awning: a place where things are offered -->
+  <path d="M3 9 L12 4 L21 9" stroke="var(--cf-accent, #9b7bf0)"/>
+  <path d="M3 9 L3 12 M8 9 L8 12 M12 9 L12 12 M16 9 L16 12 M21 9 L21 12"
+        stroke="var(--cf-accent, #9b7bf0)" opacity=".55"/>
+  <!-- the goods -->
+  <path d="M8 20 L8 15 L16 15 L16 20" stroke="currentColor"/>
+</svg>

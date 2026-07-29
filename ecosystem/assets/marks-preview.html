@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en" data-cf-substrate="warm">
+<head>
+<meta charset="utf-8">
+<title>CloudsForge — ecosystem brand marks</title>
+<style>
+  :root{
+    --cf-ash-900:#0e0c0a; --cf-ash-850:#141110; --cf-ash-700:#262019;
+    --cf-bone:#ece5d6; --cf-bone-dim:#b7ae9b; --cf-khaki:#8e866f;
+    --cf-ember:#e8622c;
+    --cf-bg:var(--cf-ash-900); --cf-bg-raised:var(--cf-ash-850);
+    --cf-fg:var(--cf-bone); --cf-fg-dim:var(--cf-bone-dim); --cf-fg-mute:var(--cf-khaki);
+    --cf-line:color-mix(in srgb, var(--cf-fg) 10%, transparent);
+    --cf-radius:6px;
+    --cf-font-sans:'Inter',system-ui,sans-serif;
+    --cf-font-mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+  }
+  [data-p="hub"]     {--cf-accent:#e8622c}
+  [data-p="network"] {--cf-accent:#d6412f}
+  [data-p="trade"]   {--cf-accent:#2a9e93}
+  [data-p="create"]  {--cf-accent:#b28e1e}
+  [data-p="market"]  {--cf-accent:#9b7bf0}
+  [data-p="worlds"]  {--cf-accent:#6d9a49}
+  *{box-sizing:border-box}
+  body{margin:0;padding:32px;background:var(--cf-bg);color:var(--cf-fg);
+       font-family:var(--cf-font-sans);color-scheme:dark}
+  h1{font-size:1.05rem;font-weight:600;margin:0 0 4px}
+  p.sub{color:var(--cf-fg-mute);font-size:.74rem;margin:0 0 28px;font-family:var(--cf-font-mono)}
+  h2{font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;
+     color:var(--cf-fg-mute);margin:32px 0 12px;font-weight:600}
+  .grid{display:grid;grid-template-columns:repeat(6,1fr);gap:12px}
+  .card{background:var(--cf-bg-raised);border:1px solid var(--cf-line);
+        border-radius:var(--cf-radius);padding:16px 12px;text-align:center;color:var(--cf-fg-mute)}
+  .card .name{margin-top:10px;font-size:.68rem;color:var(--cf-fg-dim);font-family:var(--cf-font-mono)}
+  .sizes{display:flex;gap:14px;align-items:flex-end;justify-content:center;min-height:36px}
+  /* switcher mock */
+  .switcher{background:var(--cf-bg-raised);border:1px solid var(--cf-line);
+            border-radius:var(--cf-radius);max-width:320px;padding:6px}
+  .row{display:flex;gap:10px;align-items:center;padding:8px 10px;border-radius:4px;color:var(--cf-fg-mute)}
+  .row:hover{background:color-mix(in srgb, var(--cf-bone) 6%, transparent)}
+  .row .t{font-size:.82rem;color:var(--cf-fg);line-height:1.15}
+  .row .b{font-size:.68rem;color:var(--cf-fg-mute)}
+  .sep{height:1px;background:var(--cf-line);margin:6px 10px}
+  .chips{display:flex;gap:0;border-radius:var(--cf-radius);overflow:hidden;max-width:640px}
+  .chip{flex:1;height:44px;display:flex;align-items:flex-end;justify-content:center;
+        padding-bottom:5px;font-family:var(--cf-font-mono);font-size:.6rem;color:#0e0c0a;font-weight:600}
+</style>
+</head>
+<body>
+<h1>CloudsForge — ecosystem brand marks</h1>
+<p class="sub">24px viewBox · 2u stroke · ash ridge + one accent element · rendered on --cf-bg-raised #141110</p>
+
+<h2>Marks at 32 / 24 / 16 px</h2>
+<div class="grid" id="grid"></div>
+
+<h2>Product switcher, in validated order (adjacent ΔE 12.9 deutan / 17.0 normal)</h2>
+<div class="switcher" id="sw"></div>
+
+<h2>Accent chips — order is the separation order</h2>
+<div class="chips">
+  <div class="chip" style="background:#d6412f">d6412f</div>
+  <div class="chip" style="background:#2a9e93">2a9e93</div>
+  <div class="chip" style="background:#b28e1e">b28e1e</div>
+  <div class="chip" style="background:#9b7bf0">9b7bf0</div>
+  <div class="chip" style="background:#6d9a49">6d9a49</div>
+</div>
+
+<h2>Previous accents, for comparison (worst pair ΔE 4.1 — indistinguishable)</h2>
+<div class="chips">
+  <div class="chip" style="background:#e8622c">e8622c</div>
+  <div class="chip" style="background:#ff5a1e">ff5a1e</div>
+  <div class="chip" style="background:#ff8a1f">ff8a1f</div>
+  <div class="chip" style="background:#d9812f">d9812f</div>
+  <div class="chip" style="background:#f4a63c">f4a63c</div>
+  <div class="chip" style="background:#3fc8bb">3fc8bb</div>
+</div>
+
+<script>
+const marks = [
+  ['network','Forge Network','Mine','●'],
+  ['trade','Forge Trade','Trade','◐'],
+  ['create','Forge Create','Forge','✦'],
+  ['market','Forge Market','Sell','◇'],
+  ['worlds','Forge Worlds','Play','▲'],
+  ['hub','Forge Hub','Home','◆'],
+];
+const grid = document.getElementById('grid');
+const sw = document.getElementById('sw');
+Promise.all(marks.map(([k]) => fetch(`mark-${k}.svg`).then(r=>r.text()))).then(svgs=>{
+  marks.forEach(([k,name,verb,glyph],i)=>{
+    const svg = svgs[i];
+    const card = document.createElement('div');
+    card.className='card'; card.dataset.p=k;
+    const sizes = [32,24,16].map(s=>`<span style="display:inline-block;width:${s}px;height:${s}px">${
+      svg.replace(/width="24" height="24"/,`width="${s}" height="${s}"`)}</span>`).join('');
+    card.innerHTML = `<div class="sizes">${sizes}</div><div class="name">${name}</div>`;
+    grid.appendChild(card);
+    if(k==='hub') return;
+    const row = document.createElement('div');
+    row.className='row'; row.dataset.p=k;
+    row.innerHTML = `<span style="width:20px;height:20px;display:inline-block">${
+      svg.replace(/width="24" height="24"/,'width="20" height="20"')}</span>
+      <span><span class="t">${name}</span><br><span class="b">${verb}</span></span>`;
+    sw.appendChild(row);
+  });
+  const sep=document.createElement('div'); sep.className='sep'; sw.appendChild(sep);
+  const admin=document.createElement('div'); admin.className='row';
+  admin.style.cssText='--cf-accent:#c2704f';
+  admin.innerHTML='<span style="width:20px;text-align:center;color:var(--cf-accent)">▣</span>'+
+    '<span><span class="t">Admin</span><br><span class="b">Operator console</span></span>';
+  sw.appendChild(admin);
+});
+</script>
+</body>
+</html>

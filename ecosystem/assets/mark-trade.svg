@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"
+     fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+     role="img" aria-label="Forge Trade">
+  <title>Forge Trade</title>
+  <!-- ash ridge, here doubling as the baseline an equity curve is measured against -->
+  <path d="M2 19 L22 19" stroke="currentColor" opacity=".55"/>
+  <!-- the quench curve: down, then through -->
+  <path d="M3 14 L7 17 L11 10 L15 13 L21 4" stroke="var(--cf-accent, #2a9e93)"/>
+  <!-- the mark it crosses: high-water -->
+  <path d="M15 6.5 L21 6.5" stroke="currentColor" opacity=".35" stroke-dasharray="2 2.5"/>
+</svg>

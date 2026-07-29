@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"
+     fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+     role="img" aria-label="Forge Worlds">
+  <title>Forge Worlds</title>
+  <!-- ash ridge: the horizon -->
+  <path d="M2 19 L22 19" stroke="currentColor" opacity=".55"/>
+  <!-- the settlement on the ridge -->
+  <path d="M4 19 L4 13 L9 9 L14 13 L14 19" stroke="var(--cf-accent, #6d9a49)"/>
+  <path d="M14 19 L14 15 L18 12.5 L20 14 L20 19" stroke="var(--cf-accent, #6d9a49)" opacity=".65"/>
+  <!-- one lit window: someone is still here -->
+  <path d="M9 15.5 L9 16.5" stroke="var(--cf-ember, #e8622c)"/>
+</svg>
