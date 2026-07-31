@@ -19,19 +19,19 @@ Last verified: 2026-07-31.
 
 Of the 43 repositories this programme creates or changes — the 46 in
 [03-repository-responsibilities](03-repository-responsibilities.md) less the three left exactly
-as they are (`hearth`, `asset-forge`, `stack`), plus the five added by [19-new-products](19-new-products.md) — **28 are done**.
+as they are (`hearth`, `asset-forge`, `stack`), plus the five added by [19-new-products](19-new-products.md) — **29 are done**.
 
 | Group | Target | Done | Left |
 | --- | ---: | ---: | ---: |
-| Domain services | 24 | 18 | 6 |
+| Domain services | 24 | 19 | 5 |
 | Frontends | 14 | 2 | 12 |
 | Operations | 3 | 2 | 1 |
 | Libraries | 4 | 3 | 1 |
 | Org infrastructure | 3 | 3 | 0 |
-| **Total** | **48** | **28** | **20** |
+| **Total** | **48** | **29** | **19** |
 
 Four further repositories exist that the plan did not enumerate as products — `brand`,
-`conformance`, `deploy` and `docs` — bringing the pushed count to **32**.
+`conformance`, `deploy` and `docs` — bringing the pushed count to **33**.
 
 **Repository count is the least useful measure of the three, and it is the one that flatters.**
 The truthful reading is that the *expensive* half is behind us. Everything that touches money,
@@ -91,6 +91,7 @@ it blocks P11.
 | `micro-hub-api` | 77 | Seven degradation tests: one upstream down never blanks the dashboard. |
 | `micro-market` | 275 | Escrow is a *reference* to a ledger reservation, never a balance. Royalty splits sum exactly to the sale price in bigint. Proven end to end: one balanced entry, debit 1000 SHARD against credit 925 + 25 + 50. |
 | `micro-trade` | 227 | A backtest is byte-identical across 100 runs on one seed, and genuinely differs on another. A fill whose ledger answer was lost is credited once. Two workers, one bot tick, one execution. |
+| `micro-foresight` | 153 | The Hearth-native prediction market. **The service has no key and holds no stake** — `stake-intent` hands a wallet the contract address and calldata, and the wallet signs. Drop the `positions` table and every stake is still in the contract and every winner can still `claim()`. Contract invariants are proven against the *executed committed bytecode* on `@ethereumjs/evm`: fee + payouts + residue == pool exactly, residue < winners, double-claim reverts, claim-after-void refunds whole with zero fee. The fee comes off the losing pool only, so a winner never gets back less than they staked; a market nobody won voids rather than handing the treasury a windfall. |
 | `micro-emberkin` | 75 | The second Forge Worlds title, ported from *Kindred: Resonance*. **The ported RNG reproduces the C# `NextDouble()` bit-for-bit** (compared as raw IEEE-754 int64, not epsilon), and a corpus of 10 recorded battles replays byte-identically from seed — the same behavioural-equivalence discipline the trade backtest uses. No balance column; a cosmetic equip is a billing entitlement and never a stat. |
 
 ### 2.3 Frontends
@@ -134,7 +135,7 @@ wrong with replicas, where it yields a different answer depending on which one P
 | `micro-deploy` | — | OTel collector, Prometheus, Tempo, Loki, Grafana. Configuration only; not running. |
 | `micro-docs` | — | This directory. |
 
-Across the estate: **~3,600 tests**, all green at last run.
+Across the estate: **~3,750 tests**, all green at last run.
 
 ---
 
@@ -153,10 +154,8 @@ whoever picks it up a session before they discover there is nothing to finish. B
 
 ### 3.2 Not started
 
-**Services (6):** `nda`, `community`, `devplatform`, `admin-api`, `analytics`, and — added by
-[19-new-products](19-new-products.md) — `foresight` (the Hearth-native
-prediction market, parimutuel v1, stakes and settlement on-chain). `emberkin` — the second Forge
-Worlds title, ported from *Kindred: Resonance* — is **done** (§2.2).
+**Services (5):** `nda`, `community`, `devplatform`, `admin-api`, `analytics`. Also added by
+[19-new-products](19-new-products.md) — 19: both `emberkin` and `foresight` are **done** (§2.2).
 `micro-nda` is the *Ninety Days After* game service; it is the one remaining service with a real
 existing implementation to port, and it is the largest of the five.
 
@@ -211,6 +210,35 @@ id, producing hundreds of phantom findings. On the real repository this moved a 
 breakage to 256 vs 256 paths and exit 0 — while deleting `Posting.sequence` still exits 1 and names
 it. **`micro-contracts`' `pnpm compat` had been pointing at a `tools/compat.ts` that has never
 existed in that repository, so the estate's contract-compatibility gate had never run anywhere.**
+
+### 3.3 Cross-service defects, and the only thing that finds them
+
+Every service's suite is green, and that has now twice failed to catch a client calling a route
+that does not exist. Both were found the same way — by a *new* service reading the upstream's
+actual route table while writing its own client — and never by a test.
+
+| Defect | Consequence |
+| --- | --- |
+| `wallet` called `GET /v1/quotes`; pricing serves `GET /rates` | Found by `hub-api` reading both. |
+| `market` called `POST /v1/decisions/market.listing`; policy has **no `/v1` routes at all** and takes the action in the body, and registers `market.listing.create` not `market.listing` | Found by `foresight`. |
+
+The second is worth stating precisely, because it was first reported to me as the gate being
+*bypassed* — a 404 swallowed into `review` + `degraded`. Checking it against the source showed the
+opposite: `peerDecided` is true for **any** 4xx (`runtime/packages/http/src/index.ts:49-51`), so the
+404 landed on the `deny` branch and `market/src/server.ts:678` turns a deny into 403. The
+marketplace was not unmoderated — **it was closed. Every listing creation returned 403.** The two
+failures need opposite fixes, so guessing between them would have fixed neither.
+
+Fixed, plus the flaw the investigation exposed: a 404 or 405 no longer counts as a decision at
+all, because a route that does not exist is our own misconfiguration and says nothing about a
+seller's listing. Eight new tests assert the **request** — path, action name, body shape, the
+amount crossing as a decimal string — rather than the response, which is the gap that let both
+defects live: every existing test stubbed fetch and asserted behaviour given a reply.
+
+**This is the case for the consumer-driven contract testing in
+[14-testing-strategy](14-testing-strategy.md), which is still a strategy rather than a passing
+gate.** Two for two, the thing that caught it was a human-equivalent reading of the other side's
+routes. That does not scale to 48 repositories.
 
 ### 3.4 What only CI could catch
 
