@@ -142,13 +142,14 @@ Across the estate: **~3,600 tests**, all green at last run.
 
 ### 3.1 Partially built, paused on disk
 
-Started, then stopped when the owner's session capacity ran low. Their work is on disk under
-`cloudsforge-micro/<name>/` and is not lost; each is a finish job, not a restart.
-
 | Repo | State |
 | --- | --- |
-| `micro-status-web` | Scaffolding + design work; the first intended consumer of beacon's redacted projection. |
-| `micro-faucet` | Barely started. Its ancestor `hearth/tools/faucet` is the source. |
+| `micro-emberkin-assets` | The FLUX 2 Pro run for Emberkin. 134 images generated and committed; two type lines (verdant, umbra) have a prompt defect being corrected. Not yet pushed. |
+
+An earlier revision of this section listed `micro-status-web` and `micro-faucet` here as having
+scaffolding on disk. **That was wrong** — neither directory exists; both agents were killed before
+writing anything. Corrected rather than quietly amended, because a false "finish job" entry costs
+whoever picks it up a session before they discover there is nothing to finish. Both are in §3.2.
 
 ### 3.2 Not started
 
