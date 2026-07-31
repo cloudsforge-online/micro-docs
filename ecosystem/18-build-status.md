@@ -19,19 +19,19 @@ Last verified: 2026-07-31.
 
 Of the 43 repositories this programme creates or changes — the 46 in
 [03-repository-responsibilities](03-repository-responsibilities.md) less the three left exactly
-as they are (`hearth`, `asset-forge`, `stack`), plus the five added by [19-new-products](19-new-products.md) — **33 are done**.
+as they are (`hearth`, `asset-forge`, `stack`), plus the five added by [19-new-products](19-new-products.md) — **34 are done**.
 
 | Group | Target | Done | Left |
 | --- | ---: | ---: | ---: |
 | Domain services | 24 | 19 | 5 |
 | Frontends | 14 | 5 | 9 |
 | Operations | 3 | 3 | 0 |
-| Libraries | 4 | 3 | 1 |
+| Libraries | 4 | 4 | 0 |
 | Org infrastructure | 3 | 3 | 0 |
-| **Total** | **48** | **33** | **15** |
+| **Total** | **48** | **34** | **14** |
 
 Four further repositories exist that the plan did not enumerate as products — `brand`,
-`conformance`, `deploy`, `docs` and `emberkin-assets` — bringing the pushed count to **38**.
+`conformance`, `deploy`, `docs` and `emberkin-assets` — bringing the pushed count to **39**.
 
 **Repository count is the least useful measure of the three, and it is the one that flatters.**
 The truthful reading is that the *expensive* half is behind us. Everything that touches money,
@@ -67,8 +67,7 @@ Actual run counts are equal or slightly higher, because a few suites generate ca
 | `micro-service-template` | 41 | Wires every runtime lib. `cfctl new service` instantiates it. |
 | `micro-web-template` | 65 | Vite, React 19, design system, runtime host resolution, honest 404. |
 
-`micro-sdk` — the public developer surface — is **not built**. It is the one missing library and
-it blocks P11.
+| `micro-sdk` | 148 | The public SDK and CLI, and **zero runtime dependencies** — a public package cannot `link:` a private repository. All 65 exposed routes carry a `verifiedAt` citation into the serving line, a test walks the client to prove no method reaches outside that table, and the 24 routes whose services never call `authenticate()` are sent **no `Authorization` header** — the 403-on-every-listing defect encoded as a test. The CLI is read-only by design: the SDK can spend and withdraw, the CLI cannot, because a shell is where a typo becomes a request. |
 
 ### 2.2 Domain services
 
@@ -140,7 +139,7 @@ wrong with replicas, where it yields a different answer depending on which one P
 | `micro-deploy` | — | OTel collector, Prometheus, Tempo, Loki, Grafana. Configuration only; not running. |
 | `micro-docs` | — | This directory. |
 
-Across the estate: **~4,950 tests**, all green at last run.
+Across the estate: **~5,100 tests**, all green at last run.
 
 ---
 
@@ -150,7 +149,7 @@ Across the estate: **~4,950 tests**, all green at last run.
 
 | Repo | State |
 | --- | --- |
-| `micro-sdk` | Taken next. |
+| `micro-status-web` | Taken next. |
 
 An earlier revision of this section listed `micro-status-web` and `micro-faucet` here as having
 scaffolding on disk. **That was wrong** — neither directory exists; both agents were killed before
@@ -301,6 +300,36 @@ will eventually be.
 `micro-faucet` refuses to start against any chain id that is not the testnet's, and proves the
 refusal with a test — the difference between checking that two values agree and checking that a
 value is the right one.
+
+### 3.3d The public API has no description, and no route map
+
+Found by `micro-sdk`, which needed both and could get neither. Recorded because each is a P11
+blocker in its own right and neither is visible from any repository's tests.
+
+1. **No OpenAPI description exists anywhere in the estate**, though
+   [11-data-and-contract-strategy](11-data-and-contract-strategy.md):288 names it as the mechanism:
+   the public API's description is "published, used to generate `@cloudsforge/sdk`". The named
+   mechanism has no artefact, so the SDK is hand-written against verified route tables instead —
+   65 of them, each citing the line that serves it.
+2. **The gateway has no public-API route map.** `deploy/gateway/dynamic/policy.yml` carries CORS,
+   security headers and the `/internal` refusal, and nothing that mounts a public API at all. The
+   public path layout is therefore undefined, which is why the SDK uses the services' own paths and
+   exposes a `pathPrefix` seam rather than inventing one.
+3. **Path versioning is split down the middle.** `wallet`, `market`, `mint` and `worlds` serve
+   `/v1/…`; `ledger`, `foresight`, `pricing`, `activity` and `identity` do not. The public API is
+   specified as URL-versioned, so either the gateway rewrites — undefined, per (2) — or half the
+   public surface ships unversioned.
+4. **A machine credential has no whoami.** `identity/src/server.ts:540` refuses a service token on
+   `GET /auth/me`, so a devplatform API key will have no way to ask what it is.
+5. **Nothing in `ledger` is third-party reachable** (`ledger/src/server.ts:575` refuses any
+   non-service principal). That is correct — but it means the eleventh test of "one platform", one
+   financial source of truth, has no public surface at all.
+
+**`mint` has no route-level idempotency infrastructure** — no helper, no table, no module — so
+`POST /v1/tokens` creates a second draft order on a retry. Left as a recorded gap rather than
+fixed: the consequence is a duplicate draft (the route charges nothing and deploys nothing), and
+porting a subsystem into a shipped service is not a change to make unattended. `market`'s
+equivalent gaps *were* fixed, because it already had the machinery.
 
 ### 3.4 What only CI could catch
 
