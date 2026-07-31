@@ -19,19 +19,19 @@ Last verified: 2026-07-31.
 
 Of the 43 repositories this programme creates or changes — the 46 in
 [03-repository-responsibilities](03-repository-responsibilities.md) less the three left exactly
-as they are (`hearth`, `asset-forge`, `stack`), plus the five added by [19-new-products](19-new-products.md) — **30 are done**.
+as they are (`hearth`, `asset-forge`, `stack`), plus the five added by [19-new-products](19-new-products.md) — **32 are done**.
 
 | Group | Target | Done | Left |
 | --- | ---: | ---: | ---: |
 | Domain services | 24 | 19 | 5 |
-| Frontends | 14 | 3 | 11 |
+| Frontends | 14 | 5 | 9 |
 | Operations | 3 | 2 | 1 |
 | Libraries | 4 | 3 | 1 |
 | Org infrastructure | 3 | 3 | 0 |
-| **Total** | **48** | **30** | **18** |
+| **Total** | **48** | **32** | **16** |
 
 Four further repositories exist that the plan did not enumerate as products — `brand`,
-`conformance`, `deploy`, `docs` and `emberkin-assets` — bringing the pushed count to **35**.
+`conformance`, `deploy`, `docs` and `emberkin-assets` — bringing the pushed count to **37**.
 
 **Repository count is the least useful measure of the three, and it is the one that flatters.**
 The truthful reading is that the *expensive* half is behind us. Everything that touches money,
@@ -100,6 +100,8 @@ it blocks P11.
 | --- | ---: | --- |
 | `micro-hub-web` | 174 | Every call cites the `hub-api` line that serves it. Where hub-api serves no route — transfers, notification preferences, a device inventory — the page renders a named hole rather than a plausible screen over nothing. |
 | `micro-site` | 185 | No number appears on the marketing site that is not checkable against something real in this estate. |
+| `micro-emberkin-web` | 430 | The game client. **It deletes the battle engine, the RNG and the localStorage save path it inherited** — a client that can resolve a battle can lie about one, so battles resolve server-side and a test plus a CI step fail if any of it returns. `three` is lazy: the dex, party and wardrobe download no renderer. |
+| `micro-foresight-admin-web` | 241 | The operator console, its own bundle by design. Irreversible actions are gated by consequence-in-sentences, then a required rationale, then typing a phrase naming the market AND the outcome — never "Are you sure?". It asserts the ABSENCE of three routes it might have invented, including a close endpoint (the contract closes itself). |
 | `micro-foresight-web` | 357 | The public prediction market. **It recomputes the question hash in the browser** from the canonical bytes the service serves — `foresight/src/server.ts:420-423` puts that document on the wire precisely so nobody has to take the platform's word for what they staked on. Odds are the pool ratio in bigint, always rendered with the pools that produce them; the stake projection adds the stake to the pool it is paid from, showing dilution rather than the ~33% overstatement the naive formula gives. `claim` reads the contract through the reader's own wallet — chain outranks mirror and the two are never blended, so the page keeps the button live even when it cannot confirm the amount. |
 
 Cutting it found two defects in `micro-web-template`, both fixed there and both worth recording
@@ -137,7 +139,7 @@ wrong with replicas, where it yields a different answer depending on which one P
 | `micro-deploy` | — | OTel collector, Prometheus, Tempo, Loki, Grafana. Configuration only; not running. |
 | `micro-docs` | — | This directory. |
 
-Across the estate: **~4,100 tests**, all green at last run.
+Across the estate: **~4,800 tests**, all green at last run.
 
 ---
 
@@ -147,8 +149,7 @@ Across the estate: **~4,100 tests**, all green at last run.
 
 | Repo | State |
 | --- | --- |
-| `micro-emberkin-web` | In progress. |
-| `micro-foresight-admin-web` | In progress. |
+| `micro-faucet` | Taken next. |
 
 An earlier revision of this section listed `micro-status-web` and `micro-faucet` here as having
 scaffolding on disk. **That was wrong** — neither directory exists; both agents were killed before
