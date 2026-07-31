@@ -19,19 +19,19 @@ Last verified: 2026-07-31.
 
 Of the 43 repositories this programme creates or changes — the 46 in
 [03-repository-responsibilities](03-repository-responsibilities.md) less the three left exactly
-as they are (`hearth`, `asset-forge`, `stack`) — **25 are done**.
+as they are (`hearth`, `asset-forge`, `stack`) — **26 are done**.
 
 | Group | Target | Done | Left |
 | --- | ---: | ---: | ---: |
 | Domain services | 22 | 17 | 5 |
 | Frontends | 11 | 2 | 9 |
-| Operations | 3 | 0 | 3 |
+| Operations | 3 | 1 | 2 |
 | Libraries | 4 | 3 | 1 |
 | Org infrastructure | 3 | 3 | 0 |
-| **Total** | **43** | **25** | **18** |
+| **Total** | **43** | **26** | **17** |
 
 Four further repositories exist that the plan did not enumerate as products — `brand`,
-`conformance`, `deploy` and `docs` — bringing the pushed count to **29**.
+`conformance`, `deploy` and `docs` — bringing the pushed count to **30**.
 
 **Repository count is the least useful measure of the three, and it is the one that flatters.**
 The truthful reading is that the *expensive* half is behind us. Everything that touches money,
@@ -103,7 +103,23 @@ and the CI step forbidding the SPA 200-fallback grepped `nginx.conf` unstripped,
 comment that explains why the fallback is forbidden — so the template failed its own pipeline,
 and a guard that fires on its own rationale is a guard people delete.
 
-### 2.4 Supporting repositories
+### 2.4 Operations
+
+| Repo | Tests | The thing it proves |
+| --- | ---: | --- |
+| `micro-beacon` | 369 | **The release gate (AD-04), and it is fail-closed.** An unknown refuses before anything else is considered, and an override cannot reach an unknown — enforced three independent ways: in `decide()`, by the CHECK constraint `gate_decisions_indeterminate_never_promotes`, and by the CLI exiting 2 when it cannot reach Beacon. Six known refusal codes and six unknown ones. |
+
+Two design corrections it found while building, both worth keeping: budget exhaustion derives from
+consumed parts-per-million rather than `remaining <= 0`, because a 100%-objective SLO allows zero
+bad events and would otherwise have been frozen permanently *for being perfect*; and
+`probe_state.updated_at` is nullable on purpose, because defaulting it to `now()` makes every newly
+added probe wait a full interval before its first run.
+
+It also retired an inherited rationale rather than inherit it: the old implementation argued
+`/metrics` must never touch Postgres, which is sound for one replica holding state in a `Map` and
+wrong with replicas, where it yields a different answer depending on which one Prometheus reached.
+
+### 2.5 Supporting repositories
 
 | Repo | Tests | Notes |
 | --- | ---: | --- |
@@ -112,7 +128,7 @@ and a guard that fires on its own rationale is a guard people delete.
 | `micro-deploy` | — | OTel collector, Prometheus, Tempo, Loki, Grafana. Configuration only; not running. |
 | `micro-docs` | — | This directory. |
 
-Across the estate: **~2,900 tests**, all green at last run.
+Across the estate: **~3,300 tests**, all green at last run.
 
 ---
 
@@ -122,7 +138,9 @@ Across the estate: **~2,900 tests**, all green at last run.
 
 | Repo | State |
 | --- | --- |
-| `micro-beacon` | In progress, taken ahead of the frontend queue because it is the release gate. |
+| `micro-lantern` | In progress. |
+| `micro-status-web` | In progress — the first consumer of beacon's redacted projection. |
+| `micro-faucet` | In progress. |
 
 ### 3.2 Not started
 
@@ -134,10 +152,11 @@ existing implementation to port, and it is the largest of the five.
 `network-site`, `market-web`, `devportal-web`, `status-web`. Six of these are ports of existing
 applications rather than new work; `market-web`, `devportal-web` and `status-web` are new.
 
-**Operations (3):** `lantern`, `beacon` (in flight), `faucet`. `beacon` is **the release gate (AD-04)** and is
-therefore the highest-leverage remaining item that is not a service — until it exists, no phase
-can be shown to have exited on evidence rather than assertion. `faucet` is already built and
-tested inside `hearth/tools/faucet` and has only ever needed extracting and deploying.
+**Operations (2):** `lantern` and `faucet`, both in flight. `beacon` — **the release gate (AD-04)**,
+and until today the reason no phase could be shown to have exited on evidence rather than
+assertion — is done. `faucet` is described in 03 as already built and tested inside
+`hearth/tools/faucet`, needing only extraction; that claim is being checked against the source
+rather than repeated, as several inherited claims in this directory have not survived checking.
 
 **Libraries (1):** `sdk`.
 
