@@ -19,19 +19,19 @@ Last verified: 2026-07-31.
 
 Of the 43 repositories this programme creates or changes — the 46 in
 [03-repository-responsibilities](03-repository-responsibilities.md) less the three left exactly
-as they are (`hearth`, `asset-forge`, `stack`), plus the five added by [19-new-products](19-new-products.md) — **27 are done**.
+as they are (`hearth`, `asset-forge`, `stack`), plus the five added by [19-new-products](19-new-products.md) — **28 are done**.
 
 | Group | Target | Done | Left |
 | --- | ---: | ---: | ---: |
 | Domain services | 24 | 18 | 6 |
 | Frontends | 14 | 2 | 12 |
-| Operations | 3 | 1 | 2 |
+| Operations | 3 | 2 | 1 |
 | Libraries | 4 | 3 | 1 |
 | Org infrastructure | 3 | 3 | 0 |
-| **Total** | **48** | **27** | **21** |
+| **Total** | **48** | **28** | **20** |
 
 Four further repositories exist that the plan did not enumerate as products — `brand`,
-`conformance`, `deploy` and `docs` — bringing the pushed count to **31**.
+`conformance`, `deploy` and `docs` — bringing the pushed count to **32**.
 
 **Repository count is the least useful measure of the three, and it is the one that flatters.**
 The truthful reading is that the *expensive* half is behind us. Everything that touches money,
@@ -108,6 +108,7 @@ and a guard that fires on its own rationale is a guard people delete.
 
 | Repo | Tests | The thing it proves |
 | --- | ---: | --- |
+| `micro-lantern` | 204 | Log triage. Credentials are scrubbed at ingest before persistence — a planted `sk-`/`ghp_`/`AKIA`/bearer/DSN-password/`Set-Cookie` is provably absent from the database afterwards, which the frozen ancestor never did (it stripped NUL bytes and called it sanitising). A noisy message carrying a UUID or address groups stably instead of once per occurrence. |
 | `micro-beacon` | 369 | **The release gate (AD-04), and it is fail-closed.** An unknown refuses before anything else is considered, and an override cannot reach an unknown — enforced three independent ways: in `decide()`, by the CHECK constraint `gate_decisions_indeterminate_never_promotes`, and by the CLI exiting 2 when it cannot reach Beacon. Six known refusal codes and six unknown ones. |
 
 Two design corrections it found while building, both worth keeping: budget exhaustion derives from
@@ -129,19 +130,21 @@ wrong with replicas, where it yields a different answer depending on which one P
 | `micro-deploy` | — | OTel collector, Prometheus, Tempo, Loki, Grafana. Configuration only; not running. |
 | `micro-docs` | — | This directory. |
 
-Across the estate: **~3,400 tests**, all green at last run.
+Across the estate: **~3,600 tests**, all green at last run.
 
 ---
 
 ## 3. Left
 
-### 3.1 In flight
+### 3.1 Partially built, paused on disk
+
+Started, then stopped when the owner's session capacity ran low. Their work is on disk under
+`cloudsforge-micro/<name>/` and is not lost; each is a finish job, not a restart.
 
 | Repo | State |
 | --- | --- |
-| `micro-lantern` | In progress. |
-| `micro-status-web` | In progress — the first consumer of beacon's redacted projection. |
-| `micro-faucet` | In progress. |
+| `micro-status-web` | Scaffolding + design work; the first intended consumer of beacon's redacted projection. |
+| `micro-faucet` | Barely started. Its ancestor `hearth/tools/faucet` is the source. |
 
 ### 3.2 Not started
 
@@ -156,7 +159,7 @@ existing implementation to port, and it is the largest of the five.
 `network-site`, `market-web`, `devportal-web`, `status-web`. Six of these are ports of existing
 applications rather than new work; `market-web`, `devportal-web` and `status-web` are new.
 
-**Operations (2):** `lantern` and `faucet`, both in flight. `beacon` — **the release gate (AD-04)**,
+**Operations (1):** `faucet`. `beacon` — **the release gate (AD-04)**,
 and until today the reason no phase could be shown to have exited on evidence rather than
 assertion — is done. `faucet` is described in 03 as already built and tested inside
 `hearth/tools/faucet`, needing only extraction; that claim is being checked against the source
@@ -179,9 +182,37 @@ repository had pushed, and so **the workflows had never once run**. They could n
 | Thirteen `grep` captures lacked `|| true` | `grep` exits 1 on no match and GitHub runs `bash -e`, so each check **aborted on a clean repository**. They were red on correct code and had never passed anywhere. |
 | `secret-hygiene` knew `changeme`, not `CHANGE_ME` | Failed five services on obvious placeholders — while passing a remote `postgres://` DSN carrying its password. |
 | `web-ci.yml` required an invented deep link to return 200 | The exact opposite of the estate's honest-404 rule, which `web-template` fails the build over. A frontend could satisfy one guard or the other, never both. |
+| The `image` smoke test booted the container against a DB that was not there | `index.ts` asserts its schema before binding and `env.ts` validates at import, so with no database and no config the container exits before serving. The job could never pass for any service. (9th defect, fixed with the test job's Postgres, `--network host`, and a `smoke-env` input.) |
 
 All fixed, each verified in both directions — correct code passes, a planted violation is still
-caught — and pinned by 51 tests in `micro-org`.
+caught — and pinned by 56 tests in `micro-org`.
+
+**But the pipeline still cannot go green, and this is now the single most important open item.**
+Every service declares its shared dependencies as `link:../runtime/packages/...` and
+`link:../contracts/...` — the acknowledged-temporary pre-publish pattern, stated as such in every
+`package.json` ("becomes a registry version the day it is published"). The reusable `service-ci.yml`,
+by contrast, does **one checkout** and installs `@cloudsforge/*` from GitHub Packages, and builds
+the image with `context: .`. So under the workflow every service fails twice over: `pnpm install
+--frozen-lockfile` cannot resolve `link:../runtime` (there is no sibling checkout), and `docker
+build` has no `runtimepkgs`/`contractpkgs` context. This is not a bug in any one repository; it is
+the estate being **mid-migration** — the workflow was written for a published-package end state
+that has not happened yet, while every repository still uses the pre-publish `link:` pattern.
+
+There are exactly two coherent ways out, and they are a real decision, not a detail:
+
+1. **Publish** `@cloudsforge/runtime`, `-contracts` and `-ui` to GitHub Packages, and switch every
+   consumer from `link:` to a registry version. This is the design's intended end state — the
+   workflow already authenticates to `npm.pkg.github.com` — but it is a ~20-repository change and
+   its own phase of work.
+2. **Sibling-checkout** in the reusable workflow: check out `micro-runtime` and `micro-contracts`
+   (and `micro-ui` for frontends) alongside the calling repo so `link:` resolves, and pass the
+   Docker build-contexts. One file changes; no consumer is touched; it matches how every
+   repository is written today. Lower blast radius, but it keeps the temporary pattern alive.
+
+Until one is done, **the local suites are the only evidence the code works** — which they are, and
+they are real, but they are not CI. The honest state is: 28 repositories build and their suites
+pass locally against a real Postgres; **zero** pass CI end-to-end. Verified locally is not the same
+claim as verified in the pipeline, and this document does not conflate them.
 
 **One shape accounts for five of them: a guard that fires on the prose explaining the guard.** An
 nginx header quoting the directive it forbids; a service comment naming a database it deliberately
@@ -193,7 +224,7 @@ own documentation wherever it was applied. Guards that scan source now strip com
 **The lesson worth keeping:** a check that has never run is not a check. These sat looking
 authoritative for the entire programme, and every one of them was wrong.
 
-### 3.3 The work that is not a repository
+### 3.4 The work that is not a repository
 
 Listed because a repository-count metric hides it, and because it is what stands between this
 programme and a running platform:
