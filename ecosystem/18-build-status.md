@@ -19,19 +19,19 @@ Last verified: 2026-07-31.
 
 Of the 43 repositories this programme creates or changes — the 46 in
 [03-repository-responsibilities](03-repository-responsibilities.md) less the three left exactly
-as they are (`hearth`, `asset-forge`, `stack`), plus the five added by [19-new-products](19-new-products.md) — **26 are done**.
+as they are (`hearth`, `asset-forge`, `stack`), plus the five added by [19-new-products](19-new-products.md) — **27 are done**.
 
 | Group | Target | Done | Left |
 | --- | ---: | ---: | ---: |
-| Domain services | 24 | 17 | 7 |
+| Domain services | 24 | 18 | 6 |
 | Frontends | 14 | 2 | 12 |
 | Operations | 3 | 1 | 2 |
 | Libraries | 4 | 3 | 1 |
 | Org infrastructure | 3 | 3 | 0 |
-| **Total** | **48** | **26** | **22** |
+| **Total** | **48** | **27** | **21** |
 
 Four further repositories exist that the plan did not enumerate as products — `brand`,
-`conformance`, `deploy` and `docs` — bringing the pushed count to **30**.
+`conformance`, `deploy` and `docs` — bringing the pushed count to **31**.
 
 **Repository count is the least useful measure of the three, and it is the one that flatters.**
 The truthful reading is that the *expensive* half is behind us. Everything that touches money,
@@ -87,6 +87,7 @@ it blocks P11.
 | `micro-hub-api` | 77 | Seven degradation tests: one upstream down never blanks the dashboard. |
 | `micro-market` | 275 | Escrow is a *reference* to a ledger reservation, never a balance. Royalty splits sum exactly to the sale price in bigint. Proven end to end: one balanced entry, debit 1000 SHARD against credit 925 + 25 + 50. |
 | `micro-trade` | 227 | A backtest is byte-identical across 100 runs on one seed, and genuinely differs on another. A fill whose ledger answer was lost is credited once. Two workers, one bot tick, one execution. |
+| `micro-emberkin` | 75 | The second Forge Worlds title, ported from *Kindred: Resonance*. **The ported RNG reproduces the C# `NextDouble()` bit-for-bit** (compared as raw IEEE-754 int64, not epsilon), and a corpus of 10 recorded battles replays byte-identically from seed — the same behavioural-equivalence discipline the trade backtest uses. No balance column; a cosmetic equip is a billing entitlement and never a stat. |
 
 ### 2.3 Frontends
 
@@ -128,7 +129,7 @@ wrong with replicas, where it yields a different answer depending on which one P
 | `micro-deploy` | — | OTel collector, Prometheus, Tempo, Loki, Grafana. Configuration only; not running. |
 | `micro-docs` | — | This directory. |
 
-Across the estate: **~3,300 tests**, all green at last run.
+Across the estate: **~3,400 tests**, all green at last run.
 
 ---
 
@@ -144,10 +145,10 @@ Across the estate: **~3,300 tests**, all green at last run.
 
 ### 3.2 Not started
 
-**Services (7):** `nda`, `community`, `devplatform`, `admin-api`, `analytics`, and — added by
-[19-new-products](19-new-products.md) — `emberkin` (the second Forge Worlds title, ported from
-*Kindred: Resonance* with a battle-conformance corpus) and `foresight` (the Hearth-native
-prediction market, parimutuel v1, stakes and settlement on-chain).
+**Services (6):** `nda`, `community`, `devplatform`, `admin-api`, `analytics`, and — added by
+[19-new-products](19-new-products.md) — `foresight` (the Hearth-native
+prediction market, parimutuel v1, stakes and settlement on-chain). `emberkin` — the second Forge
+Worlds title, ported from *Kindred: Resonance* — is **done** (§2.2).
 `micro-nda` is the *Ninety Days After* game service; it is the one remaining service with a real
 existing implementation to port, and it is the largest of the five.
 
