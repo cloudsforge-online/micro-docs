@@ -77,6 +77,7 @@ operational and financial controls a platform holding customer money owes its cu
 | **15** | [monetisation-model](15-monetisation-model.md) | What is charged for, what is free forever, and why. |
 | **16** | [risks-and-open-decisions](16-risks-and-open-decisions.md) | 55 risks, and what this plan deliberately does not decide. |
 | **17** | [definition-of-done](17-definition-of-done.md) | What "done" means at every level. |
+| **18** | [build-status](18-build-status.md) | What has actually been built, by repository, with test counts. **A ledger, not a plan — read it before assuming anything in 00–17 exists yet.** |
 
 **Assets.** [assets/](assets/) holds the design-system extension: the
 [chart palette](assets/chart-palette.md) (validated, not eyeballed), the
