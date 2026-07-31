@@ -19,16 +19,16 @@ Last verified: 2026-07-31.
 
 Of the 43 repositories this programme creates or changes — the 46 in
 [03-repository-responsibilities](03-repository-responsibilities.md) less the three left exactly
-as they are (`hearth`, `asset-forge`, `stack`) — **21 are done**.
+as they are (`hearth`, `asset-forge`, `stack`) — **22 are done**.
 
 | Group | Target | Done | Left |
 | --- | ---: | ---: | ---: |
 | Domain services | 22 | 15 | 7 |
-| Frontends | 11 | 0 | 11 |
+| Frontends | 11 | 1 | 10 |
 | Operations | 3 | 0 | 3 |
 | Libraries | 4 | 3 | 1 |
 | Org infrastructure | 3 | 3 | 0 |
-| **Total** | **43** | **21** | **22** |
+| **Total** | **43** | **22** | **21** |
 
 Four further repositories exist that the plan did not enumerate as products — `brand`,
 `conformance`, `deploy` and `docs` — bringing the pushed count to **25**.
@@ -61,7 +61,7 @@ Actual run counts are equal or slightly higher, because a few suites generate ca
 | `micro-ui` | 70 | Design system. Product accents corrected from ΔE 4.1 to 17.0 — the original set was not distinguishable under two of the three common CVD simulations. |
 | `micro-org` | 33 | The `.github` repo: `cfctl`, reusable workflows, the contract-compat checker. |
 | `micro-service-template` | 41 | Wires every runtime lib. `cfctl new service` instantiates it. |
-| `micro-web-template` | 44 | Vite, React 19, design system, runtime host resolution, honest 404. |
+| `micro-web-template` | 65 | Vite, React 19, design system, runtime host resolution, honest 404. |
 
 `micro-sdk` — the public developer surface — is **not built**. It is the one missing library and
 it blocks P11.
@@ -86,7 +86,21 @@ it blocks P11.
 | `micro-studio` | 121 | FLUX 2 Pro generation with provenance recorded per asset. |
 | `micro-hub-api` | 77 | Seven degradation tests: one upstream down never blanks the dashboard. |
 
-### 2.3 Supporting repositories
+### 2.3 Frontends
+
+| Repo | Tests | The thing it proves |
+| --- | ---: | --- |
+| `micro-hub-web` | 174 | Every call cites the `hub-api` line that serves it. Where hub-api serves no route — transfers, notification preferences, a device inventory — the page renders a named hole rather than a plausible screen over nothing. |
+
+Cutting it found two defects in `micro-web-template`, both fixed there and both worth recording
+because the template is the source of the ten frontends still to come: the error envelope is
+**nested** (`{error:{code,message,requestId}}`) and was read as flat, so every server-side failure
+would have rendered `[object Object]` while discarding the request id the support flow runs on;
+and the CI step forbidding the SPA 200-fallback grepped `nginx.conf` unstripped, matching the
+comment that explains why the fallback is forbidden — so the template failed its own pipeline,
+and a guard that fires on its own rationale is a guard people delete.
+
+### 2.4 Supporting repositories
 
 | Repo | Tests | Notes |
 | --- | ---: | --- |
@@ -95,7 +109,7 @@ it blocks P11.
 | `micro-deploy` | — | OTel collector, Prometheus, Tempo, Loki, Grafana. Configuration only; not running. |
 | `micro-docs` | — | This directory. |
 
-Across the estate: **~2,200 tests**, all green at last run.
+Across the estate: **~2,400 tests**, all green at last run.
 
 ---
 
@@ -105,9 +119,10 @@ Across the estate: **~2,200 tests**, all green at last run.
 
 | Repo | State |
 | --- | --- |
-| `micro-hub-web` | Scaffolding, lib layer and 29 tests exist; pages not written. |
 | `micro-market` | Scaffolding only. |
 | `micro-trade` | Scaffolding only. |
+| `micro-beacon` | Not started; taken next, ahead of the frontend queue, because it is the release gate. |
+| `micro-site` | Not started; taken next, as the second cut from the template. |
 
 ### 3.2 Not started
 
@@ -115,7 +130,7 @@ Across the estate: **~2,200 tests**, all green at last run.
 `micro-nda` is the *Ninety Days After* game service; it is the one remaining service with a real
 existing implementation to port, and it is the largest of the five.
 
-**Frontends (10):** `site`, `admin-web`, `mint-web`, `trade-web`, `worlds-web`, `explorer-web`,
+**Frontends (10), of the 11:** `site`, `admin-web`, `mint-web`, `trade-web`, `worlds-web`, `explorer-web`,
 `network-site`, `market-web`, `devportal-web`, `status-web`. Seven of these are ports of existing
 applications rather than new work; `market-web`, `devportal-web` and `status-web` are new.
 
