@@ -19,19 +19,19 @@ Last verified: 2026-07-31.
 
 Of the 43 repositories this programme creates or changes — the 46 in
 [03-repository-responsibilities](03-repository-responsibilities.md) less the three left exactly
-as they are (`hearth`, `asset-forge`, `stack`) — **22 are done**.
+as they are (`hearth`, `asset-forge`, `stack`) — **25 are done**.
 
 | Group | Target | Done | Left |
 | --- | ---: | ---: | ---: |
-| Domain services | 22 | 15 | 7 |
-| Frontends | 11 | 1 | 10 |
+| Domain services | 22 | 17 | 5 |
+| Frontends | 11 | 2 | 9 |
 | Operations | 3 | 0 | 3 |
 | Libraries | 4 | 3 | 1 |
 | Org infrastructure | 3 | 3 | 0 |
-| **Total** | **43** | **22** | **21** |
+| **Total** | **43** | **25** | **18** |
 
 Four further repositories exist that the plan did not enumerate as products — `brand`,
-`conformance`, `deploy` and `docs` — bringing the pushed count to **25**.
+`conformance`, `deploy` and `docs` — bringing the pushed count to **29**.
 
 **Repository count is the least useful measure of the three, and it is the one that flatters.**
 The truthful reading is that the *expensive* half is behind us. Everything that touches money,
@@ -85,12 +85,15 @@ it blocks P11.
 | `micro-worlds` | 119 | A private world is finally provisioned — the defect that made the feature inert. |
 | `micro-studio` | 121 | FLUX 2 Pro generation with provenance recorded per asset. |
 | `micro-hub-api` | 77 | Seven degradation tests: one upstream down never blanks the dashboard. |
+| `micro-market` | 275 | Escrow is a *reference* to a ledger reservation, never a balance. Royalty splits sum exactly to the sale price in bigint. Proven end to end: one balanced entry, debit 1000 SHARD against credit 925 + 25 + 50. |
+| `micro-trade` | 227 | A backtest is byte-identical across 100 runs on one seed, and genuinely differs on another. A fill whose ledger answer was lost is credited once. Two workers, one bot tick, one execution. |
 
 ### 2.3 Frontends
 
 | Repo | Tests | The thing it proves |
 | --- | ---: | --- |
 | `micro-hub-web` | 174 | Every call cites the `hub-api` line that serves it. Where hub-api serves no route — transfers, notification preferences, a device inventory — the page renders a named hole rather than a plausible screen over nothing. |
+| `micro-site` | 185 | No number appears on the marketing site that is not checkable against something real in this estate. |
 
 Cutting it found two defects in `micro-web-template`, both fixed there and both worth recording
 because the template is the source of the ten frontends still to come: the error envelope is
@@ -109,7 +112,7 @@ and a guard that fires on its own rationale is a guard people delete.
 | `micro-deploy` | — | OTel collector, Prometheus, Tempo, Loki, Grafana. Configuration only; not running. |
 | `micro-docs` | — | This directory. |
 
-Across the estate: **~2,400 tests**, all green at last run.
+Across the estate: **~2,900 tests**, all green at last run.
 
 ---
 
@@ -119,10 +122,7 @@ Across the estate: **~2,400 tests**, all green at last run.
 
 | Repo | State |
 | --- | --- |
-| `micro-market` | Scaffolding only. |
-| `micro-trade` | Scaffolding only. |
-| `micro-beacon` | Not started; taken next, ahead of the frontend queue, because it is the release gate. |
-| `micro-site` | Not started; taken next, as the second cut from the template. |
+| `micro-beacon` | In progress, taken ahead of the frontend queue because it is the release gate. |
 
 ### 3.2 Not started
 
@@ -130,16 +130,45 @@ Across the estate: **~2,400 tests**, all green at last run.
 `micro-nda` is the *Ninety Days After* game service; it is the one remaining service with a real
 existing implementation to port, and it is the largest of the five.
 
-**Frontends (10), of the 11:** `site`, `admin-web`, `mint-web`, `trade-web`, `worlds-web`, `explorer-web`,
-`network-site`, `market-web`, `devportal-web`, `status-web`. Seven of these are ports of existing
+**Frontends (9), of the 11:** `admin-web`, `mint-web`, `trade-web`, `worlds-web`, `explorer-web`,
+`network-site`, `market-web`, `devportal-web`, `status-web`. Six of these are ports of existing
 applications rather than new work; `market-web`, `devportal-web` and `status-web` are new.
 
-**Operations (3):** `lantern`, `beacon`, `faucet`. `beacon` is **the release gate (AD-04)** and is
+**Operations (3):** `lantern`, `beacon` (in flight), `faucet`. `beacon` is **the release gate (AD-04)** and is
 therefore the highest-leverage remaining item that is not a service — until it exists, no phase
 can be shown to have exited on evidence rather than assertion. `faucet` is already built and
 tested inside `hearth/tools/faucet` and has only ever needed extracting and deploying.
 
 **Libraries (1):** `sdk`.
+
+### 3.3 What the CI could not do, and can now
+
+Recorded because it is the most consequential thing found so far and none of it is visible in a
+repository count. Every service and frontend declared a call to the org's reusable workflows, no
+repository had pushed, and so **the workflows had never once run**. They could not have worked:
+
+| Defect | Consequence |
+| --- | --- |
+| `micro-org`'s Actions access was `none` | No repository in the org could call a reusable workflow at all. |
+| `service-ci.yml` had no Postgres container | Fifteen database-backed suites could not run. |
+| Suites *skip* without a DSN rather than fail | So the consequence was a **green** pipeline that had executed none of the ledger's deferred-constraint, custody's overdraft-trigger or settlement's lease assertions. Green while proving nothing, and believed. |
+| Rule 1 compared the declared variable by exact string | Rejected all fifteen services, for reading their own test database. |
+| Thirteen `grep` captures lacked `|| true` | `grep` exits 1 on no match and GitHub runs `bash -e`, so each check **aborted on a clean repository**. They were red on correct code and had never passed anywhere. |
+| `secret-hygiene` knew `changeme`, not `CHANGE_ME` | Failed five services on obvious placeholders — while passing a remote `postgres://` DSN carrying its password. |
+| `web-ci.yml` required an invented deep link to return 200 | The exact opposite of the estate's honest-404 rule, which `web-template` fails the build over. A frontend could satisfy one guard or the other, never both. |
+
+All fixed, each verified in both directions — correct code passes, a planted violation is still
+caught — and pinned by 51 tests in `micro-org`.
+
+**One shape accounts for five of them: a guard that fires on the prose explaining the guard.** An
+nginx header quoting the directive it forbids; a service comment naming a database it deliberately
+does not read; a test naming the variable it proves is ignored; a `hosts.ts` explaining why a
+hostname must never be written by writing one. Each failed a build for being correct, and the
+recorded workaround in every case was to reword the comment — so the rule was quietly deleting its
+own documentation wherever it was applied. Guards that scan source now strip comments first.
+
+**The lesson worth keeping:** a check that has never run is not a check. These sat looking
+authoritative for the entire programme, and every one of them was wrong.
 
 ### 3.3 The work that is not a repository
 
