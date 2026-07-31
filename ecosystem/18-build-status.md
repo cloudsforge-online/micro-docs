@@ -19,19 +19,19 @@ Last verified: 2026-07-31.
 
 Of the 43 repositories this programme creates or changes — the 46 in
 [03-repository-responsibilities](03-repository-responsibilities.md) less the three left exactly
-as they are (`hearth`, `asset-forge`, `stack`), plus the five added by [19-new-products](19-new-products.md) — **32 are done**.
+as they are (`hearth`, `asset-forge`, `stack`), plus the five added by [19-new-products](19-new-products.md) — **33 are done**.
 
 | Group | Target | Done | Left |
 | --- | ---: | ---: | ---: |
 | Domain services | 24 | 19 | 5 |
 | Frontends | 14 | 5 | 9 |
-| Operations | 3 | 2 | 1 |
+| Operations | 3 | 3 | 0 |
 | Libraries | 4 | 3 | 1 |
 | Org infrastructure | 3 | 3 | 0 |
-| **Total** | **48** | **32** | **16** |
+| **Total** | **48** | **33** | **15** |
 
 Four further repositories exist that the plan did not enumerate as products — `brand`,
-`conformance`, `deploy`, `docs` and `emberkin-assets` — bringing the pushed count to **37**.
+`conformance`, `deploy`, `docs` and `emberkin-assets` — bringing the pushed count to **38**.
 
 **Repository count is the least useful measure of the three, and it is the one that flatters.**
 The truthful reading is that the *expensive* half is behind us. Everything that touches money,
@@ -117,6 +117,7 @@ and a guard that fires on its own rationale is a guard people delete.
 | Repo | Tests | The thing it proves |
 | --- | ---: | --- |
 | `micro-lantern` | 204 | Log triage. Credentials are scrubbed at ingest before persistence — a planted `sk-`/`ghp_`/`AKIA`/bearer/DSN-password/`Set-Cookie` is provably absent from the database afterwards, which the frozen ancestor never did (it stripped NUL bytes and called it sanitising). A noisy message carrying a UUID or address groups stably instead of once per occurrence. |
+| `micro-faucet` | 157 | Testnet EMBER faucet, and **the process holds no key**: a drip is a native transfer with empty calldata, which is exactly the `transfer` shape custody's `treasury` purpose maps to, so custody signs it. It uses its own treasury address rather than the platform's, so it and settlement never share a nonce. The lease was proven by *removing* it — two and four workers then rely on the partial unique index alone. |
 | `micro-beacon` | 369 | **The release gate (AD-04), and it is fail-closed.** An unknown refuses before anything else is considered, and an override cannot reach an unknown — enforced three independent ways: in `decide()`, by the CHECK constraint `gate_decisions_indeterminate_never_promotes`, and by the CLI exiting 2 when it cannot reach Beacon. Six known refusal codes and six unknown ones. |
 
 Two design corrections it found while building, both worth keeping: budget exhaustion derives from
@@ -139,7 +140,7 @@ wrong with replicas, where it yields a different answer depending on which one P
 | `micro-deploy` | — | OTel collector, Prometheus, Tempo, Loki, Grafana. Configuration only; not running. |
 | `micro-docs` | — | This directory. |
 
-Across the estate: **~4,800 tests**, all green at last run.
+Across the estate: **~4,950 tests**, all green at last run.
 
 ---
 
@@ -149,7 +150,7 @@ Across the estate: **~4,800 tests**, all green at last run.
 
 | Repo | State |
 | --- | --- |
-| `micro-faucet` | Taken next. |
+| `micro-sdk` | Taken next. |
 
 An earlier revision of this section listed `micro-status-web` and `micro-faucet` here as having
 scaffolding on disk. **That was wrong** — neither directory exists; both agents were killed before
@@ -280,6 +281,26 @@ prompt defect rather than model randomness. Four are worth recording because the
 The method that kept it cheap: **all fifty portraits were measured against their anchors before
 anything was regenerated**, and each correction was trialled on one asset before a line of seven
 was re-run. That is why the pass cost 37 calls rather than ~150.
+
+### 3.3c A defect in the frozen estate: the testnet faucet defaults to mainnet
+
+Found while porting `hearth/tools/faucet`, and recorded rather than fixed, because
+`stack/` is frozen and the successor supersedes it.
+
+`stack/repos/hearth/tools/faucet/src/env.js:94` defaults `chainId` to **7411**. The exact-pinned
+`contracts-chain` package puts EMBER at `{mainnet: 7411, testnet: 7412}`
+(`contracts/packages/chain/src/index.ts:57`). So the faucet's shipped default is **mainnet**, and
+its boot check (`src/index.js:71-75`) compares the node against that *configured* value — it
+verifies agreement, not identity — so a mainnet node passes cleanly. The configuration did not
+even match the network it runs against: the local testnet node answers `0x1cf4`, 7412.
+
+It was never deployed, which is the only reason this is a finding rather than an incident. A
+faucet exists to give away money; one that can be pointed at mainnet by leaving a variable unset
+will eventually be.
+
+`micro-faucet` refuses to start against any chain id that is not the testnet's, and proves the
+refusal with a test — the difference between checking that two values agree and checking that a
+value is the right one.
 
 ### 3.4 What only CI could catch
 
