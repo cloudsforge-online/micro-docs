@@ -40,8 +40,12 @@ indexer, wallet, pricing, billing, identity, policy. What remains is dominated b
 which are lighter per repository, and by three operational services whose behaviour is already
 specified in [13-operational-model](13-operational-model.md).
 
-**The measure that is not flattering at all: nothing is deployed.** Every repository listed below
-exists as code that passes its own tests. Not one of them is running anywhere. Phase exit is
+**CI is green across all 32 repositories** (verified on the runner, 2026-07-31) — including the
+sixteen that silently had no workflow file at all, despite the definition of done claiming CI
+everywhere. That claim is now true rather than assumed.
+
+**The measure that is still not flattering: nothing is deployed.** Every repository below passes
+its own suite in CI, on a real Postgres. Not one is running in an environment. Phase exit is
 defined by behaviour in an environment, so on the criteria in
 [06-ecosystem-workflow](06-ecosystem-workflow.md) no phase has formally exited.
 
@@ -187,44 +191,43 @@ repository had pushed, and so **the workflows had never once run**. They could n
 All fixed, each verified in both directions — correct code passes, a planted violation is still
 caught — and pinned by 56 tests in `micro-org`.
 
-**But the pipeline still cannot go green, and this is now the single most important open item.**
-Every service declares its shared dependencies as `link:../runtime/packages/...` and
-`link:../contracts/...` — the acknowledged-temporary pre-publish pattern, stated as such in every
-`package.json` ("becomes a registry version the day it is published"). The reusable `service-ci.yml`,
-by contrast, does **one checkout** and installs `@cloudsforge/*` from GitHub Packages, and builds
-the image with `context: .`. So under the workflow every service fails twice over: `pnpm install
---frozen-lockfile` cannot resolve `link:../runtime` (there is no sibling checkout), and `docker
-build` has no `runtimepkgs`/`contractpkgs` context. This is not a bug in any one repository; it is
-the estate being **mid-migration** — the workflow was written for a published-package end state
-that has not happened yet, while every repository still uses the pre-publish `link:` pattern.
+**Resolved on 2026-07-31: all 32 repositories are green on the real GitHub runner.** The root
+cause was as diagnosed — the npm scope `@cloudsforge` does not match the org `cloudsforge-online`,
+so GitHub Packages cannot host these packages and publishing was never available. Option 2 was
+therefore the only coherent exit: the reusable workflow now checks out `micro-runtime` and
+`micro-contracts` (and `micro-ui` for frontends) as siblings with a `contents:read` token, installs
+each sibling's OWN dependencies first — `link:` resolves through the sibling's `node_modules`, so a
+`link:` with no sibling installs as a *dangling symlink*, which is why `Install` passed while
+`Typecheck` could not find one `@cloudsforge` module — and passes the same directories to
+`docker build` as named build contexts.
 
-There are exactly two coherent ways out, and they are a real decision, not a detail:
+Three further defects surfaced only by running it (10–12), all fixed with regression tests:
+`contract-compat.yml` fetched the checker from the private org repo with the **job token**, scoped
+to the calling repository, so it failed for every contract repo; the checker linked only the
+workspace-root `node_modules`, so under pnpm the base side resolved to `any` and every real type
+read as a breaking change; and well-known-symbol members carry TypeScript's per-compilation symbol
+id, producing hundreds of phantom findings. On the real repository this moved a wall of false
+breakage to 256 vs 256 paths and exit 0 — while deleting `Posting.sequence` still exits 1 and names
+it. **`micro-contracts`' `pnpm compat` had been pointing at a `tools/compat.ts` that has never
+existed in that repository, so the estate's contract-compatibility gate had never run anywhere.**
 
-1. **Publish** `@cloudsforge/runtime`, `-contracts` and `-ui` to GitHub Packages, and switch every
-   consumer from `link:` to a registry version. This is the design's intended end state — the
-   workflow already authenticates to `npm.pkg.github.com` — but it is a ~20-repository change and
-   its own phase of work.
-2. **Sibling-checkout** in the reusable workflow: check out `micro-runtime` and `micro-contracts`
-   (and `micro-ui` for frontends) alongside the calling repo so `link:` resolves, and pass the
-   Docker build-contexts. One file changes; no consumer is touched; it matches how every
-   repository is written today. Lower blast radius, but it keeps the temporary pattern alive.
+### 3.4 What only CI could catch
 
-Until one is done, **the local suites are the only evidence the code works** — which they are, and
-they are real, but they are not CI. The honest state is: 28 repositories build and their suites
-pass locally against a real Postgres; **zero** pass CI end-to-end. Verified locally is not the same
-claim as verified in the pipeline, and this document does not conflate them.
+The point of the exercise, and the answer to "the suites pass locally, why bother": four real
+defects were invisible to a green local run.
 
-**One shape accounts for five of them: a guard that fires on the prose explaining the guard.** An
-nginx header quoting the directive it forbids; a service comment naming a database it deliberately
-does not read; a test naming the variable it proves is ignored; a `hosts.ts` explaining why a
-hostname must never be written by writing one. Each failed a build for being correct, and the
-recorded workaround in every case was to reword the comment — so the rule was quietly deleting its
-own documentation wherever it was applied. Guards that scan source now strip comments first.
+| Defect | Why local missed it |
+| --- | --- |
+| `runtime/packages/lifecycle` — two `unref()`'d timers. The drain-delay one is the serious one: unref'd, a draining process **exits the event loop instead of pausing**, so it skips the delay that exists to let the load balancer notice it is going away — dropping precisely the in-flight requests the drain was written to protect. | Node 24 hid it incidentally; Node 22 (the CI runtime) showed 16 cancelled tests. Now 21/21 on Node 22 and 117/117 on Node 24. |
+| `custody/src/hd.ts` — `import { ECDSA } from 'xrpl'` throws at import. xrpl is CommonJS and defines `ECDSA` through a `defineProperty` getter Node 22's CJS lexer cannot see, so **every suite touching `hd.ts` died before running**. | Node 24's lexer finds it. A version difference between laptop and runner. |
+| `billing` — fixtures asked questions on a frozen timeline while grants defaulted to the database's `now()`. | It agreed *by luck* until the wall clock passed 2026-07-30; then 8 tests failed and the expiry fixtures violated a CHECK constraint. A test that passes because of today's date. |
+| `beacon` — the same class: fixture-time setup evaluated against real time, stale from 11:00 UTC on the fixture's own date. | Identical reason. |
 
-**The lesson worth keeping:** a check that has never run is not a check. These sat looking
-authoritative for the entire programme, and every one of them was wrong.
+Two of these are latent production defects, not test artefacts — the drain hole is in the shutdown
+path of every service in the estate, and the xrpl import is in the custody service's key
+derivation.
 
-### 3.4 The work that is not a repository
+### 3.5 The work that is not a repository
 
 Listed because a repository-count metric hides it, and because it is what stands between this
 programme and a running platform:
