@@ -19,16 +19,16 @@ Last verified: 2026-07-31.
 
 Of the 43 repositories this programme creates or changes — the 46 in
 [03-repository-responsibilities](03-repository-responsibilities.md) less the three left exactly
-as they are (`hearth`, `asset-forge`, `stack`) — **26 are done**.
+as they are (`hearth`, `asset-forge`, `stack`), plus the five added by [19-new-products](19-new-products.md) — **26 are done**.
 
 | Group | Target | Done | Left |
 | --- | ---: | ---: | ---: |
-| Domain services | 22 | 17 | 5 |
-| Frontends | 11 | 2 | 9 |
+| Domain services | 24 | 17 | 7 |
+| Frontends | 14 | 2 | 12 |
 | Operations | 3 | 1 | 2 |
 | Libraries | 4 | 3 | 1 |
 | Org infrastructure | 3 | 3 | 0 |
-| **Total** | **43** | **26** | **17** |
+| **Total** | **48** | **26** | **22** |
 
 Four further repositories exist that the plan did not enumerate as products — `brand`,
 `conformance`, `deploy` and `docs` — bringing the pushed count to **30**.
@@ -144,11 +144,14 @@ Across the estate: **~3,300 tests**, all green at last run.
 
 ### 3.2 Not started
 
-**Services (5):** `nda`, `community`, `devplatform`, `admin-api`, `analytics`.
+**Services (7):** `nda`, `community`, `devplatform`, `admin-api`, `analytics`, and — added by
+[19-new-products](19-new-products.md) — `emberkin` (the second Forge Worlds title, ported from
+*Kindred: Resonance* with a battle-conformance corpus) and `foresight` (the Hearth-native
+prediction market, parimutuel v1, stakes and settlement on-chain).
 `micro-nda` is the *Ninety Days After* game service; it is the one remaining service with a real
 existing implementation to port, and it is the largest of the five.
 
-**Frontends (9), of the 11:** `admin-web`, `mint-web`, `trade-web`, `worlds-web`, `explorer-web`,
+**Frontends (12), of the 14:** `emberkin-web`, `foresight-web`, `foresight-admin-web` (added by 19), plus `admin-web`, `mint-web`, `trade-web`, `worlds-web`, `explorer-web`,
 `network-site`, `market-web`, `devportal-web`, `status-web`. Six of these are ports of existing
 applications rather than new work; `market-web`, `devportal-web` and `status-web` are new.
 
