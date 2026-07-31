@@ -31,7 +31,7 @@ as they are (`hearth`, `asset-forge`, `stack`), plus the five added by [19-new-p
 | **Total** | **48** | **29** | **19** |
 
 Four further repositories exist that the plan did not enumerate as products — `brand`,
-`conformance`, `deploy` and `docs` — bringing the pushed count to **33**.
+`conformance`, `deploy`, `docs` and `emberkin-assets` — bringing the pushed count to **34**.
 
 **Repository count is the least useful measure of the three, and it is the one that flatters.**
 The truthful reading is that the *expensive* half is behind us. Everything that touches money,
@@ -130,6 +130,7 @@ wrong with replicas, where it yields a different answer depending on which one P
 
 | Repo | Tests | Notes |
 | --- | ---: | --- |
+| `micro-emberkin-assets` | — | 83 planned, **83 delivered** (134 files with derivatives), CI run 30663724437 green. Prompted from the `visuals.json` spec the game already ships. Grounds normalised numerically: delivered range was `#040404`–`#4c4c44` across 20 distinct values; all 123 flat assets now measure `#12100f` exactly in four corners (the 11 exceptions are full-bleed scenes, where a brand ground does not apply). All 24 evolution lines inside the 45° family ceiling. |
 | `micro-brand` | — | 73 generated assets. Grounds normalised numerically to exactly `#12100f`; FLUX will not reproduce an exact hex and delivered `#232324`–`#3f3a3b` across the run. |
 | `micro-conformance` | 59 | A recorded corpus of 60 interactions from the live estate — the behavioural baseline a successor must match. |
 | `micro-deploy` | — | OTel collector, Prometheus, Tempo, Loki, Grafana. Configuration only; not running. |
@@ -145,7 +146,7 @@ Across the estate: **~3,750 tests**, all green at last run.
 
 | Repo | State |
 | --- | --- |
-| `micro-emberkin-assets` | The FLUX 2 Pro run for Emberkin. 134 images generated and committed; two type lines (verdant, umbra) have a prompt defect being corrected. Not yet pushed. |
+| `micro-foresight-web` | In progress. |
 
 An earlier revision of this section listed `micro-status-web` and `micro-faucet` here as having
 scaffolding on disk. **That was wrong** — neither directory exists; both agents were killed before
@@ -239,6 +240,33 @@ defects live: every existing test stubbed fetch and asserted behaviour given a r
 [14-testing-strategy](14-testing-strategy.md), which is still a strategy rather than a passing
 gate.** Two for two, the thing that caught it was a human-equivalent reading of the other side's
 routes. That does not scale to 48 repositories.
+
+### 3.3b What generating the Emberkin art taught, worth keeping
+
+The run cost ~129 generations for 83 assets — 46 of them retries — and every retry traced to a
+prompt defect rather than model randomness. Four are worth recording because they generalise:
+
+1. **Two copies of the colour table.** `plan.ts` wrote the subject noun and `generate.ts` wrote the
+   albedo clause, each holding its own nine colour words. Correcting only one produced a
+   regenerated asset that measured *identically wrong*, and cost a paid call to discover. One
+   table now, looked up by hex. Duplicated constants drift in prompts exactly as they drift in
+   code.
+2. **A motif names a shape and a material, never a colour.** All seven verdant Kin inherit
+   `"leaf frills, bark plating"` verbatim from upstream `visuals.json` — and bark is brown. The
+   same clause explains frost (`"ice crystal spines"` → white), Stormcrow
+   (`"hollow bones, streamer feathers"` → black) and umbra (`"void-black core"` → black). Four
+   apparently separate defects, one cause.
+3. **"Deepened" means richer, not darker.** The apex-stage direction said "darker shadow ramps";
+   the model took that to black, so branch tips passed every numeric measure and still did not read
+   as family members. A metric can be satisfied by an image that fails the intent.
+4. **Colour words are measurable, so measure them.** Same prompt otherwise: "fresh leaf green" →
+   hue 74, "emerald" → 96, "jade — halfway between emerald and teal" → 132–134, and adding
+   "SATURATED" pushed it back to 103. Choosing words by measurement rather than by taste is what
+   made the fix converge.
+
+The method that kept it cheap: **all fifty portraits were measured against their anchors before
+anything was regenerated**, and each correction was trialled on one asset before a line of seven
+was re-run. That is why the pass cost 37 calls rather than ~150.
 
 ### 3.4 What only CI could catch
 
