@@ -44,8 +44,9 @@ specified in [13-operational-model](13-operational-model.md).
 sixteen that silently had no workflow file at all, despite the definition of done claiming CI
 everywhere. That claim is now true rather than assumed.
 
-**The measure that is still not flattering: nothing is deployed.** Every repository below passes
-its own suite in CI, on a real Postgres. Not one is running in an environment. Phase exit is
+**Two services now run together** — identity and ledger, with real migrations, a real database and
+real cross-service authentication (§3.3g). The other eighteen still do not, and no environment
+exists beyond a local compose file. Phase exit is
 defined by behaviour in an environment, so on the criteria in
 [06-ecosystem-workflow](06-ecosystem-workflow.md) no phase has formally exited.
 
@@ -384,6 +385,41 @@ decision, which is the correct status for a defect that is also, by now, the rul
 Two columns are deliberately excluded from the comparison and the port derives them instead:
 `reports.id` and `world_events.id` were `randomUUID()` upstream, so they do not match a second run
 of the *ancestor* either.
+
+### 3.3g What only DEPLOYMENT could catch: the estate cannot bootstrap itself
+
+The first two services were run together on 2026-08-01
+(`deploy/compose/docker-compose.slice.yml`). Until then nothing in this estate had ever executed
+against anything else, and the finding below is the reason that mattered.
+
+**A fresh deployment cannot issue its first service token, so no service can ever authenticate to
+another.**
+
+- `POST /service-tokens` requires the `admin` role (`identity/src/server.ts:1266`, via
+  `authenticateAdmin` at `:545`).
+- `users.roles` is `text[] not null default '{}'` (`identity/src/migrations.ts:119`) — every user
+  is created with none.
+- **No route in identity grants a role.** All twenty of its POST/PUT/PATCH routes were enumerated;
+  none assigns one.
+
+Verified rather than reasoned about: a freshly registered user receives a working access token,
+and `POST /service-tokens` answers **403 `this route requires the admin role`**. The only way
+through is `update users set roles = array['admin']` against the database by hand, which is what
+`scripts/slice-verify.sh` does — and asserts, so that the day identity grows a bootstrap the check
+fails and is deleted.
+
+This is invisible to every test in the estate. Identity's own suite creates admins directly; every
+consumer's suite stubs the token. It can only appear when a real deployment tries to start from
+nothing, which is exactly what had never happened.
+
+**What the slice proved working**, all for the first time outside a test process: the migrator run
+one-shot against an empty database; `/livez` and `/readyz` over a real socket; `@cloudsforge/auth`
+fetching a JWKS across a network rather than from a stub; a token minted by identity and verified
+by ledger; and both negatives — an absent token and a forged one are 401.
+
+**The estate is closer to running than the deployment gap suggested.** Two services, a real
+database, real migrations and real cross-service auth needed one compose file and two corrections,
+neither in a service.
 
 ### 3.4 What only CI could catch
 
