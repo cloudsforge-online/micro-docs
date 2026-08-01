@@ -92,6 +92,7 @@ Actual run counts are equal or slightly higher, because a few suites generate ca
 | `micro-market` | 275 | Escrow is a *reference* to a ledger reservation, never a balance. Royalty splits sum exactly to the sale price in bigint. Proven end to end: one balanced entry, debit 1000 SHARD against credit 925 + 25 + 50. |
 | `micro-trade` | 227 | A backtest is byte-identical across 100 runs on one seed, and genuinely differs on another. A fill whose ledger answer was lost is credited once. Two workers, one bot tick, one execution. |
 | `micro-foresight` | 153 | The Hearth-native prediction market. **The service has no key and holds no stake** — `stake-intent` hands a wallet the contract address and calldata, and the wallet signs. Drop the `positions` table and every stake is still in the contract and every winner can still `claim()`. Contract invariants are proven against the *executed committed bytecode* on `@ethereumjs/evm`: fee + payouts + residue == pool exactly, residue < winners, double-claim reverts, claim-after-void refunds whole with zero fee. The fee comes off the losing pool only, so a winner never gets back less than they staked; a market nobody won voids rather than handing the treasury a windfall. |
+| `micro-indexer` | 105 | Gained two read routes two services were blocked on (§3.3j). **`confirmed` requires `status = 'success'`**, not merely depth: a reverted EVM transaction is mined and gathers confirmations exactly like one that worked, so a depth-only check would have called a failed escrow deposit confirmed. Confirmations count against the **stored canonical head**, never the provider-claimed tip — the head is what the service walked and would have found a reorg in. A balance is absent, never zero, unless the canonical chain runs unbroken from genesis to the asked height. |
 | `micro-analytics` | 283 | **Every domain service is now built.** Pseudonymity is salted, because the specified `HMAC(user_id, pepper)` is a pure function of two surviving inputs and **cannot be erased** — so erasure destroys a per-subject salt, and the constraint is written as two legal states rather than an equivalence, since the obvious equivalence admits a row that nulled the pseudonym and kept the salt, which erases nothing. There is no free-text property type at all: enum, short code, bounded integer, boolean. A raw subject is refused by `sql.unsafe` with the service bypassed. |
 | `micro-community` | 268 | Governance, and **the treasury subject is a generated column** (`'community:' || id`): a CHECK cannot express it, because the value derives from an id the INSERT creates, so generation removes the code path that could write a wrong one rather than guarding it. A vote row is keyed by *whose power it spends* rather than who pressed the button, which makes both orders of the double-vote race impossible — a member voting in person overrides their own proxy. Delegation cycles are refused by a recursive CTE **under a per-community advisory lock**, without which two concurrent inserts each see a graph missing the other's uncommitted row and both commit a loop. |
 | `micro-admin-api` | 257 | The operator BFF. **The audit chain is honest about what a chain cannot see**: a hash chain catches an edit or an interior deletion, but truncation followed by a full re-hash verifies perfectly — so checkpoints catch that, and the test asserts BOTH directions, including that the truncated remainder verifies without them. Four eyes are enforced three times over, with the layer above bypassed at each level: the route, a `WHERE` clause, and a CHECK constraint. |
@@ -146,7 +147,7 @@ wrong with replicas, where it yields a different answer depending on which one P
 | `micro-deploy` | — | OTel collector, Prometheus, Tempo, Loki, Grafana. Configuration only; not running. |
 | `micro-docs` | — | This directory. |
 
-Across the estate: **~6,700 tests**, all green at last run.
+Across the estate: **~6,750 tests**, all green at last run.
 
 ---
 
@@ -474,9 +475,17 @@ belongs to another repository.
 ### 3.3i The seventh imagined surface, and the first that lied about money
 
 `micro-market`'s indexer client called `/v1/tokens/:urn/facts` and
-`/v1/chains/:chain/transactions/:hash/escrow`. `micro-indexer` serves neither, and **no `/v1` paths
-at all** — its table is `/chains`, `/addresses`, `/transactions`, `/blocks`, `/watch`, `/backfills`
-(`indexer/src/server.ts:317-322`). Every call 404'd, always.
+`/v1/chains/:chain/transactions/:hash/escrow`. `micro-indexer` serves neither route, so every call
+404'd, always.
+
+**A correction to this section's first version, which I got wrong and repeated confidently.** It
+said the indexer "serves no `/v1` paths at all". It does: `indexer/src/server.ts:124` is
+`PREFIXES = ['/v1', '']` and every route is mounted under both spellings. The 404s were caused by
+the missing `/tokens` route and the missing `/escrow` sub-resource — not by the prefix. The
+diagnosis was right in substance and wrong in the detail I was most emphatic about, and the agent
+adding the capabilities caught it by reading the file rather than the finding. Left visible rather
+than silently amended: this ledger's whole value is that a claim in it can be checked, and one that
+was wrong should say so.
 
 The escrow branch turned that into `{confirmed: false}`, and `market/src/server.ts:761` turns that
 into *"the on-chain escrow is not confirmed yet"*. So **every on-chain escrow activation failed
@@ -513,10 +522,15 @@ behaviour, which is why they can be added to a shipped service.
 The second is the one that matters most: it is the only defect found in this programme that made a
 shipped service lie about money rather than merely fail.
 
-Both consumers already carry self-deleting workarounds pinned to the *absence*: `market`'s test
-asserts exactly two unserved routes and `community`'s asserts the balance route is missing, each
-with a message naming what to do when it appears. Those tests go red the day the capability lands,
-which is the mechanism working as designed rather than a chore.
+**Outcome: two built, one refused.** The confirmation and balance routes exist and both consumers
+are repointed. **Token facts was refused, and the refusal is the right answer**: it is keyed by a
+`micro-mint` item URN the indexer has no registry for, and five of the eight fields are contract
+state, total supply, complete holder history or a custody fact about a private key. Serving it
+would have meant inventing numbers. That is a gap in the estate's *design* rather than an unbuilt
+route, so market's workaround stays and its test now pins **one** unserved path instead of two.
+
+The self-deleting workarounds behaved exactly as intended: both went red the day the capability
+landed and were removed as part of the same change.
 
 ### 3.3k Planned: brand chrome for every frontend
 
