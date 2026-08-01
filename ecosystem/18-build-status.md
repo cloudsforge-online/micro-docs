@@ -155,32 +155,35 @@ Across the estate: **~6,750 tests**, all green at last run.
 
 ### 3.1 Partially built, paused on disk
 
-| Repo | State |
-| --- | --- |
-| `micro-community` | Taken next. |
-
-An earlier revision of this section listed `micro-status-web` and `micro-faucet` here as having
-scaffolding on disk. **That was wrong** — neither directory exists; both agents were killed before
-writing anything. Corrected rather than quietly amended, because a false "finish job" entry costs
-whoever picks it up a session before they discover there is nothing to finish. Both are in §3.2.
+**Nothing.** `micro-community`, which sat here, is built and green.
 
 ### 3.2 Not started
 
-**Services: none. All 24 are built.** Also added by
-[19-new-products](19-new-products.md) — 19: both `emberkin` and `foresight` are **done** (§2.2).
+**No repository in the migration plan remains unbuilt.** All 24 services, all 14 frontends
+(`micro-network-site` was the last), `faucet`, `beacon`, `sdk` and every library are built, tested
+and green — 52 repositories against the 48 the plan targeted. An earlier revision of this section
+listed twelve frontends, an operations repo and a library as not started; every one of them has
+since shipped, and the section was describing a world several weeks gone. **A status document
+whose "Left" section is the least accurate part of it is worse than no status document**, because
+it is the first thing a successor reads.
 
+What is genuinely left is not repositories:
 
-**Frontends (12), of the 14:** `emberkin-web`, `foresight-web`, `foresight-admin-web` (added by 19), plus `admin-web`, `mint-web`, `trade-web`, `worlds-web`, `explorer-web`,
-`network-site`, `market-web`, `devportal-web`, `status-web`. Six of these are ports of existing
-applications rather than new work; `market-web`, `devportal-web` and `status-web` are new.
-
-**Operations (1):** `faucet`. `beacon` — **the release gate (AD-04)**,
-and until today the reason no phase could be shown to have exited on evidence rather than
-assertion — is done. `faucet` is described in 03 as already built and tested inside
-`hearth/tools/faucet`, needing only extraction; that claim is being checked against the source
-rather than repeated, as several inherited claims in this directory have not survived checking.
-
-**Libraries (1):** `sdk`.
+- **Deployment.** The only running composition is the two-service slice (identity + ledger).
+  Nothing is deployed beyond it; no host routing exists for any frontend; the indexer is reachable
+  through no public host (its reads are anonymous and CORS-enabled now, so the gap is routing, not
+  the service). Repository-complete and deployment-zero is the honest summary.
+- **The bootstrap.** No route grants `admin` (§3.3g, deliberate); a fresh deployment has no
+  operator until a manual database update, and nothing documents that as a deploy step yet.
+- **The open findings below**, each recorded in its own subsection with what would close it.
+- **Aetherholm** ([20-aetherholm.md](20-aetherholm.md)) — the third Worlds title, designed and in
+  build; three repositories, target set 52 → 55. Phase 1 closes the title-contract gap this
+  document records (no title serves `GET /v1/title` or `POST /v1/provision`).
+- **One registry footnote:** `faucet`'s row carries `devPort: 3003`, which is *correct by the
+  field's contract* — a `basePath` surface's devPort names the host it rides on (`network`), and
+  the co-hosting is declared in `CO_HOSTED`. The gap is that no field names where `micro-faucet`
+  itself binds (4013); readers keep re-reporting it as the sixth wrong devPort. It is not — it is
+  the one place the registry's own schema has nowhere to put a true fact.
 
 ### 3.3 What the CI could not do, and can now
 
