@@ -517,6 +517,33 @@ asserts exactly two unserved routes and `community`'s asserts the balance route 
 with a message naming what to do when it appears. Those tests go red the day the capability lands,
 which is the mechanism working as designed rather than a chore.
 
+### 3.3k Planned: brand chrome for every frontend
+
+Scoped by auditing all fourteen planned frontends against the brand sets, rather than left as
+"generate the remaining assets". The step is much smaller than it sounds, and most of it is
+already enforced.
+
+**Generation: done.** Only two sets lacked an `og` card. `developers` has one now, because
+`devportal-web` is a public surface whose links get shared. `admin` deliberately does not —
+nobody shares an operator console outward, and a card there would exist to satisfy a pattern
+rather than a need. Every other set is complete. **93 assets, 0 verify failures.**
+
+**Wiring: one step per frontend, and it cannot be forgotten.** Each of the eight remaining
+frontends must copy its set's favicons and `og` into `public/` and link them in `index.html`.
+That is not a chore anyone has to remember: `web-template/test/brand-chrome.test.ts` fails until
+it is done, in both directions — every icon linked must be shipped and every icon shipped must be
+linked — and it requires a **relative** `og:image`, because an absolute one bakes a hostname into
+the artefact, which is build-time configuration by another name.
+
+That guard exists because four finished frontends shipped with no favicon at all and went green in
+CI, since nothing anywhere asserted that a page has an icon (§3.3e).
+
+| Frontend | Set | State |
+| --- | --- | --- |
+| `hub-web`, `site`, `foresight-web`, `foresight-admin-web`, `status-web` | hub, site, foresight ×2, status | wired |
+| `emberkin-web` | own repo (`micro-emberkin-assets`, 83 assets) | wired |
+| `admin-web`, `mint-web`, `trade-web`, `worlds-web`, `explorer-web`, `network-site`, `market-web`, `devportal-web` | admin, create, trade, worlds, explorer, network, market, developers | assets ready; wire on build |
+
 ### 3.4 What only CI could catch
 
 The point of the exercise, and the answer to "the suites pass locally, why bother": four real
