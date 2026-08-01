@@ -713,6 +713,39 @@ for ever. Closing the cap defect removes the only known way to reach it, not the
 alternative — failing a row terminally on an error nobody has classified — is exactly what
 `CLAIMABLE`'s exclusion of `failed` exists to prevent.
 
+### 3.3o The contract checker made "never correct a citation" the rule
+
+Found by the two entries above, and only because they moved a service's line numbers.
+
+`micro-sdk`'s `ROUTES` is the estate's one record of the public surface, and its value is that every
+entry carries `verifiedAt` — the exact `path:line` in the owning service where the route is
+registered. It is declared `as const`, so **every field became a literal TYPE**, including that one:
+`ROUTES.mint.pay.verifiedAt` was the type `'mint/src/server.ts:454'`.
+
+`micro-org/tools/compat.ts` judged any changed scalar text breaking. So when micro-mint's routes
+moved twenty-four lines and the eight citations were corrected to match, the estate's additive-only
+gate reported **eight breaking changes to a public contract** — over a field no consumer can observe
+the type of. The effective rule was *never correct a citation*, which turns the one thing making
+that table trustworthy into the one thing nobody may touch. It had never fired before because no
+cited service had moved since the table was written.
+
+**Both halves are fixed.** The checker now treats a literal replaced by the primitive it is a
+literal *of* as a widening rather than a break — which is the judgement `widened-union` in the same
+function has always made, and the relaxation is deliberately no wider than that: a scalar changing
+to any other type, to a union, or to `any` is still breaking, asserted in the same fixture so the
+two halves cannot go stale separately. And `ROUTES` now re-exports `verifiedAt` as `string` while
+every other field keeps its literal type, because every other field is something a consumer can
+depend on.
+
+**The shape worth remembering** is not the checker's rule; it is that a mechanism which cannot be
+corrected stops being evidence. The same push turned up a second instance: `micro-mint-web`'s CI
+bends one route citation by one line and requires the suite to go red — and it *named* the line, so
+the day micro-mint's table moved the mutation silently applied to nothing, the suite passed
+unmutated, and the step failed reporting that the cross-check had accepted a wrong citation. A
+mutation test that hardcodes the value it mutates goes stale exactly when the thing it guards
+changes, and fails with a diagnosis that is false. It reads the number now, and refuses to grade an
+unmutated file.
+
 ### 3.4 What only CI could catch
 
 The point of the exercise, and the answer to "the suites pass locally, why bother": four real
