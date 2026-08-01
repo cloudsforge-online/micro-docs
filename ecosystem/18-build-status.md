@@ -19,19 +19,19 @@ Last verified: 2026-07-31.
 
 Of the 43 repositories this programme creates or changes — the 46 in
 [03-repository-responsibilities](03-repository-responsibilities.md) less the three left exactly
-as they are (`hearth`, `asset-forge`, `stack`), plus the five added by [19-new-products](19-new-products.md) — **35 are done**.
+as they are (`hearth`, `asset-forge`, `stack`), plus the five added by [19-new-products](19-new-products.md) — **36 are done**.
 
 | Group | Target | Done | Left |
 | --- | ---: | ---: | ---: |
-| Domain services | 24 | 19 | 5 |
+| Domain services | 24 | 20 | 4 |
 | Frontends | 14 | 6 | 8 |
 | Operations | 3 | 3 | 0 |
 | Libraries | 4 | 4 | 0 |
 | Org infrastructure | 3 | 3 | 0 |
-| **Total** | **48** | **35** | **13** |
+| **Total** | **48** | **36** | **12** |
 
 Four further repositories exist that the plan did not enumerate as products — `brand`,
-`conformance`, `deploy`, `docs` and `emberkin-assets` — bringing the pushed count to **40**.
+`conformance`, `deploy`, `docs` and `emberkin-assets` — bringing the pushed count to **41**.
 
 **Repository count is the least useful measure of the three, and it is the one that flatters.**
 The truthful reading is that the *expensive* half is behind us. Everything that touches money,
@@ -91,6 +91,7 @@ Actual run counts are equal or slightly higher, because a few suites generate ca
 | `micro-market` | 275 | Escrow is a *reference* to a ledger reservation, never a balance. Royalty splits sum exactly to the sale price in bigint. Proven end to end: one balanced entry, debit 1000 SHARD against credit 925 + 25 + 50. |
 | `micro-trade` | 227 | A backtest is byte-identical across 100 runs on one seed, and genuinely differs on another. A fill whose ledger answer was lost is credited once. Two workers, one bot tick, one execution. |
 | `micro-foresight` | 153 | The Hearth-native prediction market. **The service has no key and holds no stake** — `stake-intent` hands a wallet the contract address and calldata, and the wallet signs. Drop the `positions` table and every stake is still in the contract and every winner can still `claim()`. Contract invariants are proven against the *executed committed bytecode* on `@ethereumjs/evm`: fee + payouts + residue == pool exactly, residue < winners, double-claim reverts, claim-after-void refunds whole with zero fee. The fee comes off the losing pool only, so a winner never gets back less than they staked; a market nobody won voids rather than handing the treasury a windfall. |
+| `micro-nda` | 175 | *Ninety Days After*. **The resolution engine is byte-identical to the ancestor, proved against the ancestor EXECUTING** — the corpus recorder imports the frozen `resolve.ts` unmodified, seeds a real Postgres with 21 hand-built worlds and reads back every row, rather than comparing against a re-implementation. The corpus was itself mutation-tested: its first version survived one-digit changes to upkeep, the warband threshold and the raid divisor, which is how it came to catch 18. |
 | `micro-emberkin` | 75 | The second Forge Worlds title, ported from *Kindred: Resonance*. **The ported RNG reproduces the C# `NextDouble()` bit-for-bit** (compared as raw IEEE-754 int64, not epsilon), and a corpus of 10 recorded battles replays byte-identically from seed — the same behavioural-equivalence discipline the trade backtest uses. No balance column; a cosmetic equip is a billing entitlement and never a stat. |
 
 ### 2.3 Frontends
@@ -140,7 +141,7 @@ wrong with replicas, where it yields a different answer depending on which one P
 | `micro-deploy` | — | OTel collector, Prometheus, Tempo, Loki, Grafana. Configuration only; not running. |
 | `micro-docs` | — | This directory. |
 
-Across the estate: **~5,400 tests**, all green at last run.
+Across the estate: **~5,600 tests**, all green at last run.
 
 ---
 
@@ -150,7 +151,7 @@ Across the estate: **~5,400 tests**, all green at last run.
 
 | Repo | State |
 | --- | --- |
-| `micro-nda` | In progress. |
+| `micro-devplatform` | 16 files on disk; a finish job, not a restart. |
 
 An earlier revision of this section listed `micro-status-web` and `micro-faucet` here as having
 scaffolding on disk. **That was wrong** — neither directory exists; both agents were killed before
@@ -159,10 +160,10 @@ whoever picks it up a session before they discover there is nothing to finish. B
 
 ### 3.2 Not started
 
-**Services (5):** `nda`, `community`, `devplatform`, `admin-api`, `analytics`. Also added by
+**Services (4):** `community`, `devplatform`, `admin-api`, `analytics`. Also added by
 [19-new-products](19-new-products.md) — 19: both `emberkin` and `foresight` are **done** (§2.2).
-`micro-nda` is the *Ninety Days After* game service; it is the one remaining service with a real
-existing implementation to port, and it is the largest of the five.
+`micro-devplatform` is partially built — 16 files on disk from an agent stopped to hold the
+one-at-a-time limit — and blocks P11.
 
 **Frontends (12), of the 14:** `emberkin-web`, `foresight-web`, `foresight-admin-web` (added by 19), plus `admin-web`, `mint-web`, `trade-web`, `worlds-web`, `explorer-web`,
 `network-site`, `market-web`, `devportal-web`, `status-web`. Six of these are ports of existing
@@ -362,6 +363,27 @@ The upside: three self-deleting workarounds fired exactly as designed. `foresigh
 `emberkin-web` had pinned their local corrections to the WRONG answers so their tests would go red
 the day the upstream was fixed. It was, they did, and both workarounds are now deleted rather than
 outliving their cause.
+
+### 3.3f A defect in the frozen game, pinned rather than repaired
+
+`ninety-days-after/services/game/src/engine/events.ts:130` computes
+`severity = 1 + ((h >> 8) % baseSeverity)`. `hash()` returns `h >>> 0` — unsigned — and the caller
+then uses `>>`, an **arithmetic** shift, so the value is negative for roughly half of all seeds and
+JavaScript's `%` keeps the sign.
+
+Reproduced over 20,000 seeds: `h >> 8` is negative for **48.2%**, severity lands on **0 for 16.2%**
+and **−1 for 15.9%**. A negative severity means an event announcing that the region's stores swell
+**drains** them — a `resource_boom` that removes 12 of each scarce resource, in the season's final
+third, when it hurts most.
+
+**It is pinned by a named corpus scenario and a two-directional test, not fixed.** Repairing it
+would falsify the thing `micro-nda` exists to guarantee — that the port resolves a day exactly as
+the ancestor does — for every world anyone has ever played. It can now only change as a deliberate
+decision, which is the correct status for a defect that is also, by now, the rules of the game.
+
+Two columns are deliberately excluded from the comparison and the port derives them instead:
+`reports.id` and `world_events.id` were `randomUUID()` upstream, so they do not match a second run
+of the *ancestor* either.
 
 ### 3.4 What only CI could catch
 
