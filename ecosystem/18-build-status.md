@@ -11,7 +11,7 @@ claims a repository is done on the strength of intent. "Done" here means the spe
 strict settings, tests green, migrations present, `.env.example` with placeholders only, CI
 calling the org's reusable workflow, and pushed to `cloudsforge-online`.
 
-Last verified: 2026-07-31.
+Last verified: 2026-08-01.
 
 ---
 
@@ -79,20 +79,20 @@ Actual run counts are equal or slightly higher, because a few suites generate ca
 | `micro-custody` | 173 | HD BIP-39/BIP-44 derivation. The admin reveal endpoint was deleted rather than guarded. |
 | `micro-wallet` | 180 | Holds no balances. Composes ledger, custody and indexer. |
 | `micro-settlement` | 116 | The chain-keyed lease, proven by running two workers against one chain — this is the lost-payment race. |
-| `micro-indexer` | 98 | Multi-chain with a simulated reorg, tested against a real Hearth node. |
+| `micro-indexer` | 130 | Multi-chain with a simulated reorg, tested against a real Hearth node. Its second row below records what it gained since; the two rows are one repository. |
 | `micro-pricing` | 82 | Quotes live in a table, not a `Map`, so a restart does not silently reprice. |
 | `micro-billing` | 90 | Entitlements with scope, expiry and revocation. |
 | `micro-policy` | 66 | Fail-closed and fail-open are separated deliberately, per decision in [12-security-decisions](12-security-decisions.md). |
 | `micro-activity` | 43 | Inbox deduped on `source_event_id`. |
 | `micro-notify` | 119 | A critical notification ignores preferences — enforced three independent ways, because one mechanism is a mechanism that gets refactored away. |
-| `micro-mint` | 109 | A deploy leaves the request (202). The estate's 180-second held request is gone. |
+| `micro-mint` | 125 | A deploy leaves the request (202). The estate's 180-second held request is gone. **An order that cannot be built is refused before it can be paid for** — the order route runs the deploy path's own `variantFor` and `constructorArgs` against the request rather than a second copy of the rule (§3.3n). |
 | `micro-worlds` | 119 | A private world is finally provisioned — the defect that made the feature inert. |
 | `micro-studio` | 121 | FLUX 2 Pro generation with provenance recorded per asset. |
 | `micro-hub-api` | 77 | Seven degradation tests: one upstream down never blanks the dashboard. |
-| `micro-market` | 275 | Escrow is a *reference* to a ledger reservation, never a balance. Royalty splits sum exactly to the sale price in bigint. Proven end to end: one balanced entry, debit 1000 SHARD against credit 925 + 25 + 50. |
+| `micro-market` | 291 | Escrow is a *reference* to a ledger reservation, never a balance. Royalty splits sum exactly to the sale price in bigint. Proven end to end: one balanced entry, debit 1000 SHARD against credit 925 + 25 + 50. |
 | `micro-trade` | 227 | A backtest is byte-identical across 100 runs on one seed, and genuinely differs on another. A fill whose ledger answer was lost is credited once. Two workers, one bot tick, one execution. |
 | `micro-foresight` | 153 | The Hearth-native prediction market. **The service has no key and holds no stake** — `stake-intent` hands a wallet the contract address and calldata, and the wallet signs. Drop the `positions` table and every stake is still in the contract and every winner can still `claim()`. Contract invariants are proven against the *executed committed bytecode* on `@ethereumjs/evm`: fee + payouts + residue == pool exactly, residue < winners, double-claim reverts, claim-after-void refunds whole with zero fee. The fee comes off the losing pool only, so a winner never gets back less than they staked; a market nobody won voids rather than handing the treasury a windfall. |
-| `micro-indexer` | 105 | Gained two read routes two services were blocked on (§3.3j). **`confirmed` requires `status = 'success'`**, not merely depth: a reverted EVM transaction is mined and gathers confirmations exactly like one that worked, so a depth-only check would have called a failed escrow deposit confirmed. Confirmations count against the **stored canonical head**, never the provider-claimed tip — the head is what the service walked and would have found a reorg in. A balance is absent, never zero, unless the canonical chain runs unbroken from genesis to the asked height. |
+| `micro-indexer` | (same repo, above) | Gained two read routes two services were blocked on (§3.3j). **`confirmed` requires `status = 'success'`**, not merely depth: a reverted EVM transaction is mined and gathers confirmations exactly like one that worked, so a depth-only check would have called a failed escrow deposit confirmed. Confirmations count against the **stored canonical head**, never the provider-claimed tip — the head is what the service walked and would have found a reorg in. A balance is absent, never zero, unless the canonical chain runs unbroken from genesis to the asked height. |
 | `micro-analytics` | 283 | **Every domain service is now built.** Pseudonymity is salted, because the specified `HMAC(user_id, pepper)` is a pure function of two surviving inputs and **cannot be erased** — so erasure destroys a per-subject salt, and the constraint is written as two legal states rather than an equivalence, since the obvious equivalence admits a row that nulled the pseudonym and kept the salt, which erases nothing. There is no free-text property type at all: enum, short code, bounded integer, boolean. A raw subject is refused by `sql.unsafe` with the service bypassed. |
 | `micro-community` | 268 | Governance, and **the treasury subject is a generated column** (`'community:' || id`): a CHECK cannot express it, because the value derives from an id the INSERT creates, so generation removes the code path that could write a wrong one rather than guarding it. A vote row is keyed by *whose power it spends* rather than who pressed the button, which makes both orders of the double-vote race impossible — a member voting in person overrides their own proxy. Delegation cycles are refused by a recursive CTE **under a per-community advisory lock**, without which two concurrent inserts each see a graph missing the other's uncommitted row and both commit a loop. |
 | `micro-admin-api` | 257 | The operator BFF. **The audit chain is honest about what a chain cannot see**: a hash chain catches an edit or an interior deletion, but truncation followed by a full re-hash verifies perfectly — so checkpoints catch that, and the test asserts BOTH directions, including that the truncated remainder verifies without them. Four eyes are enforced three times over, with the layer above bypassed at each level: the route, a `WHERE` clause, and a CHECK constraint. |
@@ -472,14 +472,14 @@ a registered event topic (`contracts/packages/events/src/index.ts:222`), so the
 and there is no OAuth token endpoint, because signing one needs identity's key and that half
 belongs to another repository.
 
-### 3.3i The seventh imagined surface, and the first that lied about money
+### 3.3i An imagined surface, and the first that lied about money
 
 `micro-market`'s indexer client called `/v1/tokens/:urn/facts` and
 `/v1/chains/:chain/transactions/:hash/escrow`. `micro-indexer` serves neither route, so every call
 404'd, always.
 
 **A correction to this section's first version, which I got wrong and repeated confidently.** It
-said the indexer "serves no `/v1` paths at all". It does: `indexer/src/server.ts:124` is
+said the indexer "serves no `/v1` paths at all". It does: `indexer/src/server.ts:134` is
 `PREFIXES = ['/v1', '']` and every route is mounted under both spellings. The 404s were caused by
 the missing `/tokens` route and the missing `/escrow` sub-resource — not by the prefix. The
 diagnosis was right in substance and wrong in the detail I was most emphatic about, and the agent
@@ -499,13 +499,29 @@ distinction the fail-closed argument depends on. The paths cannot be repointed: 
 not serve these capabilities in any form, so the test pins the *size* of the gap rather than
 claiming it is closed.
 
-**All 287 of market's tests passed before the change and after it**, because every one stubbed the
-response rather than asking whether the request could reach a route. That is the seventh instance
+**Every one of market's tests passed before the change and after it**, because every one stubbed the
+response rather than asking whether the request could reach a route. That was the seventh instance
 of this shape in the estate and the third in this repository — and `micro-community` found two more
 of the same kind while building against the same neighbours: `policy` has no `community.*` action
 and no `community:` subject arm, so the obvious spend request would 400 and, fail-closed, **no
 community could ever spend its treasury**; and `micro-indexer` has no balance route at all, so
 `07-dependency-map.md:139`'s hard dependency cannot be satisfied.
+
+**This heading used to read "The seventh imagined surface", and the count has been taken out of
+it.** A running total in a heading is a fact stored in the worst possible place: it is the part of
+a section nobody edits when they add to the body, it is quoted verbatim by other repositories, and
+it is wrong the moment a new instance lands anywhere in the estate. It had already drifted — four
+files in `micro-sdk` said *five* while this said *seven* — and silently, because a number in prose
+has nothing to check it against.
+
+A numbered register here, cited by row, was the other option and was rejected: it puts the fact in
+one place instead of nine, which is better, but it is still a hand-maintained count over nine
+repositories that can each create an instance without touching this file. **So this document no
+longer maintains a total.** What is worth keeping is the class and the guards that catch it, and
+those live in code that fails a build rather than a proofread —
+`mint/scripts/checkindexerroutes.mjs` and `market/src/indexerclient.test.ts`. Where an ordinal is
+genuinely useful it stays in the body, in the past tense, as a statement about a moment. Anything
+citing this class should cite the **section**, never a number.
 
 ### 3.3j Planned: the three indexer capabilities two services are blocked on
 
@@ -584,6 +600,118 @@ the same build: `contracts/packages/events` registers 18 server-side topics and 
 topic**, though AD-21 requires `page_viewed`, `cta_clicked` and `form_abandoned` — so four of the
 metrics in 13 §12 cover the server side only, and seven others name events that are not registered
 at all. Their definitions are deliberately absent rather than reporting zero for ever.
+
+### 3.3m The eighth imagined surface, and the guard that would have passed it
+
+Same class as §3.3i, in `micro-mint`, and the reason it is worth its own entry is not the count.
+
+**What was believed.** `mint/src/indexerclient.ts` had two methods and both were written against
+the *status* route's shape with a resource bolted on: `transaction()` asked for
+`/v1/chains/:chain/:network/transactions/:hash` and `token()` for
+`/v1/chains/:chain/:network/tokens/:address`.
+
+**What was true.** `micro-indexer`'s convention is the RESOURCE first, then `:chain/:network`, then
+the key (`indexer/src/server.ts:153-163`). Neither path has ever existed in either spelling. Every
+call 404'd; the 404 became `null`; and `null` rendered as *"the indexer has not yet indexed this
+contract"* on **every ForgeMint project page, permanently and silently** — while
+[04-domain-model](04-domain-model.md) §5.3 requires those pages to show supply and authorities
+**from the indexer**. The invariant was not merely unmet; it was reported as met-but-pending, for
+ever. Every one of mint's tests passed throughout, because every one stubbed the client rather than
+asking whether the request could reach a route.
+
+**How it was found.** By reading `micro-indexer`'s route table against the client, one path at a
+time. Not by a test.
+
+**Why the count is not the lesson.** `micro-market` already had a guard written against precisely
+this class — §3.3i is its origin — and **it would have passed this defect**. It matched by *prefix*
+against a list containing `/v1/chains/`, and pinned the *count* of unserved paths rather than their
+shapes. Run against mint's two dead paths, that guard judges **zero** of them unserved: both begin
+with `/v1/chains/`, which the indexer genuinely does serve. A guard built for a class of defect,
+that the next instance of that class walks straight through, is worse than no guard, because it is
+counted as coverage.
+
+**What now prevents it.**
+
+| Where | What it does |
+| --- | --- |
+| `mint/scripts/checkindexerroutes.mjs` | A CI job, not a test: checks `micro-indexer` out, parses `DOMAIN` and `PREFIXES` out of its source as text, and compares **whole path shapes** — same segment count, `:param` matches anything, literals must match. Then CI **mutates the checkout** and requires the job to go red, because a job that graded a file it failed to fetch looks exactly like a job that passed. |
+| `mint/src/indexerclient.test.ts` | The in-suite half: the exact path **on the wire**, and a source-level shape assertion so a regression is visible in `pnpm test` too. |
+| `market/src/indexerclient.test.ts` | Rewritten to compare whole shapes in the same dialect, with a mutation test of five paths the indexer does not serve — including mint's real one. Two source changes came with it: the escrow path is now one whole template literal (a `${scope}` helper standing for `chain/network` is **one opaque segment** to any checker, and that path matched `/transactions/:chain/:network/:hash` — the wrong route, reported as fine), and the stale `eth_call` argument in `tokenFacts` was corrected. |
+
+**And the capability landed rather than the workaround.** The transaction path was corrected in
+`mint`, and `micro-indexer` gained `GET /tokens/:chain/:network/:address`
+(`indexer/src/server.ts:159`) — one `eth_call` per field at the indexer's own stored canonical head,
+and **only after fetching the node's block at that height and comparing its hash to the one this
+service walked** (`indexer/src/tokenstate.ts:207-215`). If they disagree the node is not on the
+chain this service indexed and **no observation is returned at all**: `head_diverged`, which is an
+honest "ask me again", not a number from somebody else's fork.
+
+That new route also retires one line of §3.3i's reasoning. `micro-market`'s refusal to serve token
+facts said `mintAuthorityPresent` and `ownershipRenounced` are contract state behind "an `eth_call`
+this service deliberately never makes". The indexer makes one now. **The refusal still stands and
+is unchanged**, on the grounds that survive: the capability is keyed by a `micro-mint` item URN the
+indexer has no registry for, and three of `TokenFacts`' eight fields need complete holder history or
+a custody fact about a private key. The dead argument is marked in place rather than deleted.
+
+### 3.3n A customer could pay for a token that could never be built
+
+Second defect in this estate to reach a customer's money, after §3.3i, and it has the same shape as
+the imagined surfaces above with the sides swapped: not a client asking for something that does not
+exist, but **a validation rule that ran one call too late**.
+
+**What was believed.** That `POST /v1/tokens` refuses an order it cannot fulfil. The route's own
+comment said so.
+
+**What was true.** The route called `variantFor(features)`, which validates the FEATURE SET and
+never reads the cap. The cap rule lived in `constructorArgs`
+(`mint/src/catalogue.ts:138-148`), first reached from `dataFor` inside the **deploy job**
+(`mint/src/families.ts:336-348`) — after `POST /v1/tokens/:id/pay` had already debited the
+customer's Shards. So an order for the capped variant with no cap, or a cap on a variant whose
+contract takes none, was accepted **201**, paid for, and then unbuildable.
+
+**And it did not fail cleanly.** The `ChainError` from `constructorArgs` matches none of
+`driveDeploy`'s four classified failures (`mint/src/deploy.ts:118-169`), so the lease was released
+and the error rethrown; the row stayed `deploying`, `deploying` is in `CLAIMABLE`
+(`mint/src/tokens.ts:68-73`), and `token.sweep` put it straight back on the queue on the next tick.
+Not a terminal `failed` with a reason a customer can read — **a permanent loop with the money
+gone**, `deploy_attempts` climbing without a ceiling (`mint/src/tokens.ts:386`), and no state any
+human is ever shown.
+
+**Measured, not reasoned about.** Mutating the order route back to `variantFor(features)` and
+running mint's HTTP suite against a real database gives **201** for a foundry order with no cap and
+**201** for a cap on an uncapped variant — both payable. The third case, a cap below the supply, is
+a **500**: `constraint tokens_cap_covers_supply` (`mint/src/migrations.ts:176`) catches it at the
+insert. So two of three were reachable, and the constraint that saved the third is a coincidence of
+what a CHECK can see, not a design.
+
+**The fix reaches for the existing rule rather than restating it.** `assertBuildable`
+(`mint/src/catalogue.ts:179`) calls the deploy path's own `variantFor` and `constructorArgs` against
+the request and discards the encoded arguments; the throw is the product. It answers **400
+`unbuildable_order`** with the offending `field` — deliberately distinguishable from the generic
+`bad_request`, because "your order is invalid" and "`cap` is the word that made this impossible" are
+not the same answer. The deploy-time call stays: the route sees one request, and the job is the last
+thing between a stored row and a signed contract creation. A test asserts the two gates agree on all
+forty feature/cap combinations, so replacing that call with a hand-written check goes red on
+whichever case it got wrong.
+
+**Why that mattered more than usual here.** `micro-mint-web` already carried a *second* copy of the
+cap rule, written precisely because the service had none, with a header comment saying so. Two
+copies of one rule is how this estate got a client and a server that disagreed. The client's copy
+stays — a disabled button beats a red banner — but it is a mirror now, and its comment says which
+side is the authority.
+
+**No stored order is in this state, and this was checked rather than assumed.** `micro-mint` has
+never run against a persistent database: the only environment that exists is
+`deploy/compose/docker-compose.slice.yml`, which brings up identity and ledger and nothing else
+(§1, §3.3g). So there is nothing to migrate and nothing was touched. The read-only query that finds
+such rows, for the day there is a store to run it against, is recorded in `micro-mint`'s README
+under Known gaps.
+
+**Left open, and recorded rather than fixed:** the loop itself. An unclassified throw anywhere on
+the deploy path still releases the lease and leaves a `CLAIMABLE` row for the sweep to re-enqueue
+for ever. Closing the cap defect removes the only known way to reach it, not the mechanism, and the
+alternative — failing a row terminally on an error nobody has classified — is exactly what
+`CLAIMABLE`'s exclusion of `failed` exists to prevent.
 
 ### 3.4 What only CI could catch
 
