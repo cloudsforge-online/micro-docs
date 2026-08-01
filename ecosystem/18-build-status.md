@@ -19,19 +19,19 @@ Last verified: 2026-07-31.
 
 Of the 43 repositories this programme creates or changes — the 46 in
 [03-repository-responsibilities](03-repository-responsibilities.md) less the three left exactly
-as they are (`hearth`, `asset-forge`, `stack`), plus the five added by [19-new-products](19-new-products.md) — **37 are done**.
+as they are (`hearth`, `asset-forge`, `stack`), plus the five added by [19-new-products](19-new-products.md) — **38 are done**.
 
 | Group | Target | Done | Left |
 | --- | ---: | ---: | ---: |
-| Domain services | 24 | 21 | 3 |
+| Domain services | 24 | 22 | 2 |
 | Frontends | 14 | 6 | 8 |
 | Operations | 3 | 3 | 0 |
 | Libraries | 4 | 4 | 0 |
 | Org infrastructure | 3 | 3 | 0 |
-| **Total** | **48** | **37** | **11** |
+| **Total** | **48** | **38** | **10** |
 
 Four further repositories exist that the plan did not enumerate as products — `brand`,
-`conformance`, `deploy`, `docs` and `emberkin-assets` — bringing the pushed count to **42**.
+`conformance`, `deploy`, `docs` and `emberkin-assets` — bringing the pushed count to **43**.
 
 **Repository count is the least useful measure of the three, and it is the one that flatters.**
 The truthful reading is that the *expensive* half is behind us. Everything that touches money,
@@ -92,6 +92,7 @@ Actual run counts are equal or slightly higher, because a few suites generate ca
 | `micro-market` | 275 | Escrow is a *reference* to a ledger reservation, never a balance. Royalty splits sum exactly to the sale price in bigint. Proven end to end: one balanced entry, debit 1000 SHARD against credit 925 + 25 + 50. |
 | `micro-trade` | 227 | A backtest is byte-identical across 100 runs on one seed, and genuinely differs on another. A fill whose ledger answer was lost is credited once. Two workers, one bot tick, one execution. |
 | `micro-foresight` | 153 | The Hearth-native prediction market. **The service has no key and holds no stake** — `stake-intent` hands a wallet the contract address and calldata, and the wallet signs. Drop the `positions` table and every stake is still in the contract and every winner can still `claim()`. Contract invariants are proven against the *executed committed bytecode* on `@ethereumjs/evm`: fee + payouts + residue == pool exactly, residue < winners, double-claim reverts, claim-after-void refunds whole with zero fee. The fee comes off the losing pool only, so a winner never gets back less than they staked; a market nobody won voids rather than handing the treasury a windfall. |
+| `micro-admin-api` | 257 | The operator BFF. **The audit chain is honest about what a chain cannot see**: a hash chain catches an edit or an interior deletion, but truncation followed by a full re-hash verifies perfectly — so checkpoints catch that, and the test asserts BOTH directions, including that the truncated remainder verifies without them. Four eyes are enforced three times over, with the layer above bypassed at each level: the route, a `WHERE` clause, and a CHECK constraint. |
 | `micro-devplatform` | 256 | The credential-issuing service, and **the database refuses a fast hash**: `api_keys_slow_kdf_only` constrains `secret_algo` to a scrypt parameter string, so an SHA-256 row cannot be stored even by a caller holding a connection — the ledger's deferred-constraint discipline applied to a password table. Keys are `cfk_live_<lookup>_<secret>`: the lookup id is stored clear and unique, so a leaked key is revocable from a log line and a verification costs one indexed lookup rather than a scrypt run per row. A revoked key and an unknown one are byte-identical over HTTP and cost exactly one KDF run each. |
 | `micro-nda` | 175 | *Ninety Days After*. **The resolution engine is byte-identical to the ancestor, proved against the ancestor EXECUTING** — the corpus recorder imports the frozen `resolve.ts` unmodified, seeds a real Postgres with 21 hand-built worlds and reads back every row, rather than comparing against a re-implementation. The corpus was itself mutation-tested: its first version survived one-digit changes to upkeep, the warband threshold and the raid divisor, which is how it came to catch 18. |
 | `micro-emberkin` | 75 | The second Forge Worlds title, ported from *Kindred: Resonance*. **The ported RNG reproduces the C# `NextDouble()` bit-for-bit** (compared as raw IEEE-754 int64, not epsilon), and a corpus of 10 recorded battles replays byte-identically from seed — the same behavioural-equivalence discipline the trade backtest uses. No balance column; a cosmetic equip is a billing entitlement and never a stat. |
@@ -143,7 +144,7 @@ wrong with replicas, where it yields a different answer depending on which one P
 | `micro-deploy` | — | OTel collector, Prometheus, Tempo, Loki, Grafana. Configuration only; not running. |
 | `micro-docs` | — | This directory. |
 
-Across the estate: **~5,850 tests**, all green at last run.
+Across the estate: **~6,100 tests**, all green at last run.
 
 ---
 
@@ -153,7 +154,7 @@ Across the estate: **~5,850 tests**, all green at last run.
 
 | Repo | State |
 | --- | --- |
-| `micro-admin-api` | Taken next. |
+| `micro-community` | Taken next. |
 
 An earlier revision of this section listed `micro-status-web` and `micro-faucet` here as having
 scaffolding on disk. **That was wrong** — neither directory exists; both agents were killed before
@@ -162,7 +163,7 @@ whoever picks it up a session before they discover there is nothing to finish. B
 
 ### 3.2 Not started
 
-**Services (3):** `community`, `admin-api`, `analytics`. Also added by
+**Services (2):** `community` and `analytics`. Also added by
 [19-new-products](19-new-products.md) — 19: both `emberkin` and `foresight` are **done** (§2.2).
 
 
@@ -411,6 +412,22 @@ fails and is deleted.
 This is invisible to every test in the estate. Identity's own suite creates admins directly; every
 consumer's suite stubs the token. It can only appear when a real deployment tries to start from
 nothing, which is exactly what had never happened.
+
+**`micro-admin-api` split the problem three ways rather than solving the wrong part of it.** The
+*write* belongs to identity — and not as a matter of taste: rule 1 is a CI grep for any connection
+string that is not the service's own, so a version of admin-api that reached into identity's
+database would fail its own build. The *authorisation* belongs to admin-api and is built: two
+operators, a closed reason-code list, a hash-chained row. The *bootstrap* belongs to neither, because
+a service that can mint its own first `admin` is a service whose compromise grants the estate — and
+the approval queue could not authorise the first grant anyway, since approving requires someone who
+already holds the role.
+
+So the action is a first-class catalogue entry **with no executor**: `POST /v1/approvals` returns
+**501**, naming the route identity would need (`PUT /internal/users/:id/roles` behind a service
+token holding `identity:admin` — not `authenticateAdmin`, which refuses service tokens at
+`identity/src/server.ts:540`). A queue that accepts work it cannot do leaves a row at `approved`
+for ever, which reads as two operators having authorised something that never happened. **The first
+admin remains a documented `UPDATE`**, as `slice-verify.sh` performs and asserts.
 
 **What the slice proved working**, all for the first time outside a test process: the migrator run
 one-shot against an empty database; `/livez` and `/readyz` over a real socket; `@cloudsforge/auth`
