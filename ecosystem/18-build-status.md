@@ -557,10 +557,12 @@ already enforced.
 **Generation: done.** Only two sets lacked an `og` card. `developers` has one now, because
 `devportal-web` is a public surface whose links get shared. `admin` deliberately does not —
 nobody shares an operator console outward, and a card there would exist to satisfy a pattern
-rather than a need. Every other set is complete. **93 assets, 0 verify failures.**
+rather than a need. Every other set is complete. **94 assets, 0 verify failures** — 93 generated, plus the GitHub
+organisation avatar, which is a crop-and-rescale of `site/mark-1024x1024.png` recorded as a
+derivative with `c2pa` measured off its own bytes rather than inherited from its source.
 
-**Wiring: one step per frontend, and it cannot be forgotten.** Each of the eight remaining
-frontends must copy its set's favicons and `og` into `public/` and link them in `index.html`.
+**Wiring: one step per frontend, and it cannot be forgotten.** Each frontend must copy its set's
+favicons and `og` into `public/` and link them in `index.html`. Seven of the eight are done.
 That is not a chore anyone has to remember: `web-template/test/brand-chrome.test.ts` fails until
 it is done, in both directions — every icon linked must be shipped and every icon shipped must be
 linked — and it requires a **relative** `og:image`, because an absolute one bakes a hostname into
@@ -573,7 +575,15 @@ CI, since nothing anywhere asserted that a page has an icon (§3.3e).
 | --- | --- | --- |
 | `hub-web`, `site`, `foresight-web`, `foresight-admin-web`, `status-web` | hub, site, foresight ×2, status | wired |
 | `emberkin-web` | own repo (`micro-emberkin-assets`, 83 assets) | wired |
-| `admin-web`, `mint-web`, `trade-web`, `worlds-web`, `explorer-web`, `network-site`, `market-web`, `devportal-web` | admin, create, trade, worlds, explorer, network, market, developers | assets ready; wire on build |
+| `admin-web`, `mint-web`, `market-web`, `trade-web`, `worlds-web`, `explorer-web`, `devportal-web` | admin, create, market, trade, worlds, explorer, developers | **wired** — each was built after this table was written, and each linked its set on the way |
+| `network-site` | network | assets ready; the last frontend, in build |
+
+**`admin-web` links no `og:image`, and that is the decision above holding rather than an
+omission.** Its `index.html` names the tag only in a comment explaining why it is absent, and
+`test/brand-chrome.test.ts` asserts the absence with the same force the other frontends assert
+presence — so adding a card later fails the build. A naive `grep -c og:image` reports 1 for that
+file and 1 for every other, which is the estate's recurring "the guard matches the prose that
+documents the guard" shape, arrived at from the reader's side rather than the checker's.
 
 ### 3.3l Two documents specify the analytics key differently
 
