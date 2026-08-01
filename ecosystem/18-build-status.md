@@ -19,19 +19,19 @@ Last verified: 2026-07-31.
 
 Of the 43 repositories this programme creates or changes — the 46 in
 [03-repository-responsibilities](03-repository-responsibilities.md) less the three left exactly
-as they are (`hearth`, `asset-forge`, `stack`), plus the five added by [19-new-products](19-new-products.md) — **39 are done**.
+as they are (`hearth`, `asset-forge`, `stack`), plus the five added by [19-new-products](19-new-products.md) — **40 are done**.
 
 | Group | Target | Done | Left |
 | --- | ---: | ---: | ---: |
-| Domain services | 24 | 23 | 1 |
+| Domain services | 24 | **24** | **0** |
 | Frontends | 14 | 6 | 8 |
 | Operations | 3 | 3 | 0 |
 | Libraries | 4 | 4 | 0 |
 | Org infrastructure | 3 | 3 | 0 |
-| **Total** | **48** | **39** | **9** |
+| **Total** | **48** | **40** | **8** |
 
 Four further repositories exist that the plan did not enumerate as products — `brand`,
-`conformance`, `deploy`, `docs` and `emberkin-assets` — bringing the pushed count to **44**.
+`conformance`, `deploy`, `docs` and `emberkin-assets` — bringing the pushed count to **45**.
 
 **Repository count is the least useful measure of the three, and it is the one that flatters.**
 The truthful reading is that the *expensive* half is behind us. Everything that touches money,
@@ -92,6 +92,7 @@ Actual run counts are equal or slightly higher, because a few suites generate ca
 | `micro-market` | 275 | Escrow is a *reference* to a ledger reservation, never a balance. Royalty splits sum exactly to the sale price in bigint. Proven end to end: one balanced entry, debit 1000 SHARD against credit 925 + 25 + 50. |
 | `micro-trade` | 227 | A backtest is byte-identical across 100 runs on one seed, and genuinely differs on another. A fill whose ledger answer was lost is credited once. Two workers, one bot tick, one execution. |
 | `micro-foresight` | 153 | The Hearth-native prediction market. **The service has no key and holds no stake** — `stake-intent` hands a wallet the contract address and calldata, and the wallet signs. Drop the `positions` table and every stake is still in the contract and every winner can still `claim()`. Contract invariants are proven against the *executed committed bytecode* on `@ethereumjs/evm`: fee + payouts + residue == pool exactly, residue < winners, double-claim reverts, claim-after-void refunds whole with zero fee. The fee comes off the losing pool only, so a winner never gets back less than they staked; a market nobody won voids rather than handing the treasury a windfall. |
+| `micro-analytics` | 283 | **Every domain service is now built.** Pseudonymity is salted, because the specified `HMAC(user_id, pepper)` is a pure function of two surviving inputs and **cannot be erased** — so erasure destroys a per-subject salt, and the constraint is written as two legal states rather than an equivalence, since the obvious equivalence admits a row that nulled the pseudonym and kept the salt, which erases nothing. There is no free-text property type at all: enum, short code, bounded integer, boolean. A raw subject is refused by `sql.unsafe` with the service bypassed. |
 | `micro-community` | 268 | Governance, and **the treasury subject is a generated column** (`'community:' || id`): a CHECK cannot express it, because the value derives from an id the INSERT creates, so generation removes the code path that could write a wrong one rather than guarding it. A vote row is keyed by *whose power it spends* rather than who pressed the button, which makes both orders of the double-vote race impossible — a member voting in person overrides their own proxy. Delegation cycles are refused by a recursive CTE **under a per-community advisory lock**, without which two concurrent inserts each see a graph missing the other's uncommitted row and both commit a loop. |
 | `micro-admin-api` | 257 | The operator BFF. **The audit chain is honest about what a chain cannot see**: a hash chain catches an edit or an interior deletion, but truncation followed by a full re-hash verifies perfectly — so checkpoints catch that, and the test asserts BOTH directions, including that the truncated remainder verifies without them. Four eyes are enforced three times over, with the layer above bypassed at each level: the route, a `WHERE` clause, and a CHECK constraint. |
 | `micro-devplatform` | 256 | The credential-issuing service, and **the database refuses a fast hash**: `api_keys_slow_kdf_only` constrains `secret_algo` to a scrypt parameter string, so an SHA-256 row cannot be stored even by a caller holding a connection — the ledger's deferred-constraint discipline applied to a password table. Keys are `cfk_live_<lookup>_<secret>`: the lookup id is stored clear and unique, so a leaked key is revocable from a log line and a verification costs one indexed lookup rather than a scrypt run per row. A revoked key and an unknown one are byte-identical over HTTP and cost exactly one KDF run each. |
@@ -145,7 +146,7 @@ wrong with replicas, where it yields a different answer depending on which one P
 | `micro-deploy` | — | OTel collector, Prometheus, Tempo, Loki, Grafana. Configuration only; not running. |
 | `micro-docs` | — | This directory. |
 
-Across the estate: **~6,400 tests**, all green at last run.
+Across the estate: **~6,700 tests**, all green at last run.
 
 ---
 
@@ -164,7 +165,7 @@ whoever picks it up a session before they discover there is nothing to finish. B
 
 ### 3.2 Not started
 
-**Services (1):** `analytics`, in progress. Also added by
+**Services: none. All 24 are built.** Also added by
 [19-new-products](19-new-products.md) — 19: both `emberkin` and `foresight` are **done** (§2.2).
 
 
@@ -543,6 +544,32 @@ CI, since nothing anywhere asserted that a page has an icon (§3.3e).
 | `hub-web`, `site`, `foresight-web`, `foresight-admin-web`, `status-web` | hub, site, foresight ×2, status | wired |
 | `emberkin-web` | own repo (`micro-emberkin-assets`, 83 assets) | wired |
 | `admin-web`, `mint-web`, `trade-web`, `worlds-web`, `explorer-web`, `network-site`, `market-web`, `devportal-web` | admin, create, trade, worlds, explorer, network, market, developers | assets ready; wire on build |
+
+### 3.3l Two documents specify the analytics key differently
+
+`03-repository-responsibilities.md:204` — "**`analytics` must never receive a `user_id`**, an email,
+a handle or an exact balance."
+
+`10-migration-strategy.md:509-510` — the key is `HMAC(user_id, analytics_pepper)`, and the document
+itself notes analytics "never receives a `user_id` … and therefore cannot compute the key itself,
+so if the event does not carry it" the key must come from elsewhere.
+
+Read together, the second requires every **producer** to hold the analytics pepper in order to
+compute the key — which spreads the one secret that makes the whole store pseudonymous across
+eighteen services, and makes any one of their compromises a de-anonymisation of the entire event
+history.
+
+`micro-analytics` resolved it by not implementing either literally: the pepper stays in one service,
+and pseudonymity is **salted per subject** — the specified `HMAC(user_id, pepper)` is a pure
+function of two inputs that both survive account deletion, so it cannot be erased at all. A
+deletion destroys the salt.
+
+Worth recording as a specification conflict rather than a service decision, because the next person
+to read 10 §509 will implement the pepper distribution unless something says otherwise. Also from
+the same build: `contracts/packages/events` registers 18 server-side topics and **no frontend
+topic**, though AD-21 requires `page_viewed`, `cta_clicked` and `form_abandoned` — so four of the
+metrics in 13 §12 cover the server side only, and seven others name events that are not registered
+at all. Their definitions are deliberately absent rather than reporting zero for ever.
 
 ### 3.4 What only CI could catch
 
