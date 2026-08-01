@@ -19,19 +19,19 @@ Last verified: 2026-07-31.
 
 Of the 43 repositories this programme creates or changes — the 46 in
 [03-repository-responsibilities](03-repository-responsibilities.md) less the three left exactly
-as they are (`hearth`, `asset-forge`, `stack`), plus the five added by [19-new-products](19-new-products.md) — **38 are done**.
+as they are (`hearth`, `asset-forge`, `stack`), plus the five added by [19-new-products](19-new-products.md) — **39 are done**.
 
 | Group | Target | Done | Left |
 | --- | ---: | ---: | ---: |
-| Domain services | 24 | 22 | 2 |
+| Domain services | 24 | 23 | 1 |
 | Frontends | 14 | 6 | 8 |
 | Operations | 3 | 3 | 0 |
 | Libraries | 4 | 4 | 0 |
 | Org infrastructure | 3 | 3 | 0 |
-| **Total** | **48** | **38** | **10** |
+| **Total** | **48** | **39** | **9** |
 
 Four further repositories exist that the plan did not enumerate as products — `brand`,
-`conformance`, `deploy`, `docs` and `emberkin-assets` — bringing the pushed count to **43**.
+`conformance`, `deploy`, `docs` and `emberkin-assets` — bringing the pushed count to **44**.
 
 **Repository count is the least useful measure of the three, and it is the one that flatters.**
 The truthful reading is that the *expensive* half is behind us. Everything that touches money,
@@ -92,6 +92,7 @@ Actual run counts are equal or slightly higher, because a few suites generate ca
 | `micro-market` | 275 | Escrow is a *reference* to a ledger reservation, never a balance. Royalty splits sum exactly to the sale price in bigint. Proven end to end: one balanced entry, debit 1000 SHARD against credit 925 + 25 + 50. |
 | `micro-trade` | 227 | A backtest is byte-identical across 100 runs on one seed, and genuinely differs on another. A fill whose ledger answer was lost is credited once. Two workers, one bot tick, one execution. |
 | `micro-foresight` | 153 | The Hearth-native prediction market. **The service has no key and holds no stake** — `stake-intent` hands a wallet the contract address and calldata, and the wallet signs. Drop the `positions` table and every stake is still in the contract and every winner can still `claim()`. Contract invariants are proven against the *executed committed bytecode* on `@ethereumjs/evm`: fee + payouts + residue == pool exactly, residue < winners, double-claim reverts, claim-after-void refunds whole with zero fee. The fee comes off the losing pool only, so a winner never gets back less than they staked; a market nobody won voids rather than handing the treasury a windfall. |
+| `micro-community` | 268 | Governance, and **the treasury subject is a generated column** (`'community:' || id`): a CHECK cannot express it, because the value derives from an id the INSERT creates, so generation removes the code path that could write a wrong one rather than guarding it. A vote row is keyed by *whose power it spends* rather than who pressed the button, which makes both orders of the double-vote race impossible — a member voting in person overrides their own proxy. Delegation cycles are refused by a recursive CTE **under a per-community advisory lock**, without which two concurrent inserts each see a graph missing the other's uncommitted row and both commit a loop. |
 | `micro-admin-api` | 257 | The operator BFF. **The audit chain is honest about what a chain cannot see**: a hash chain catches an edit or an interior deletion, but truncation followed by a full re-hash verifies perfectly — so checkpoints catch that, and the test asserts BOTH directions, including that the truncated remainder verifies without them. Four eyes are enforced three times over, with the layer above bypassed at each level: the route, a `WHERE` clause, and a CHECK constraint. |
 | `micro-devplatform` | 256 | The credential-issuing service, and **the database refuses a fast hash**: `api_keys_slow_kdf_only` constrains `secret_algo` to a scrypt parameter string, so an SHA-256 row cannot be stored even by a caller holding a connection — the ledger's deferred-constraint discipline applied to a password table. Keys are `cfk_live_<lookup>_<secret>`: the lookup id is stored clear and unique, so a leaked key is revocable from a log line and a verification costs one indexed lookup rather than a scrypt run per row. A revoked key and an unknown one are byte-identical over HTTP and cost exactly one KDF run each. |
 | `micro-nda` | 175 | *Ninety Days After*. **The resolution engine is byte-identical to the ancestor, proved against the ancestor EXECUTING** — the corpus recorder imports the frozen `resolve.ts` unmodified, seeds a real Postgres with 21 hand-built worlds and reads back every row, rather than comparing against a re-implementation. The corpus was itself mutation-tested: its first version survived one-digit changes to upkeep, the warband threshold and the raid divisor, which is how it came to catch 18. |
@@ -144,7 +145,7 @@ wrong with replicas, where it yields a different answer depending on which one P
 | `micro-deploy` | — | OTel collector, Prometheus, Tempo, Loki, Grafana. Configuration only; not running. |
 | `micro-docs` | — | This directory. |
 
-Across the estate: **~6,100 tests**, all green at last run.
+Across the estate: **~6,400 tests**, all green at last run.
 
 ---
 
@@ -163,7 +164,7 @@ whoever picks it up a session before they discover there is nothing to finish. B
 
 ### 3.2 Not started
 
-**Services (2):** `community` and `analytics`. Also added by
+**Services (1):** `analytics`, in progress. Also added by
 [19-new-products](19-new-products.md) — 19: both `emberkin` and `foresight` are **done** (§2.2).
 
 
@@ -468,6 +469,33 @@ a registered event topic (`contracts/packages/events/src/index.ts:222`), so the
 `@cloudsforge/contracts-devplatform` is still uncut, so the scope vocabulary lives in the service;
 and there is no OAuth token endpoint, because signing one needs identity's key and that half
 belongs to another repository.
+
+### 3.3i The seventh imagined surface, and the first that lied about money
+
+`micro-market`'s indexer client called `/v1/tokens/:urn/facts` and
+`/v1/chains/:chain/transactions/:hash/escrow`. `micro-indexer` serves neither, and **no `/v1` paths
+at all** — its table is `/chains`, `/addresses`, `/transactions`, `/blocks`, `/watch`, `/backfills`
+(`indexer/src/server.ts:317-322`). Every call 404'd, always.
+
+The escrow branch turned that into `{confirmed: false}`, and `market/src/server.ts:761` turns that
+into *"the on-chain escrow is not confirmed yet"*. So **every on-chain escrow activation failed
+with a diagnosis that was false**: a seller retries for ever, and an operator investigates the chain
+rather than the integration. The facts branch returned `null`, rendering "no indicators" on every
+listing, permanently and silently.
+
+Failing closed was right and is unchanged — an unconfirmed escrow must never be listed. What
+changed is that **"we could not ask" is now an outage rather than a negative answer**, which is the
+distinction the fail-closed argument depends on. The paths cannot be repointed: the indexer does
+not serve these capabilities in any form, so the test pins the *size* of the gap rather than
+claiming it is closed.
+
+**All 287 of market's tests passed before the change and after it**, because every one stubbed the
+response rather than asking whether the request could reach a route. That is the seventh instance
+of this shape in the estate and the third in this repository — and `micro-community` found two more
+of the same kind while building against the same neighbours: `policy` has no `community.*` action
+and no `community:` subject arm, so the obvious spend request would 400 and, fail-closed, **no
+community could ever spend its treasury**; and `micro-indexer` has no balance route at all, so
+`07-dependency-map.md:139`'s hard dependency cannot be satisfied.
 
 ### 3.4 What only CI could catch
 
