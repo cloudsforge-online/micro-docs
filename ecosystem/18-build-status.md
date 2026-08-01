@@ -222,7 +222,7 @@ breakage to 256 vs 256 paths and exit 0 — while deleting `Posting.sequence` st
 it. **`micro-contracts`' `pnpm compat` had been pointing at a `tools/compat.ts` that has never
 existed in that repository, so the estate's contract-compatibility gate had never run anywhere.**
 
-### 3.3 Cross-service defects, and the only thing that finds them
+### 3.3a Cross-service defects, and the only thing that finds them
 
 Every service's suite is green, and that has now twice failed to catch a client calling a route
 that does not exist. Both were found the same way — by a *new* service reading the upstream's
