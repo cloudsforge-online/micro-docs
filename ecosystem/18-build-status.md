@@ -19,19 +19,19 @@ Last verified: 2026-07-31.
 
 Of the 43 repositories this programme creates or changes — the 46 in
 [03-repository-responsibilities](03-repository-responsibilities.md) less the three left exactly
-as they are (`hearth`, `asset-forge`, `stack`), plus the five added by [19-new-products](19-new-products.md) — **34 are done**.
+as they are (`hearth`, `asset-forge`, `stack`), plus the five added by [19-new-products](19-new-products.md) — **35 are done**.
 
 | Group | Target | Done | Left |
 | --- | ---: | ---: | ---: |
 | Domain services | 24 | 19 | 5 |
-| Frontends | 14 | 5 | 9 |
+| Frontends | 14 | 6 | 8 |
 | Operations | 3 | 3 | 0 |
 | Libraries | 4 | 4 | 0 |
 | Org infrastructure | 3 | 3 | 0 |
-| **Total** | **48** | **34** | **14** |
+| **Total** | **48** | **35** | **13** |
 
 Four further repositories exist that the plan did not enumerate as products — `brand`,
-`conformance`, `deploy`, `docs` and `emberkin-assets` — bringing the pushed count to **39**.
+`conformance`, `deploy`, `docs` and `emberkin-assets` — bringing the pushed count to **40**.
 
 **Repository count is the least useful measure of the three, and it is the one that flatters.**
 The truthful reading is that the *expensive* half is behind us. Everything that touches money,
@@ -101,6 +101,7 @@ Actual run counts are equal or slightly higher, because a few suites generate ca
 | `micro-site` | 185 | No number appears on the marketing site that is not checkable against something real in this estate. |
 | `micro-emberkin-web` | 430 | The game client. **It deletes the battle engine, the RNG and the localStorage save path it inherited** — a client that can resolve a battle can lie about one, so battles resolve server-side and a test plus a CI step fail if any of it returns. `three` is lazy: the dex, party and wardrobe download no renderer. |
 | `micro-foresight-admin-web` | 241 | The operator console, its own bundle by design. Irreversible actions are gated by consequence-in-sentences, then a required rationale, then typing a phrase naming the market AND the outcome — never "Are you sure?". It asserts the ABSENCE of three routes it might have invented, including a close endpoint (the contract closes itself). |
+| `micro-status-web` | 204 | The public status page, and **green-on-unknown is structurally unreachable**: one rule — an incomplete answer may report a problem, never health — driven through every one of eight failure outcomes. Its redaction allowlist is restated on the reading side and tested by bolting internal fields onto every level of a document and searching the *rendered HTML*. The uptime strip encodes each day three times, because the estate's reserved status hues are ΔE 4.6 apart under protanopia. |
 | `micro-foresight-web` | 357 | The public prediction market. **It recomputes the question hash in the browser** from the canonical bytes the service serves — `foresight/src/server.ts:420-423` puts that document on the wire precisely so nobody has to take the platform's word for what they staked on. Odds are the pool ratio in bigint, always rendered with the pools that produce them; the stake projection adds the stake to the pool it is paid from, showing dilution rather than the ~33% overstatement the naive formula gives. `claim` reads the contract through the reader's own wallet — chain outranks mirror and the two are never blended, so the page keeps the button live even when it cannot confirm the amount. |
 
 Cutting it found two defects in `micro-web-template`, both fixed there and both worth recording
@@ -139,7 +140,7 @@ wrong with replicas, where it yields a different answer depending on which one P
 | `micro-deploy` | — | OTel collector, Prometheus, Tempo, Loki, Grafana. Configuration only; not running. |
 | `micro-docs` | — | This directory. |
 
-Across the estate: **~5,100 tests**, all green at last run.
+Across the estate: **~5,400 tests**, all green at last run.
 
 ---
 
@@ -149,7 +150,7 @@ Across the estate: **~5,100 tests**, all green at last run.
 
 | Repo | State |
 | --- | --- |
-| `micro-status-web` | Taken next. |
+| `micro-nda` | In progress. |
 
 An earlier revision of this section listed `micro-status-web` and `micro-faucet` here as having
 scaffolding on disk. **That was wrong** — neither directory exists; both agents were killed before
@@ -330,6 +331,37 @@ blocker in its own right and neither is visible from any repository's tests.
 fixed: the consequence is a duplicate draft (the route charges nothing and deploys nothing), and
 porting a subsystem into a shipped service is not a change to make unattended. `market`'s
 equivalent gaps *were* fixed, because it already had the machinery.
+
+### 3.3e Three frontends shipped with no favicon
+
+An audit of all fourteen planned frontends against the brand sets, prompted by the owner asking
+whether any component was missing assets.
+
+Two surfaces had **no assets at all** — `status` and `explorer`. Both carry `markId: null` in the
+registry, deliberately: a status page is Beacon with its internals removed and an explorer is part
+of Forge Network, so neither should claim a mark. But that reasoning covers the mark and stops
+there, and each is served from its **own subdomain**, which inherits neither a tab icon nor a share
+card. A third kind set — favicon and og, no mark, no wordmark — now covers that case.
+
+Worse, three finished frontends **shipped no favicon and linked none**: `foresight-web` and
+`foresight-admin-web` were built before their product's assets existed, and `emberkin-web` copied
+180 game images into `public/` without the four a browser actually asks for. Each passed its suite,
+typechecked, built, and went green in CI, because **nothing anywhere asserted that a page has an
+icon**. `micro-status-web` then did the same thing a day later, which is the argument for a guard
+rather than four fixes: the web template now carries `test/brand-chrome.test.ts`, checking both
+directions and requiring a relative `og:image` — an absolute one bakes a hostname into the
+artefact, which is build-time configuration by another name. The template failed its own new test.
+
+**And a mistake repeated within hours.** `emberkin` was registered with `devPort: 3014` while the
+service binds 4100 — the same defect as giving `foresight` beacon's 4011, made again for the same
+reason: a port chosen by looking for a free one rather than by reading the service. The collision
+guard written for the first could not catch the second, because 3014 collided with nothing; it was
+merely wrong. **A devPort is a fact about a service, not an allocation.**
+
+The upside: three self-deleting workarounds fired exactly as designed. `foresight-web` and
+`emberkin-web` had pinned their local corrections to the WRONG answers so their tests would go red
+the day the upstream was fixed. It was, they did, and both workarounds are now deleted rather than
+outliving their cause.
 
 ### 3.4 What only CI could catch
 
