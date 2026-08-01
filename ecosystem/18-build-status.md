@@ -497,6 +497,26 @@ and no `community:` subject arm, so the obvious spend request would 400 and, fai
 community could ever spend its treasury**; and `micro-indexer` has no balance route at all, so
 `07-dependency-map.md:139`'s hard dependency cannot be satisfied.
 
+### 3.3j Planned: the three indexer capabilities two services are blocked on
+
+Recorded in §3.3i as gaps and then, correctly, challenged: a gap two consumers are already blocked
+on is work, not a finding. All three are **additive read routes** — they change no existing path's
+behaviour, which is why they can be added to a shipped service.
+
+| Capability | Wanted by | Consequence today |
+| --- | --- | --- |
+| Token facts for an item URN | `market` (`indexerclient.ts`) | Every listing renders "no indicators", permanently |
+| Transaction confirmation for an escrow | `market` (`server.ts:757`) | **Every on-chain escrow activation fails** with a false diagnosis |
+| Address token balances at a block | `community` (gating job) | `07-dependency-map.md:139` names this a **hard** dependency; the re-evaluation job cannot run |
+
+The second is the one that matters most: it is the only defect found in this programme that made a
+shipped service lie about money rather than merely fail.
+
+Both consumers already carry self-deleting workarounds pinned to the *absence*: `market`'s test
+asserts exactly two unserved routes and `community`'s asserts the balance route is missing, each
+with a message naming what to do when it appears. Those tests go red the day the capability lands,
+which is the mechanism working as designed rather than a chore.
+
 ### 3.4 What only CI could catch
 
 The point of the exercise, and the answer to "the suites pass locally, why bother": four real
