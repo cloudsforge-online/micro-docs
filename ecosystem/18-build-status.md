@@ -759,6 +759,48 @@ mutation test that hardcodes the value it mutates goes stale exactly when the th
 changes, and fails with a diagnosis that is false. It reads the number now, and refuses to grade an
 unmutated file.
 
+
+### 3.3p The event bus had never carried one event, and six defects said why
+
+The slice grew a third service (`activity`) and a check that a sign-in crosses
+outbox → signed HTTP → inbox and lands in the user's own feed. It failed, and each fix exposed
+the next layer — none findable by any single repository's suite, every one a pair of suites
+green against imagined counterparts:
+
+1. **Both consumer inboxes demanded a bearer no producer presents.** `activity` and `notify`
+   authenticated a service principal before reading a byte; every outbox relay sends the HMAC and
+   no Authorization header. The routes built to receive the bus refused the bus, always. The MAC
+   over the raw bytes is now the gate (`trade` and `worlds` had this shape from the start), which
+   also means an identity outage no longer takes the whole bus down with it.
+2. **The signature header name had two spellings.** The contract says `cf-signature`; five
+   producers carried a local `const` saying `x-cloudsforge-signature` — a drifted second copy of
+   the exact value `micro-contracts` exists to be the single source of.
+3. **The signature format had two shapes.** The contract signs `t=<seconds>,v1=<hmac over
+   "seconds.body">` with a freshness window; the same five local copies signed
+   `sha256=<hmac over body>`. Aligned by deleting the local implementations: `signEvent` /
+   `verifyEventSignature` now delegate to the contract's `signDelivery` / `verifyDelivery`, and
+   the five repositories import `@cloudsforge/contracts-events` instead of restating it.
+4. **The envelope version had two types.** The contract types it `"major.minor"` string; the
+   producers sent integer `1` and were refused with `version: missing`. The stored column stays an
+   integer; `wireVersion()` maps at the wire in one place per producer.
+5. **`activity` attributed sign-ins to the session id.** Identity keys `session.created` by
+   session and `device.added` by device, with the user in the payload; activity's `userFromKey`
+   accepted any uuid, so every sign-in landed in nobody's feed — silently, because a wrong uuid
+   queries as cleanly as a right one. Its own fixtures keyed the events by the user, a shape the
+   producer never sends: a suite green against an imagined producer, §3.3i in the event plane.
+6. **The topic lists disagree three ways.** The registry knows `identity.session.created` and
+   `identity.user.deleted`; identity also emits `mfa.changed`, `device.added` and
+   `session.revoked` unregistered, and never emits the `user.registered` that activity classifies
+   ("your account was created" can never appear). `emberkin` emits six unregistered topics and
+   `worlds` three, with neither owning a registered topic as a `ProducerService`. Open: register
+   the real topics, emit `identity.user.registered`, reconcile `mfa.changed` vs the `mfa.removed`
+   activity expects.
+
+The seam is now a standing check: `slice-verify.sh` seeds the one subscription no route creates
+(deliberately — who receives which topic is deploy configuration), signs in, and fails unless the
+record reaches the right user within 30 seconds. **It passes.** The first event the estate ever
+delivered was `identity.session.created`, and it took six fixes to get one login across.
+
 ### 3.4 What only CI could catch
 
 The point of the exercise, and the answer to "the suites pass locally, why bother": four real
