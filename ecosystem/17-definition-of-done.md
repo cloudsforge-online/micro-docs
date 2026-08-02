@@ -174,7 +174,14 @@ The decomposition is complete when **all eight** of these are true. Not seven.
    title rather than a real game, because the point is the abstraction and not the content.
 7. **All 45+ journeys green, p95 within 20% of the P0 baseline, and the trial balance still
    exactly zero.**
-8. **Every legacy repository archived read-only**, with a README pointing at its successors.
+8. **Every legacy repository is unambiguously superseded** — its README states that it is legacy
+   and points at the repositories that replaced it, and no CI in it deploys or publishes
+   anything. **It is not archived and not deleted**, by standing instruction from the owner:
+   "don't delete any existing repo, dont archive them". This item was written as "archived
+   read-only" and was rewritten on 2026-08-03, because a gate item that instructs an action the
+   owner has forbidden cannot ever be closed and would have held the whole gate open for ever.
+   Read-only-ness was the means; *nobody mistakes a legacy repo for a live one* was the end, and
+   that end is reachable without archiving.
 
 ---
 

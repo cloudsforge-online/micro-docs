@@ -17,21 +17,38 @@ Last verified: 2026-08-01.
 
 ## 1. The number
 
-Of the 43 repositories this programme creates or changes — the 46 in
+Of the repositories this programme creates or changes — the 46 in
 [03-repository-responsibilities](03-repository-responsibilities.md) less the three left exactly
-as they are (`hearth`, `asset-forge`, `stack`), plus the five added by [19-new-products](19-new-products.md) — **40 are done**.
+as they are (`hearth`, `asset-forge`, `stack`), plus the five added by
+[19-new-products](19-new-products.md) and the three added by [20-aetherholm](20-aetherholm.md) —
+**every one is built, and all of them are green.**
 
 | Group | Target | Done | Left |
 | --- | ---: | ---: | ---: |
 | Domain services | 24 | **24** | **0** |
-| Frontends | 14 | 6 | 8 |
+| Frontends | 14 | **14** | **0** |
 | Operations | 3 | 3 | 0 |
 | Libraries | 4 | 4 | 0 |
 | Org infrastructure | 3 | 3 | 0 |
-| **Total** | **48** | **40** | **8** |
+| **Total** | **48** | **48** | **0** |
 
-Four further repositories exist that the plan did not enumerate as products — `brand`,
-`conformance`, `deploy`, `docs` and `emberkin-assets` — bringing the pushed count to **45**.
+Five further repositories exist that the plan did not enumerate as products — `brand`,
+`conformance`, `deploy`, `docs` and `emberkin-assets` — and Aetherholm added three more. The
+working tree holds **58 directories**: 56 `micro-` repositories in `cloudsforge-online`, plus
+`hearth` (the legacy repo, deliberately unchanged) and `kindred-upstream` (a mirror of
+`savvaniss/kindred-resonance`, not a CloudsForge repo at all). Neither of the last two is
+`micro-` prefixed, which is worth knowing before running any estate-wide sweep by name: a sweep
+that assumes the prefix reports them as having no CI rather than as unmigrated, and that is how
+`hearth`'s one red workflow stayed invisible.
+
+Verified 2026-08-03 by sweeping all 58: every working tree clean, nothing unpushed, and the
+latest `main` run green in all 56 `micro-` repositories. `hearth`'s `ci.yml` and `publish.yml`
+are green; its `pages.yml` fails because GitHub Pages is not enabled on that repository, which
+is a settings decision left to the owner rather than a defect in the code.
+
+**This section used to contradict §3.2**, saying "40 done, 8 left" while §3.2 said 52 built
+against 48 targeted. Both cannot be true. The count above is the one that was checked against
+the repositories themselves rather than against a previous revision of this file.
 
 **Repository count is the least useful measure of the three, and it is the one that flatters.**
 The truthful reading is that the *expensive* half is behind us. Everything that touches money,
@@ -868,11 +885,14 @@ Found along the way, recorded rather than fixed here: `wallet:provision` and `no
 registered scopes **no gate demands** — the wallet gates on `wallet:write`/`wallet:money` and
 notify's inbox went MAC-only in §3.3p (its dead `notify:ingest` constant is deleted in
 micro-notify rather than registered or exempted); `nda:read`, `emberkin:read` and
-`community:read` are scope constants no gate uses; and ten service repositories (`beacon`,
-`hub-api`, `mint`, `settlement`, `studio`, `wallet`, `worlds`, `service-template`, `hearth`,
-`web-template`) still carry the "TEMPORARY" bespoke CI files, so the checker does not run for
-them until they migrate to the reusable workflow — their demands were derived by running the
-checker locally and are registered all the same. One precision defect in the compat checker
+`community:read` are scope constants no gate uses; and **eight** service repositories (`beacon`,
+`hub-api`, `mint`, `settlement`, `studio`, `wallet`, `worlds`, `web-template`) still carry the
+"TEMPORARY" bespoke CI files, so the checker does not run for them until they migrate to the
+reusable workflow — their demands were derived by running the checker locally and are registered
+all the same. This sentence said *ten* until 2026-08-03 and named two repositories that do not
+belong: `service-template` has already migrated (`service-template/.github/workflows/ci.yml:59`
+calls `cloudsforge-online/micro-org/.github/workflows/service-ci.yml@main`), and `hearth` is the
+legacy repository, not a `micro-` repo at all. One precision defect in the compat checker
 surfaced and was fixed both directions (org `1279280`): regrouping the registry's keys
 reordered every union derived from `keyof typeof SCOPES`, and a union is a set — six
 semantically identical signatures read as breaking until member order was canonicalised away,
