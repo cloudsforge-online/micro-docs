@@ -15,7 +15,7 @@ did: the repositories it touches are named in §8, and every rule in 01–17 app
 | **Foresight** | A parimutuel market with one bettor is a refund machine: the lone winner splits a pool containing only their own stake. Nobody's first bet can ever be interesting. |
 | **Market** | Zero listings begets zero buyers begets zero listings. A first seller pays full fees to list into a void. |
 | **Worlds titles** | `seasons.reward_budget_shards` already exists (`worlds/src/migrations.ts:331`) and is required positive — but nothing anywhere says who funds it. A season with an unfunded budget cannot pay a single reward. |
-| **Trade** | Backtests charge fees and slippage by design. A new user's first honest experiment costs money before it teaches anything. |
+| **Trade** | ~~Backtests charge fees and slippage by design. A new user's first honest experiment costs money before it teaches anything.~~ **False — struck 2026-08-03.** `trade/src/fees.ts:9` says the opposite: "Trade is free until it makes money. Backtests, the strategy catalogue and paper trading never cost anything." The only charge is a share of a **live** bot's gains against a high-water mark. Trade has no cold-start money problem, because there is no cold-start charge. |
 | **Aetherholm / Emberkin** | Season budgets, starter cosmetics, early-cohort incentives — same shape as Worlds. |
 
 The common structure: **fees can only fund engagement after volume exists, and volume is what the
@@ -108,9 +108,14 @@ platform:engagement-treasury            ← mined-EMBER conversions; fee recycle
   `reward_budget_shards` becomes explicit: a season's budget is an operator-approved transfer
   from the title's engagement account. Starter cosmetic grants to early cohorts ride the existing
   entitlement machinery.
-- **Trade — first experiments free.** New accounts receive a small backtest-fee credit funded
-  from `engagement:trade`, delivered through `billing`'s existing credit machinery, labelled as a
-  grant. Live-bot capital is **never** granted — engagement money teaches, it does not trade.
+- **Trade — nothing to grant, and granting would corrupt the numbers.** This section used to
+  promise "a small backtest-fee credit funded from `engagement:trade`". It is **withdrawn**,
+  because the premise in §1 was wrong: backtests are already free. A credit against a charge
+  nobody makes would be inert at best — and at worst actively harmful, because `backtests.fee_bps`
+  is a **simulated exchange fee inside the simulation**, not a charge to the user. Crediting it to
+  zero would not refund anything; it would make every backtest **overstate strategy returns**,
+  which in a financial tool is a correctness bug rather than a wasted feature. Live-bot capital is
+  still never granted — engagement money teaches, it does not trade.
 
 ## 6. Operator control — "manageable from the admin panel"
 
@@ -130,7 +135,12 @@ panel is a view, never the mechanism.
 
 1. A house stake after market open is **unrepresentable** (trigger, fire-tested).
 2. House seeding is symmetric by construction — a lopsided seed refuses at the schema.
-3. A transfer above a policy cap is refused by CHECK, even for a caller holding a connection.
+3. A transfer above a policy cap is refused **by the database**, even for a caller holding a
+   connection — `engagement_over_cap_refused`, `admin-api/src/migrations.ts:585` (raise at
+   `:569`). This item said "by CHECK" until 2026-08-03 and that was not achievable: a CHECK
+   constraint cannot reference another table, and the cap lives in `engagement_policies`. It is a
+   constraint **trigger**, which is the same strength by a different mechanism — but the doc
+   should not name a mechanism it did not get.
 4. Every engagement grant resolves to a ledger entry pair; a grant with no posting cannot exist.
 5. The fee-recycle percentage cannot exceed its schema ceiling.
 6. The foresight market page renders the house seed disclosure whenever a house stake exists —
@@ -140,12 +150,15 @@ panel is a view, never the mechanism.
 ## 8. Programme impact — added to the migration plan
 
 No new repositories. Touched: `admin-api` (policies table, three actions), `foresight` (house
-seed + disclosure), `market` (subsidy/bounty grants), `billing` (fee recycle + trade credits),
+seed + disclosure), `market` (subsidy/bounty grants), `billing` (fee recycle only — the trade
+credits are withdrawn, see §5),
 `worlds`/`aetherholm`/`emberkin` (budget funding source made explicit), `admin-web` (one screen),
 `hearth`/`micro-network-site` (published platform miner addresses), and the ledger — **zero
 schema changes**, it already models everything. Build order: admin-api policies and actions
 first (nothing may move before the caps exist), then foresight's house seed (the sharpest
-cold-start), then the grants, then the screen. One agent at a time, as ever.
+cold-start), then the grants, then the screen. Agents may run in parallel from 2026-08-03, but
+**partitioned by repository** — two agents must never hold write access to the same repo. The
+build order above is a data dependency, not a scheduling preference, and it still binds.
 
 Open decision, recorded not hidden: whether the fee recycle starts at 0% (pure mined funding
 until revenue exists) — recommended, since it costs nothing to raise later through the action
