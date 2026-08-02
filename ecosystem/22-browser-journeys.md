@@ -562,3 +562,166 @@ resolution criteria are a contract with strangers and are readable without an ac
 | BJ-FADM-08 ★ | Void on a deployed market | the button is not offered, and **the resolve block says in words why** rather than leaving a disabled control for the operator to wonder about (`market.tsx:19-22`) | P | T1 | — |
 | BJ-FADM-09 ★ | Resolve: the confirmation gate | the operator must write out a phrase naming the market and the outcome. "Are you sure?" has never once been answered no by somebody about to make a mistake (`admin-web/src/components/irreversible.tsx:14-19`, the shared pattern) | C | T1 | — |
 | BJ-FADM-10 | Categories page has no controls | it is a reference an approver reads at the moment of decision; a rule an operator cannot find then is a rule they apply from memory (`foresight-admin-web/src/pages/categories.tsx:3-6`) | P | T2 | foresight |
+
+---
+
+### 6.12 Group L — the developer platform
+*Doc 05 journey 12. Surface: `devportal-web`.*
+
+| id | Scenario | The assertion that fails if it breaks | A | T | Needs |
+| --- | --- | --- | --- | --- | --- |
+| BJ-DEV-01 | The platform index, anonymous | the scope catalogue renders for somebody who has not signed in and is deciding whether to (`devportal-web/src/pages/platform.tsx:3-5`) | P | T2 | devplatform |
+| BJ-DEV-02 | The application directory and one listing, anonymous | both render with no credential (`devportal-web/src/pages/directory.tsx:3-6`) | P | T2 | devplatform |
+| BJ-DEV-03 | Enrol an identity organisation | the enrolment screen **does not mutate in order to read** (`devportal-web/src/pages/organisations.tsx:5-8`) | C | T3 | devplatform, identity |
+| BJ-DEV-04 | Create a project inside an organisation | owner or admin only; a member sees the refusal in words, not a 403 dump | P | T3 | devplatform |
+| BJ-DEV-05 ★ | **Issue an API key** | the secret appears in a **modal** — `role="dialog"`, `aria-modal="true"`, focus moved into it on mount, a full-viewport scrim, and a focus trap (`devportal-web/src/components/once.tsx:29-31`, `:160-161`). A toast is the failure | P | T1 | — |
+| BJ-DEV-06 ★ | The once-modal cannot be dismissed by accident | a click on the scrim, an `Escape`, or a click outside does not close it without the explicit acknowledgement | C | T1 | — |
+| BJ-DEV-07 ★ | The once-modal's sentence | it says the credential **is live and nobody on Earth can tell you what it is** if the window closes — not "please copy this". There is no column the secret could be read back from (`once.tsx:14-26`) | P | T1 | — |
+| BJ-DEV-08 | Reload after dismissing the modal | the key is listed, the secret is not, and the page does not offer a "show again" control | P | T3 | devplatform |
+| BJ-DEV-09 | Revoke a key | the row shows revoked and its usage history is retained (05:385) | P | T3 | devplatform |
+| BJ-DEV-10 ★ | **Rotate a webhook secret** | the once-modal again — this route returns a secret twice as often as any other in the service, and a retry without the idempotency wrapper mints a second one (`devportal-web/src/pages/webhooks.tsx:14-18`) | C | T3 | devplatform |
+| BJ-DEV-11 | Rotate twice under one intent | one rotation, and the modal shows the first secret | C | T1 | — |
+| BJ-DEV-12 | Register a webhook endpoint, then read deliveries and retries | the delivery list renders with each attempt's outcome | P | T3 | devplatform, notify |
+| BJ-DEV-13 | Disable and delete a webhook endpoint | both are offered and both take effect on reload | P | T3 | devplatform |
+| BJ-DEV-14 ★ | **Register an OAuth client** | the client secret goes through the once-modal, and the create call carries an `Idempotency-Key` — the route is wrapped and requires one (`devportal-web/src/pages/oauth.tsx:3-4`) | C | T3 | devplatform |
+| BJ-DEV-15 | Quotas and usage | both render, and a quota **raise** is not offered — the direction is the authority (`devplatform/src/server.ts:981`, the rule `admin-web` cites) | P | T3 | devplatform |
+| BJ-DEV-16 | Project shell fetches the project once | the five sections each fetch their own resource; opening a project does not fan out to five calls on mount (`devportal-web/src/pages/project.tsx:3-6`) | C | T1 | — |
+| BJ-DEV-17 ⛔ | 05 journey 12's sandbox leg: resettable state and testnet wallets | a third party completes an integration against the sandbox from public documentation alone | C | T3 | no sandbox UI (§8.3) |
+
+---
+
+### 6.13 Group M — the operator console
+*Doc 05 journeys 13, 14, 15, 16, 20. Surface: `admin-web`. Every route protected.*
+
+| id | Scenario | The assertion that fails if it breaks | A | T | Needs |
+| --- | --- | --- | --- | --- | --- |
+| BJ-ADM-01 ★ | The console bundle served from a **public origin** | it renders the misplaced-bundle screen rather than the console (`admin-web/src/app.tsx:40`) | P | T2 | the bundle |
+| BJ-ADM-02 ★ | Anonymous browser on the console | a sign-in prompt, and **no operator content anywhere in the body** — this is the legacy suite's one security assertion and it is kept (`stack/infra/beacon/src/journeys/web.js:99-111` is the ancestor) | P | T2 | the bundle |
+| BJ-ADM-03 ★ | **Four-eyes: the operator who raised the request opens it** | the decision controls are **replaced by a sentence naming that fact** — not disabled. A disabled control reads as "not yet" and gets clicked at (`admin-web/src/pages/approval.tsx:10-13`) | P | T1 | — |
+| BJ-ADM-04 ★ | An **approved but unexecuted** request whose execution failed | the screen says "authorised, and the run failed", with the upstream's reason, and offers a retry **that does not need another signature**. Rendering it as "nothing happened" is how a third operator authorises what two already did (`approval.tsx:15-22`) | P | T1 | — |
+| BJ-ADM-05 ★ | A request past its deadline but still reading `pending` | the deadline is **computed**, not read off `state`; the controls reflect the computed answer, because `decide()` answers 409 in that gap (`approval.tsx:24-26`) | P | T1 | — |
+| BJ-ADM-06 ★ | Approve: the confirmation | the operator writes out a phrase naming **the request and the outcome** — "approve 3f2a1b9c ledger.entry.reverse" cannot be typed without reading which request and which way (`admin-web/src/components/irreversible.tsx:14-19`) | C | T1 | — |
+| BJ-ADM-07 ★ | Approve: the order of the confirmation panel | consequences in **sentences**, then the audit rows the action will write, then the facts the decision turns on, then a rationale, then the phrase (`irreversible.tsx:14-17`) | P | T1 | — |
+| BJ-ADM-08 | The gate refuses in every direction | wrong phrase, missing rationale, self-raised request, decided request — each refuses, and each says which. `confirmationGate` is a pure function (`admin-web/src/lib/gate.ts:87`) so the unit half is already testable; this is the rendered half | P | T1 | — |
+| BJ-ADM-09 | Approvals queue with each filter | `state`, `action`, `requestedBy`, `limit` — each produces the rows the response contains | P | T3 | admin-api |
+| BJ-ADM-10 ★ | Action catalogue including the blocked action | the blocked entry **and its reason** render, so the operator sees the 501 before hitting it (`admin-web/src/pages/actions.tsx:3-6`) | P | T3 | admin-api |
+| BJ-ADM-11 | The reason-code list offered on a decision | exactly the closed list; no free-text reason field | P | T1 | — |
+| BJ-ADM-12 ★ | **Audit: a truncation below a checkpoint** | the checkpoint findings render **separately** from the link findings, in words that distinguish them. An operator who reads "chain OK" after a truncation has been told something the chain alone cannot know (`admin-web/src/pages/audit.tsx:8-20`) | P | T1 | — |
+| BJ-ADM-13 ★ | Audit: verification has **never run** | a **third answer**, not a green one. A verification that has never run is a control that is not running (`audit.tsx:18-20`) | P | T1 | — |
+| BJ-ADM-14 ★ | Audit: one correlation id (05 journey 16) | one search returns every audit event across the services for that id, and there is **no free-text box over the payload** — a console offering a LIKE over `payload` table-scans the audit of record during an incident (`audit.tsx:24-30`) | P | T3 | admin-api |
+| BJ-ADM-15 ★ | **Engagement treasury: there is no raise button** | it is **absent and explains itself**, not present and 403ing. A raise needs a two-operator approval and the schema trigger refuses it three ways (`admin-web/src/pages/engagement.tsx:17-25`) | P | T1 | — |
+| BJ-ADM-16 | Engagement: lower a policy | the write goes down and takes effect; the transfer rows beside the balances say only **which approval** authorised each | C | T3 | admin-api, ledger |
+| BJ-ADM-17 | Engagement balances come from the ledger | nothing on the screen is a number the console computed (`engagement.tsx:27-31`) | P | T1 | — |
+| BJ-ADM-18 | Estate view with a dead upstream | it answers 200 and the tile names **which** upstream. The console that exists to be read during an incident has no failure mode in which the incident hides it (`admin-web/src/pages/estate.tsx:3-6`) | P | T1 | — |
+| BJ-ADM-19 | Feature flags: set one | `enabled` must be boolean and `description` and `owner` are required non-empty; the form refuses locally with the same rules (`admin-web/src/pages/flags.tsx:3-6`) | C | T3 | admin-api |
+| BJ-ADM-20 ★ | **Broadcast: publish an estate-wide notice twice** | one notice. The route requires an `Idempotency-Key` because a retry must not publish a second (`admin-web/src/pages/broadcasts.tsx:4-6`) | C | T1 | — |
+| BJ-ADM-21 ⛔ | 05 journey 13: a stuck withdrawal, filtered `state=broadcast`, sorted by age, bump-fee or abandon with dual approval | the abandon path requires a reason code and two signatures | C | T3 | no withdrawals screen (§8.4) |
+| BJ-ADM-22 ⛔ | 05 journey 14: a reconciliation drift alert freezes withdrawals for one asset, and one operator cannot override it | the freeze is visible and the override control is absent for a single operator | P | T3 | no reconciliation screen (§8.4) |
+| BJ-ADM-23 ⛔ | 05 journey 16: a support agent answers "my balance is wrong" from the console alone | every read carries an audit record and a reason code | C | T3 | no support-lookup screen (§8.4) |
+
+---
+
+### 6.14 Group N — Forge Network: the site, the faucet, the explorer
+*Doc 05 §1.3, §1.8.*
+
+| id | Scenario | The assertion that fails if it breaks | A | T | Needs |
+| --- | --- | --- | --- | --- | --- |
+| BJ-NET-01 | Network home | the status table is the **second block**, not a footnote; a reader who finds out at the bottom of the page has been misled by the layout (`network-site/src/pages/home.tsx:3-8`) | P | T1 | — |
+| BJ-NET-02 ★ | Chain page | every number is fetched at render time **or is absent**. There is no third option (`network-site/src/pages/chain.tsx:4-5`) | P | T2 | the chain read |
+| BJ-NET-03 | Chain page with the chain unreachable | figures are absent and the page says so; no stale or defaulted number is rendered as current | P | T1 | — |
+| BJ-NET-04 | Mining page | the **caveats come before the instructions**, and that order is the point (`network-site/src/pages/mine.tsx:4-5`) | P | T1 | — |
+| BJ-NET-05 | Node page | it states at the top that everything runs on one machine and offers no bootstrap list or peer to dial (`network-site/src/pages/node.tsx:3-8`) | P | T1 | — |
+| BJ-NET-06 ★ | **Faucet: every number is the faucet's** | drip, cooldown, per-requester limit, window and remaining budget all come from `GET /v1/faucet`; there is no fallback set in the bundle (`network-site/src/pages/faucet.tsx:9-14`) | P | T2 | faucet |
+| BJ-NET-07 ★ | Faucet with the service unreachable | the panel says the faucet did not answer and **the form is disabled** — a request posted into an unreachable service fails in a way that looks like a refusal, and a reader would read it as one (`faucet.tsx:14-17`) | P | T1 | — |
+| BJ-NET-08 ★ | **Faucet: the form sends no amount** | there is no amount field and the request body carries `address` and `idempotencyKey` and nothing else. Every faucet that has ever been drained let the caller influence the amount (`faucet.tsx:19-24`) | C | T1 | — |
+| BJ-NET-09 ★ | Faucet refusal (rate limited) | the message shown is **the limiter's, verbatim**. A second wording here would be a second thing to keep true, and the softer of the two is the one a reader would quote (`faucet.tsx:26-30`) | P | T3 | faucet |
+| BJ-NET-10 | Faucet: double-submit | one drip, one idempotency key | C | T1 | — |
+| BJ-NET-11 | Explorer index | a search box and **no API call at all** — there is no question yet (`explorer-web/src/pages/search.tsx:3-6`) | C | T1 | — |
+| BJ-NET-12 | Explorer: paste a height, a hash and an address | each routes to the right two-segment scope path; the scope is two path segments everywhere (`explorer-web/src/app.tsx:21-25`) | N | T2 | indexer |
+| BJ-NET-13 | Explorer: a `(chain, network)` the estate does not run | the **unknown-scope screen**, which names the five chains and two networks — not a generic 404. That is what turns a typo into a fix (`explorer-web/src/pages/unknown-scope.tsx:3-6`) | N | T2 | the bundle |
+| BJ-NET-14 ★ | Chains page: ten scopes | one row per scope with the state its own index reports (`explorer-web/src/pages/chains.tsx:3-6`) | P | T3 | indexer |
+| BJ-NET-15 ★ | **Transaction page: two reads, never crossed over** | the record supplies the facts and the confirmations answer supplies the verdict, and **the word "final" appears nowhere on the page** (`explorer-web/src/pages/transaction.tsx:9-20`) | P | T1 | — |
+| BJ-NET-16 ★ | Transaction: 404 `transaction_not_found` vs 200 `confirmed: false` | **two different screens.** The caller separates them by the error **code**, never by the status. `micro-market` merged them and reported "escrow not confirmed" for every activation (`transaction.tsx:22-29`) | P | T1 | — |
+| BJ-NET-17 ★ | Transaction: a **reverted** transaction at full depth | the status sits beside the depth at the same weight, and the verdict panel says which of the four inputs failed. A confirmation test that only counted blocks would tell a marketplace that a failed escrow deposit is confirmed (`transaction.tsx:31-36`) | P | T1 | — |
+| BJ-NET-18 | Chain page: reorgs recorded | each reorg renders with its depth; a chain behind its tip states the lag rather than implying it is current | P | T3 | indexer |
+| BJ-NET-19 | Address page | activity and token balances are two reads; one failing does not blank the other | P | T1 | — |
+| BJ-NET-20 | Token page | supply and authorities are **as the contract reports them**, not as an order record claims (05:191) | P | T3 | indexer |
+| BJ-NET-21 | Block page | height, hash and the transactions in it, from `GET /v1/blocks/...` | P | T3 | indexer |
+
+---
+
+### 6.15 Group O — the status page
+*Surface: `status-web`. Public, pre-auth, redacted. No `ProtectedRoute` exists in the repository.*
+
+| id | Scenario | The assertion that fails if it breaks | A | T | Needs |
+| --- | --- | --- | --- | --- | --- |
+| BJ-STA-01 ★ | Current page, feed healthy | the verdict and **when it was observed** are above the fold, then anything currently broken, then the grid, then planned work — the reading order of somebody who has just been told the site is down (`status-web/src/pages/current.tsx:3-7`) | P | T2 | beacon |
+| BJ-STA-02 ★ | **Nothing states a state without its observation time** | every state chip on the page has an `Observed` stamp beside it (`current.tsx:6-7`) | P | T1 | — |
+| BJ-STA-03 ★ | The status feed itself is unavailable | the page renders the last good status **with its age**, and does not show green. An unknown is never a pass — beacon's own rule (`beacon/README.md:44-46`) | P | T1 | — |
+| BJ-STA-04 | The feed has never been reachable | a third state again: no verdict at all, said plainly | P | T1 | — |
+| BJ-STA-05 | History page | the window is **beacon's**, and the page says so rather than implying it is the complete history of the estate (`status-web/src/pages/history.tsx:3-6`) | P | T2 | beacon |
+| BJ-STA-06 ★ | About page | it states what the page measures and **what it deliberately does not show**; the withheld list is on the page (`status-web/src/pages/about.tsx:3-6`) | P | T1 | — |
+| BJ-STA-07 ★ | Nothing on the page identifies a service by its internal name | the product groups are the public names (`beacon/src/estate.ts:60-67`); a service name leaking to a pre-auth page is the failure | P | T2 | beacon |
+| BJ-STA-08 | Uptime strip | one cell per day in the published window, and a day with no data is drawn as no data — not as green | P | T1 | — |
+
+---
+
+### 6.16 Group P — the marketing site
+
+| id | Scenario | The assertion that fails if it breaks | A | T | Needs |
+| --- | --- | --- | --- | --- | --- |
+| BJ-SITE-01 ★ | Home | four blocks in order — what it is, the loop, what you can do inside it, **and the state it is in**, on the home page rather than buried (`site/src/pages/home.tsx:3-8`) | P | T1 | — |
+| BJ-SITE-02 ★ | Build-status page | it says **at the top** that none of it is running, then goes surface by surface. A crypto front door that implies everything on it is running is the failure this page exists to avoid (`site/src/pages/build.tsx:3-6`) | P | T1 | — |
+| BJ-SITE-03 ★ | Products index and each product page | both are generated from the surface registry; the number of product cards equals `PRODUCTS.length` (`ui/packages/ui/src/surfaces.ts:587`). A hand-maintained card is the failure (`site/src/pages/products.tsx:3-6`) | P | T1 | — |
+| BJ-SITE-04 | Platform page | the eleven "one platform" statements are published **in full**, including the ones not yet true (`site/src/pages/platform.tsx:3-8`) | P | T1 | — |
+| BJ-SITE-05 | About page | the tie-breakers and the refusals come from the vision document, not from a copywriter | P | T1 | — |
+| BJ-SITE-06 ★ | Terms and privacy | the notice saying the document is **incomplete** is at the top, and every undrafted section is drawn as a **visible hole** with a note saying what belongs in it (`site/src/pages/legal.tsx:3-6`) | P | T1 | — |
+| BJ-SITE-07 | The product switcher | it renders every switcher surface for a signed-out reader and **hides the three `adminOnly` ones**; a signed-in operator sees all nine (`ui/packages/ui/src/index.tsx:246-258`). Hiding is not the boundary and the scenario asserts the menu, not the access | P | T2 | identity |
+| BJ-SITE-08 | Every switcher entry has a glyph as well as an accent | colour is never the only channel (`ui/packages/ui/src/surfaces.ts:73`) | P | T1 | — |
+
+---
+
+### 6.17 Group Q — community and governance
+*Doc 05 §1.9 and journey 11.*
+
+**`micro-community` is built** — proposals, votes, delegations, tally, gating, executions, all with
+tests (`community/src/`). **No frontend surfaces any of it.** A grep for `proposal`, `governance`
+and `community` across all fifteen bundles returns only `aetherholm-web`'s alliance binding, which
+deliberately does the opposite: it stores a `communityId` and says governance lives elsewhere
+(`aetherholm-web/src/pages/alliance.tsx:3-11`).
+
+So the whole of 05 journey 11 is uncoverable. It is specified here anyway, so that the scenarios
+exist the day a surface does.
+
+| id | Scenario | The assertion that fails if it breaks | A | T | Needs |
+| --- | --- | --- | --- | --- | --- |
+| BJ-COM-01 ⛔ | Found a community with `kind=token_gated`, `join_policy=token_holding` | the treasury accounts under `community:<id>` are visible after creation | P | T3 | no UI (§8.5) |
+| BJ-COM-02 ⛔ | Join; holdings verified; membership re-evaluated on a schedule | the grace period is stated on screen — membership never re-checked is not token-gating (05:370-371) | P | T3 | no UI |
+| BJ-COM-03 ⛔ | Open a `treasury_spend` proposal | the `snapshot_block`, quorum and threshold are all rendered before a vote is offered | P | T3 | no UI |
+| BJ-COM-04 ⛔ | Vote under each of the three weighting schemes | the weighting in force is named on the ballot, not inferred | P | T3 | no UI |
+| BJ-COM-05 ⛔ | `passed → timelocked → executed` | the timelock is visible with its expiry; execution appears once and only once | P | T3 | no UI |
+| BJ-COM-06 ⛔ | Platform governance is **not** tokenised | there is no platform-wide proposal surface anywhere. A platform holding customer money does not put custody policy to a vote (05:376-377) | N | T3 | no UI |
+| BJ-COM-07 ⛔ | The Aetherholm alliance is bound to a community created elsewhere | the alliance screen never offers to create one (this one **is** runnable — it is BJ-AET-10) | C | T3 | see BJ-AET-10 |
+
+---
+
+### 6.18 Group R — cross-surface journeys
+*This is the group that justifies a shared home. None of these can be expressed by a per-frontend
+suite, because none of them happens on one surface.*
+
+| id | Scenario | The assertion that fails if it breaks | A | T | Needs |
+| --- | --- | --- | --- | --- | --- |
+| BJ-XS-01 ⛔★ | **One account signs into everything, once** (vision test 1). Sign in at Hub → switcher → Worlds → switcher → Market | no second credential prompt on either hop, and the same subject renders in the bar on all three | P | T3 | sign-in surface, identity, hub-api, worlds, market |
+| BJ-XS-02 ⛔ | **One identity everywhere** (test 2). The profile created at registration renders in Market, Worlds and Community | the same handle and avatar on each; today the only renderable identity is a handle | P | T3 | sign-in surface + community UI |
+| BJ-XS-03 ⛔ | **One wallet experience** (test 3). Arrive at the wallet from Worlds, from Trade and from Create | the same screen each time, at the same address — `wallet` is a `basePath` on Hub, not a host (`ui/packages/ui/src/surfaces.ts:346-365`) | N | T3 | wallet UI (§8.2) |
+| BJ-XS-04 ★ | **One portfolio** (test 4). The total on Hub overview and the total on Hub portfolio | the two figures are equal and carry the same `pricedAt` | P | T3 | hub-api, ledger, pricing |
+| BJ-XS-05 ★ | **One activity history** (test 5). Act in three products, then open Hub activity | all three actions appear in one feed, with at least six distinct originating services present | P | T3 | hub-api, activity, 6 producers |
+| BJ-XS-06 ⛔ | **One internal economy** (test 6). Earn a reward in a world → spend it in Market → both legs on the activity timeline | the reward and the spend are two entries in one feed, and the balance between them reconciles | P | T3 | no world-objective UI (§8.3) |
+| BJ-XS-07 ⛔ | **Assets created in one product usable in others** (test 7). A Studio brand kit becomes game content and a Market listing | the same asset id is rendered on both surfaces | P | T3 | no studio UI (§8.3) |
+| BJ-XS-08 ⛔ | **One set of notifications, one preference page** (test 8) | changing a preference on one surface changes what is delivered. `notify` is not in the surface registry and has no UI (`hub-web/src/pages/settings.tsx:15-24`) | C | T3 | no notify UI (§8.6) |
+| BJ-XS-09 ⛔ | **One operator view** (test 9). Answer a balance question from `admin-web` alone | see BJ-ADM-23 | P | T3 | no support-lookup screen |
+| BJ-XS-10 ★ | The switcher's URLs resolve | every entry in the rendered switcher opens a surface that answers 200 on its index | N | T3 | all frontends |
+| BJ-XS-11 ★ | The apex is derived, not configured | the same bundle addresses `localhost:<devPort>` from localhost and `https://<sub>.<apex>` from the apex, with **no rebuild** (`ui/packages/ui/src/index.tsx:140-158`) | C | T2 | two origins |
+| BJ-XS-12 | An unknown subdomain prefix is left alone | a preview deployment at `pr-42.example.dev` is its own apex and its sign-in redirect does not go somewhere that does not exist (`ui/packages/ui/src/index.tsx:144-147`) | C | T1 | — |
+| BJ-XS-13 ★ | Explorer deep links from Hub and Market | a transaction link from a wallet row and from an order both land on the explorer's two-segment scope path and render the transaction | N | T3 | hub-api, market, indexer |
+| BJ-XS-14 | A Worlds title page links to its Market listings and back | both directions resolve | N | T3 | worlds, market |
