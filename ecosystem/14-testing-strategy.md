@@ -250,6 +250,12 @@ Beacon is the integration test the topology cannot otherwise have. It already ru
 journeys** across eight files (2,018 lines) — 19 defined directly and 5 through the
 `surfaceJourney` helper in `journeys/web.js` — plus 28 probes and the chain conformance runner.
 
+> **Those figures are the LEGACY Beacon's, and they reproduce exactly** (`stack/infra/beacon/`:
+> eight journey files, 2,018 lines, 3 `chain` + 2 `crucible` + 3 `game` + 3 `identity` + 1 `mint`
+> + 4 `pay` + 2 `platform` + 6 `web` = 24). **`micro-beacon` ships six**, and says why it declines
+> to declare the other three of the critical nine (`beacon/src/estate.ts:5-22`). Read the paragraph
+> above as history, not as the state of the estate being built.
+
 **How a journey is written.** `defineJourney({ name, title, description, group, intervalSec,
 covers, run })`. `name` is a stable id used in URLs and metrics; `description` states **what
 breaking looks like to a user**, not what the test does. Inside `run(ctx)`:
@@ -394,7 +400,14 @@ What is worth adding, and nothing beyond it:
 | **Interaction** | Forms that move money — send, convert, listing creation, key export. Assert the confirmation step cannot be bypassed and the destination shown is the destination submitted | Testing Library |
 | **Accessibility** | `axe-core` on every route and every modal, failing on any serious or critical violation. Keyboard-only traversal of the send flow and the export ceremony. Every chart has its table view, which is both the accessibility fallback and the export path | `@axe-core/playwright` |
 | **Visual regression** | The design system only — `@cloudsforge/ui` primitives, tokens in light and dark, the chart layer against [assets/chart-palette.md](assets/chart-palette.md). Snapshots live in `cloudsforge-ui`, not in nine applications | Playwright screenshots |
-| **Bundle boot** | Already covered by Beacon's `surfaceJourney`, which asserts the body rendered more than 40 characters and collects console errors and failed requests — because a bundle that 404s leaves the network perfectly idle and `domcontentloaded` fires anyway | Beacon |
+| **Bundle boot** | **Not covered. This row used to say "already covered", and it was wrong.** The thing it named is real but frozen: `surfaceJourney` asserts the body rendered more than 40 characters and collects console errors and failed requests — because a bundle that 404s leaves the network perfectly idle and `domcontentloaded` fires anyway — and it lives in the **legacy** repository (`stack/infra/beacon/src/journeys/web.js:19`, on `playwright-core`). `micro-beacon` declares six journeys and **none of them opens a browser** (`beacon/src/estate.ts:360-367`); it has no browser dependency at all. Specified as `BJ-<KEY>-404` and the per-surface smoke set in [22-browser-journeys.md](22-browser-journeys.md) | Beacon — **to be built** |
+
+**Every tool in the right-hand column above is an intention.** Vitest, Testing Library and
+`@axe-core/playwright` are named here and installed nowhere: no `*-web/package.json` lists any of
+the three, and there is no Playwright, Puppeteer or Cypress anywhere in the estate. The frontends
+run `node --import tsx --test test/*.test.ts` over their pure layer, deliberately and with the
+reasoning stated (`hub-web/test/browser-stubs.ts:1-9`). The scenario catalogue that this table is
+the summary of is [22-browser-journeys.md](22-browser-journeys.md).
 
 **What is not tested at the frontend:** business rules. The game client withheld four SKUs from
 its UI while Pay's routes stayed live and chargeable; a client-side test of the hidden catalogue
