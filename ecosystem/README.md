@@ -79,6 +79,9 @@ operational and financial controls a platform holding customer money owes its cu
 | **17** | [definition-of-done](17-definition-of-done.md) | What "done" means at every level. |
 | **18** | [build-status](18-build-status.md) | What has actually been built, by repository, with test counts. **A ledger, not a plan — read it before assuming anything in 00–17 exists yet.** |
 | **19** | [new-products](19-new-products.md) | Emberkin (the second Forge Worlds title, rebranded from *Kindred: Resonance*) and Forge Foresight (a Hearth-native prediction market). **Design authority for both.** |
+| **20** | [aetherholm](20-aetherholm.md) | Aetherholm, the third Forge Worlds title: a sky-island strategy MMO. **Design authority.** |
+| **21** | [engagement-treasury](21-engagement-treasury.md) | The house seed, what the platform stakes with its own money, and the disclosure a user must be able to see. |
+| **22** | [browser-journeys](22-browser-journeys.md) | The complete browser-level scenario catalogue — 318 scenarios in three tiers across fifteen surfaces — and where the suite lives. Extends **05**; corrects one row of **14** §11. |
 
 **Assets.** [assets/](assets/) holds the design-system extension: the
 [chart palette](assets/chart-palette.md) (validated, not eyeballed), the
