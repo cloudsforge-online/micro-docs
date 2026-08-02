@@ -1025,9 +1025,14 @@ runnable case count is **373**.
 
 | By tier | | | By status | |
 | --- | ---: | --- | --- | ---: |
-| T1 — nothing up | 169 | | Runnable against the estate as built | 270 |
-| T2 — one surface | 47 | | ⛔ blocked on §8 | 48 |
+| T1 — nothing up | 169 | | Runnable once §8.7 is closed | 270 |
+| T2 — one surface | 62 | | ⛔ blocked on §8 | 48 |
 | T3 — the estate | 86 | | ★ release-gate | 119 |
+| split (BJ-ADV-01) | 1 | | continuously-run (§7.1) | 26 |
+
+T2 includes the fifteen `BJ-<KEY>-404` rows. **More than half the catalogue is T1** — it needs a
+browser and a set of stubbed responses and nothing else — which is the answer to "a catalogue
+where everything needs the whole estate is a catalogue that runs never."
 
 | Group | id | n | Doc 05 coverage |
 | --- | --- | ---: | --- |
