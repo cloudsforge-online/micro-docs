@@ -820,6 +820,64 @@ the inbox row is the acknowledgement the registry demands. Remaining: wire `noti
 phone numbers, push tokens — the service that most needs it) and every other user-data holder
 into the same subscription at deploy time.
 
+### 3.3q The scope registry knew 14 scopes; the estate's gates demanded 57
+
+What was believed: `contracts/packages/auth` is "the closed set of service scopes", identity
+validates every service-token grant against it and fail-fasts on an unknown name
+(`identity/src/env.ts:141`), so a granted scope is a real capability. What was true: the
+registry held 14 scopes while the estate's services gated on 57. Every one of `beacon`,
+`trade`, `market`, `mint`, `settlement`, `studio`, `analytics`, `admin-api`,
+`devplatform`, `community`, `emberkin`, `nda`, `faucet`, `lantern` and `notify` had
+**zero** of its gates mintable; `wallet` could be read but neither written nor spent from;
+`custody`'s address-creation and treasury-read surfaces were unreachable beside its three
+signing scopes; `worlds`, `aetherholm`, `pricing` and `indexer` were part-covered.
+Identity could not mint a token for most service-to-service surfaces in the estate, and nothing
+was red anywhere, because every suite mints its own fake principals — the same
+green-against-an-imagined-counterpart shape as §3.3i and §3.3p, this time in the authorisation
+plane.
+
+How it was found: the pre-slice-growth question "can any token hold `aetherholm:provision`?" —
+asked before wiring the title bridge, answered no, and then asked of every other scope a gate
+demands. Three successive audit sweeps each had a different blind spot: the first read constants
+and missed inline literals (`community/src/server.ts:1056` hardcodes `'community:write'` one
+file away from its own `WRITE_SCOPE`); the second read `requireScope` calls and missed wrapper
+third arguments (`ledger`, `beacon`, `indexer` and nine others gate through a local
+`authorise`/`authenticate` whose scope is a parameter); the third missed the computed family
+(`custody/src/gates.ts:177` returns `` `custody:sign:${purpose}` ``). Three sweeps, three
+different misses, is proof the audit must be a checker, not a grep session.
+
+What now prevents it: a step in micro-org's `service-ci.yml` (org `26caed1`) **derives** the
+scopes a repository's gates demand — inline literals, sibling-file constants, wrapper arguments
+propagated through parameter flow to a fixpoint, three-part names, computed families closed
+over an enumerated set — and fails that repository's build if one is absent from the checked-out
+`@cloudsforge/contracts-auth` `SCOPE_NAMES`. Anything the checker cannot resolve fails loudly
+rather than passing silently; comments are stripped and test files excluded before matching (six
+guards in this estate have fired on their own prose); and the checker is mutation-tested in
+micro-org's own suite — a gate demanding an unregistered scope is injected into a fixture, the
+fixture is asserted to have *actually changed* before the run is graded (this estate has had a
+canary that graded an unchanged file), red is asserted, the restore is asserted byte-identical
+and green. A deliberate non-registration is an exemption in the repository's
+`scope-exemptions.json` with a reason of at least forty characters, and a stale or unreasoned
+exemption fails: `custody:sign:user` (demandable at the gate, refused unconditionally by
+`purposeGate` — the platform signs nothing on a customer's behalf) and the service template's
+placeholders are the estate's three.
+
+The registry is total as of 2026-08-02: all 39 missing scopes registered with the gate line
+that demands each (contracts `0287fa1`), the closed-set pin test grown in the same commit.
+Found along the way, recorded rather than fixed here: `wallet:provision` and `notify:send` are
+registered scopes **no gate demands** — the wallet gates on `wallet:write`/`wallet:money` and
+notify's inbox went MAC-only in §3.3p (its dead `notify:ingest` constant is deleted in
+micro-notify rather than registered or exempted); `nda:read`, `emberkin:read` and
+`community:read` are scope constants no gate uses; and ten service repositories (`beacon`,
+`hub-api`, `mint`, `settlement`, `studio`, `wallet`, `worlds`, `service-template`, `hearth`,
+`web-template`) still carry the "TEMPORARY" bespoke CI files, so the checker does not run for
+them until they migrate to the reusable workflow — their demands were derived by running the
+checker locally and are registered all the same. One precision defect in the compat checker
+surfaced and was fixed both directions (org `1279280`): regrouping the registry's keys
+reordered every union derived from `keyof typeof SCOPES`, and a union is a set — six
+semantically identical signatures read as breaking until member order was canonicalised away,
+with removal-hidden-by-reordering verified to still break.
+
 ### 3.4 What only CI could catch
 
 The point of the exercise, and the answer to "the suites pass locally, why bother": four real
