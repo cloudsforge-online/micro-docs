@@ -181,7 +181,7 @@ measured off the bytes, which the brand repo learnt the hard way.
 | Key art, og, social, wordmark backdrop | 4 |
 | Season/event splashes | 6 |
 | Title chrome (favicons, og, wordmark) | 8 |
-| **Total** | **~102** |
+| **Total** | **~102** (as built: 96 generated + 5 derived — favicons cut from the mark, wide cards composited; the actual run's accounting is in the assets repo's README) |
 
 Estimate at the brand run's measured economics (80 generations, 26 retries, 240 units for 93
 kept): **~140 generations, ~420 provider units**. The actual spend is recorded per asset in the
