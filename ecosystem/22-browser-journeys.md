@@ -82,14 +82,21 @@ production.
 
 | | `beacon` (the service) | `beacon browse` (the CLI) |
 | --- | --- | --- |
-| What runs | the six HTTP journeys, plus the **critical browser subset** marked ★ below | the whole catalogue |
+| What runs | the six HTTP journeys, plus the **continuously-run browser set** (§7.1) | the whole catalogue |
 | Where | the deployed monitor | CI, against the dev estate |
 | Cadence | the leased schedule | on a release candidate, and nightly |
 | Writes | `checks`, incidents, the public status projection | the run's artefacts only |
 | Skips | a skip is not a pass, and blocks the gate | a skip is not a pass, and blocks the gate |
 
-The ★ subset is small on purpose — twelve scenarios, listed in §7 — because every one of them
-holds a browser open in production every few minutes. Everything else is a CI suite.
+Two different sets, and conflating them is the mistake to avoid:
+
+- **★ in the catalogue = release-gate.** A release candidate does not promote until every ★
+  scenario is green. 119 of the 318 scenarios are ★.
+- **§7.1 = continuously-run.** A much smaller set, because each one holds a browser open against
+  production every few minutes. It is currently **eleven scenarios plus the fifteen 404
+  assertions**, and it is small for the reason beacon already gives: a declared journey that can
+  only skip refuses every release for ever, and the gate is switched off within a week
+  (`beacon/src/estate.ts:15-16`).
 
 `playwright-core`, not `playwright`: the legacy repo already recorded the reason
 (`stack/infra/beacon/src/browser.js:9-11`) — the full package downloads its own ~1.5 GB browser
@@ -275,7 +282,7 @@ for every address in existence. This is asserted once per surface as `BJ-<KEY>-4
 | Column | Meaning |
 | --- | --- |
 | **id** | Stable. Never renumbered — a renamed scenario abandons its metric history, the same rule beacon already applies to step names (14 §8) |
-| ★ | In the continuously-run critical subset (§7) |
+| ★ | **Release-gate.** A release candidate does not promote until this scenario is green. The much smaller continuously-run set is §7.1 |
 | ⛔ | **Cannot be run today.** The functionality or the environment does not exist. The blocker is named in §8 and the scenario is a specification, not a claim of coverage |
 | **A** | What it asserts: **P**resentation, **C**lient-request, **N**avigation (§3.1) |
 | **T** | Tier (§4) |
@@ -811,21 +818,252 @@ mis-tab **does** cost something today.
 
 ---
 
-## 7. The critically-run subset
+## 7. What runs when
 
-Marked ★ above. These are the scenarios `beacon` runs on its own schedule against the deployed
-estate; everything else is a CI suite. The rule for inclusion is beacon's own: **a journey is
-declared only if it exercises something, and a critical journey that would skip for ever must not
-be declared at all** (`beacon/src/estate.ts:5-22`).
+### 7.1 The continuously-run set
 
-So the ★ set is filtered twice. Of the ★ scenarios above, the ones that could be declared **today**
-are only those needing no sign-in surface and no missing UI:
+The scenarios `beacon` holds a browser open for, on its own schedule, against the deployed estate.
+The rule for inclusion is beacon's own: **a journey is declared only if it exercises something,
+and one that could only ever skip must not be declared at all** (`beacon/src/estate.ts:5-22`).
 
-| Declarable today | Blocked on §8 |
+Applied to the catalogue, that filters twice — once for value, once for whether it can run today.
+What survives is every scenario needing no sign-in surface and no missing UI:
+
+| BJ-SITE-02 | the front door says what is running |
 | --- | --- |
-| BJ-CRE-01, BJ-MKT-01, BJ-WLD-01, BJ-FOR-17, BJ-STA-01, BJ-STA-03, BJ-ADM-02, BJ-NET-06, BJ-NET-07, BJ-SITE-02, BJ-XS-11, and the fifteen `BJ-<KEY>-404` rows | every ★ scenario requiring a session — which is most of them, because §8.1 |
+| BJ-CRE-01 | the Create catalogue is browsable anonymously |
+| BJ-MKT-01 | the Market front door lists what the service returned |
+| BJ-WLD-01 | the Worlds registry renders its emptiness as a finding, not a spinner |
+| BJ-FOR-17 | the Foresight refusal list is readable without a token |
+| BJ-STA-01 | the status page states a verdict with its observation time |
+| BJ-STA-03 | the status page does not show green when its own feed is unavailable |
+| BJ-ADM-02 | the operator console shows nothing to an anonymous browser |
+| BJ-NET-06 | the faucet's numbers are the faucet's |
+| BJ-NET-07 | the faucet form is disabled when the faucet did not answer |
+| BJ-XS-11 | the same bundle resolves its hosts from the address bar |
+| `BJ-<KEY>-404` ×15 | every surface answers 404 for an address it does not own |
 
-That is the honest position and it is the same one `micro-beacon` already takes about the five
-money journeys. **Eleven browser journeys plus the fifteen 404 assertions can be declared and made
-to pass on the estate as it stands.** Declaring more would produce a gate that skips, and a gate
-that skips is a gate that gets switched off within a week.
+**Twenty-six checks.** Everything else in the catalogue is a CI suite until §8.1 is closed. That is
+the same position `micro-beacon` already takes about the five money journeys, and it is the safe
+one in both directions.
+
+### 7.2 The rest
+
+| Trigger | Runs |
+| --- | --- |
+| Any PR in a frontend repo | that surface's T1 and T2 scenarios |
+| Any PR in `ui` | every surface's T1 axe and visual-regression set — a design-system change is estate-wide by construction |
+| Any PR in a service repo | nothing browser-level. The service's own tests own its rules (§3) |
+| Nightly | the whole catalogue against the dev estate, sharded per §4.1 |
+| Release candidate | every ★ scenario. The candidate does not promote until they are green |
+
+---
+
+## 8. What no scenario can cover, because the functionality does not exist
+
+Forty-eight of the 318 scenarios are marked ⛔. They are specified rather than omitted, because a
+scenario that exists and cannot run is a gap somebody can close, and an absent scenario is a gap
+nobody can see. Each blocker below is a fact about the estate, not about this catalogue.
+
+### 8.1 Nothing in the estate serves a sign-in page
+
+**This is the largest blocker, and it blocks most of the ★ set.**
+
+- Every SPA's sign-in is `signInRedirect()`, which sends the browser to
+  `${accountUrl()}/login?return=…` (`ui/packages/ui/src/index.tsx:175-178`). `accountUrl()`
+  resolves the `account` surface (`surfaces.ts:499-514`).
+- **No repository in the working tree serves `/login`.** There is no `nimbus` directory among the
+  58, and a grep for a `/login` route across all `*/src` returns only beacon's and conformance's
+  *API* calls to `POST /auth/login`.
+- `micro-identity` renders no HTML at all. Its 34 routes are JSON (`identity/src/server.ts:618`
+  onward); the only `text/html` reference in the repository is a test asserting the shape of an
+  `accept` header (`identity/src/server.test.ts:894`).
+- The SSO callback compounds it: `consumeAuthCallback` posts the code to
+  `${nimbus}/auth/exchange` (`ui/packages/ui/src/index.tsx:225`). **`micro-identity` has no
+  `/auth/exchange` route** — it has `POST /auth/handoff` and `POST /auth/handoff/redeem`
+  (`identity/src/server.ts:1043`, `:1051`). The shared UI and the identity service do not agree on
+  the redemption route.
+
+So the whole of doc 05 §1.1 and journey 2 is unrunnable in a browser, and so is every scenario
+downstream of a session. `micro-beacon` can register and sign in over HTTP because it calls
+identity directly (`beacon/src/estate.ts:144-226`); a browser cannot, because there is no page.
+
+Two things have to land before BJ-ACC-01 can be written as code: a sign-in surface in the estate,
+and agreement between `@cloudsforge/ui` and `micro-identity` on the exchange route. The second is
+a defect independent of this catalogue and is worth raising on its own.
+
+### 8.2 There is no wallet write surface anywhere
+
+`hub-web/src/pages/wallet.tsx` contains no `<form>`, no `<button>`, no `onClick` and no mutation.
+The Wallet page reads three tiles of `/v1/dashboard` and renders them. Consequently:
+
+- **No Send flow.** 05 journey 4 — the flow with a policy gate, a fee quote, a confirmation step
+  and a settlement state machine — has no UI. BJ-WAL-08..15 and BJ-ADV-20 are all blocked on this
+  one absence.
+- **No Receive flow.** 05 §1.3's receive screen, with the address, the QR and the confirmation
+  policy, does not exist. BJ-WAL-16, BJ-WAL-17.
+- **No key-export ceremony.** 05 journey 5 — "the most security-sensitive flow in the programme",
+  ten stages, a 24-hour cooling-off and two MFA challenges — has no UI. BJ-WAL-18..20,
+  BJ-ADV-21, BJ-A11Y-14.
+- **No external-wallet connection.** 05 journey 6's challenge-nonce and per-scheme signature flow
+  has no UI. BJ-WAL-21, BJ-WAL-22.
+- **No MFA enrolment.** `micro-identity` serves six MFA routes (`identity/src/server.ts:1112-1222`)
+  and `hub-web/src/pages/security.tsx` renders `mfaEnabled` as a fact but offers no enrolment,
+  no recovery-code issue and no factor removal. BJ-ACC-15.
+
+**14 §11 names exactly two flows for keyboard-only traversal — the send flow and the export
+ceremony — and neither exists.** That is worth stating in those terms: the estate's own testing
+strategy specifies accessibility coverage of two flows it has not built.
+
+### 8.3 Product flows with a service but no screen
+
+| Flow | Service exists | Screen |
+| --- | --- | --- |
+| Studio brand kits, 05 §1.5 step 1 | `studio/src/` | none — no `studio-web`, and no `mint-web` page fetches it. BJ-CRE-10, BJ-XS-07 |
+| Joining a world and completing an objective, 05 journey 10 | `worlds/`, `nda/` | none. `worlds-web` is a registry and account surface; there is **no client for Ninety Days After** in the estate, though there is one for Emberkin and one for Aetherholm. BJ-WLD-08, BJ-XS-06 |
+| The developer sandbox, 05 journey 12 | `devplatform/` | `devportal-web` has keys, webhooks, OAuth, usage and organisations, and no sandbox screen. BJ-DEV-17 |
+
+### 8.4 Operator flows with no console screen
+
+`admin-web` has eight routes: overview, approvals, actions, audit, engagement, flags, broadcasts
+(`admin-web/src/app.tsx:46-114`). It has no withdrawals screen, no reconciliation screen, no
+moderation screen and no support-lookup screen. So:
+
+- 05 journey 13 (investigating a stuck withdrawal) — BJ-ADM-21.
+- 05 journey 14 (a reconciliation drift alert) — BJ-ADM-22.
+- 05 journey 15's operator half (moderating a fraudulent listing) — BJ-MKT-18.
+- 05 journey 16 (a support request about a balance) — BJ-ADM-23, BJ-XS-09.
+
+Note that 05 journey 13 itself says the equivalent today is reachable only by curl and "there is no
+UI for it" (05:411-413). That remains true.
+
+### 8.5 Community and governance have no surface at all
+
+`micro-community` is built and tested — proposals, votes, delegations, tally, gating, executions
+(`community/src/`). Nothing renders any of it. All seven BJ-COM scenarios are blocked, and so is
+05 §1.9 in its entirety.
+
+### 8.6 `notify` is not addressable from a browser
+
+`notify` has no entry in the surface registry, so `cloudsforgeHosts()` cannot produce a URL for it,
+and it is not one of hub-api's upstreams — which is why the notifications tile of every dashboard
+is permanently `unavailable` (`hub-web/src/pages/settings.tsx:15-24`). Doc 05 §1.12 and vision test
+8 (one set of notifications, one preference page) are therefore unrunnable. BJ-XS-08.
+
+### 8.7 The environment cannot serve a browser yet
+
+`deploy/compose/docker-compose.estate.yml` defines 22 domain services and **no frontend
+container**. There is no compose file anywhere in `deploy/` that serves `hub-web`, `site` or any
+other bundle, and `foresight`, `emberkin`, `aetherholm`, `faucet` and `beacon` are absent from the
+estate file too — though the gateway config already routes to `http://foresight:4021`
+(`deploy/gateway/dynamic/public-api.yml:193`), which is an upstream nothing brings up.
+
+Until a compose profile serves the bundles behind the gateway, **no T3 scenario can run at all**,
+including the eleven in §7.1. That is a smaller piece of work than §8.1 and it unblocks the most.
+
+### 8.8 Two fixtures the catalogue needs and the estate cannot yet produce
+
+- **A reorg** past the confirmation depth, for BJ-WAL-23 and BJ-WAL-24. 05:479 already makes a
+  simulated reorg a P5 exit criterion; the browser scenarios consume the same fixture.
+- **A `dashboard` response with each upstream individually failed.** This is the whole of BJ-DSH-02
+  through BJ-DSH-10 and it is why they are T1: `hub-api` has seven degradation tests of its own,
+  and the browser tier needs the *responses* those tests produce, captured as fixtures, not a live
+  estate with services stopped one at a time.
+
+---
+
+## 9. Corrections to documents 05 and 14
+
+### 9.1 14 §11, the bundle-boot row — corrected
+
+The row read: *"Already covered by Beacon's `surfaceJourney`, which asserts the body rendered more
+than 40 characters and collects console errors and failed requests"*, tool column "Beacon".
+
+Every factual clause in it is true — of the **frozen legacy repository**. `surfaceJourney` is at
+`stack/infra/beacon/src/journeys/web.js:19`; it asserts `text.trim().length > 40` at `:48-52`; it
+calls `assertClean` over collected console errors and failed requests at `:53`; and it drives
+`playwright-core` (`stack/infra/beacon/package.json:20`) through `stack/infra/beacon/src/browser.js`.
+Doc 14's own §8 attributes it to `journeys/web.js`, which is the correct relative path.
+
+**What was false was the word "Already".** `micro-beacon` declares six journeys, none of which
+opens a browser (`beacon/src/estate.ts:360-367`), and has no browser dependency
+(`beacon/package.json`). The row made one line of the frontend table read as done while nothing in
+the estate being built covers it. It has been rewritten to say so and to point here.
+
+### 9.2 14 §8's journey counts — dated, not wrong
+
+"It already runs **24 journeys** across eight files (2,018 lines) — 19 defined directly and 5
+through the `surfaceJourney` helper" reproduces exactly: eight journey files, 2,018 lines,
+3 `chain` + 2 `crucible` + 3 `game` + 3 `identity` + 1 `mint` + 4 `pay` + 2 `platform` + 6 `web`
+= 24. Every number checks out **against the frozen repository**. `micro-beacon` ships six. A note
+has been added; the figures are not changed, because they are correct about the thing they
+describe.
+
+### 9.3 05's surface table — three corrections
+
+`05:27-38` is the table this catalogue was built to extend, and three of its rows are wrong:
+
+1. **"Identity screens | `identity` (server-rendered) | Login, register, forgot, reset, consent"**
+   — false. `micro-identity` serves JSON only (§8.1). Nothing in the estate serves those screens.
+2. **The table predates five surfaces**: `foresight-web`, `foresight-admin-web`, `emberkin-web`,
+   `aetherholm-web` and `site`. Doc 05 lists ten surfaces; there are fifteen.
+3. **"Forge Create | `mint-web` → `mint`, `studio`"** — `mint-web` does not call `studio`. No page
+   in `mint-web/src/pages/` fetches a brand kit, and there is no studio surface (§8.3).
+
+### 9.4 05:560 — the journey inventory
+
+"24 journeys exist today in `infra/beacon/src/journeys/`" is accurate about the legacy path it
+names, and stale as a statement about the estate. A note has been added beside it.
+
+---
+
+## 10. The catalogue in numbers
+
+**318 numbered scenarios.** 303 in the tables above, plus the fifteen `BJ-<KEY>-404` rows (§5.1).
+The adversarial matrix expands: its 21 form rows are one scenario per applicable hazard, so the
+runnable case count is **373**.
+
+| By tier | | | By status | |
+| --- | ---: | --- | --- | ---: |
+| T1 — nothing up | 169 | | Runnable against the estate as built | 270 |
+| T2 — one surface | 47 | | ⛔ blocked on §8 | 48 |
+| T3 — the estate | 86 | | ★ release-gate | 119 |
+
+| Group | id | n | Doc 05 coverage |
+| --- | --- | ---: | --- |
+| Account and session | `BJ-ACC` | 16 | §1.1, J2, J21 |
+| Wallet and withdrawal | `BJ-WAL` | 24 | §1.2, §1.3, J3, J4, J5, J6, J17, J18 |
+| Dashboard, portfolio, activity | `BJ-DSH` | 23 | §1.4, §1.12, J19 |
+| Forge Create | `BJ-CRE` | 11 | §1.5, J7 |
+| Forge Market | `BJ-MKT` | 18 | §1.7, J8, J15 |
+| Forge Trade | `BJ-TRD` | 13 | §1.6, J9 |
+| Forge Worlds | `BJ-WLD` | 8 | §1.6, §1.8, J10 |
+| Emberkin | `BJ-EMB` | 14 | — (postdates 05) |
+| Aetherholm | `BJ-AET` | 12 | — (postdates 05) |
+| Foresight, player | `BJ-FOR` | 19 | — (postdates 05) |
+| Foresight, operator | `BJ-FADM` | 10 | — (postdates 05) |
+| Developer platform | `BJ-DEV` | 17 | §1.11, J12 |
+| Operator console | `BJ-ADM` | 23 | J13, J14, J15, J16, J20 |
+| Network, faucet, explorer | `BJ-NET` | 21 | §1.3, §1.8 |
+| Status | `BJ-STA` | 8 | — |
+| Marketing site | `BJ-SITE` | 8 | — |
+| Community and governance | `BJ-COM` | 7 | §1.9, J11 — all blocked |
+| Cross-surface | `BJ-XS` | 14 | Part 5's eleven tests |
+| Adversarial matrix | `BJ-ADV` | 23 → 78 | Part 4 |
+| Accessibility | `BJ-A11Y` | 14 | 14 §11 |
+| Per-surface 404 | `BJ-<KEY>-404` | 15 | — |
+
+**Every one of doc 05's twenty-one journeys appears.** Nine are fully covered by runnable
+scenarios (2, 8, 9, 10, 12, 15 partly, 19, 20 partly, and §1.4/§1.12's readable halves); the
+remainder are specified and blocked, and §8 says on what.
+
+### 10.1 Where to look for one thing
+
+| Looking for | Read |
+| --- | --- |
+| everything that touches **withdrawal** | §6.2 (BJ-WAL-05, 08-15, 18), BJ-ADM-21, BJ-ADV-20, BJ-A11Y-13 |
+| everything that touches **key material** | BJ-WAL-02, BJ-WAL-18..20, BJ-DEV-05..08, BJ-DEV-10, BJ-DEV-14, BJ-ADV-21, BJ-A11Y-04, BJ-A11Y-14 |
+| everything that **commits money** | §6.19's fifteen forms |
+| every **degradation** assertion | BJ-DSH-02..10, BJ-ACC-14, BJ-MKT-02, BJ-ADM-18, BJ-STA-03, BJ-NET-07, BJ-EMB-10 |
+| every **idempotency** assertion | BJ-MKT-04..06, BJ-CRE-07, BJ-TRD-07, BJ-EMB-02, BJ-AET-07, BJ-ADM-20, BJ-DEV-11, BJ-NET-10, and every H1 in §6.19 |
+| every **irreversible** moment | BJ-DEV-05..07, BJ-DEV-10, BJ-DEV-14, BJ-ADM-06..08, BJ-FADM-07..09, BJ-WAL-18 |
