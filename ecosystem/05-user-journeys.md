@@ -24,11 +24,19 @@ cited so the delta is checkable rather than asserted.
 
 The surfaces a user can be on:
 
+> **This table is out of date in three ways, corrected in
+> [22-browser-journeys.md](22-browser-journeys.md) §5 and §9.3 against the working tree.**
+> (1) There are **fifteen** frontend surfaces, not ten: it predates `foresight-web`,
+> `foresight-admin-web`, `emberkin-web`, `aetherholm-web` and `site`. (2) The identity row is
+> **false** — `micro-identity` serves JSON only and renders no HTML, and **no repository in the
+> estate serves a sign-in page**. (3) `mint-web` does not call `studio`; there is no studio
+> surface. The rest of this document's journeys stand; the surfaces they name have moved.
+
 | Surface | Repo | What it is |
 | --- | --- | --- |
 | Forge Hub | `hub-web` + `hub-api` | Dashboard, portfolio, wallet, activity, settings, security |
-| Identity screens | `identity` (server-rendered) | Login, register, forgot, reset, consent — nothing else |
-| Forge Create | `mint-web` → `mint`, `studio` | Brand kits, token launch, project pages |
+| ~~Identity screens~~ | ~~`identity` (server-rendered)~~ | **Does not exist.** Every SPA redirects to `account.<apex>/login` and nothing in the estate answers there |
+| Forge Create | `mint-web` → `mint`~~, `studio`~~ | Token launch, project pages. No `mint-web` page fetches a brand kit |
 | Forge Market | `market-web` → `market` | Discovery, listings, offers, orders |
 | Forge Trade | `trade-web` → `trade` | Backtests, strategies, paper and live bots |
 | Forge Worlds | `worlds-web` → `worlds`, `nda` | The game platform and its first title |
@@ -557,7 +565,11 @@ can be run**, not by an assertion in a document. Each row names the Beacon journ
 | 10 | One financial source of truth that reconciles | Journey 14: trial balance exactly zero, continuously, plus a reconciliation run per asset per chain against indexer-observed holdings | `money.trial-balance`, `money.reconciliation` (new, P4/P7) | P7 |
 | 11 | A third party can build on all of it | Journey 12: a third party builds a working integration against the sandbox using only public documentation | `dev.sandbox-integration` (new, P11) | P11 |
 
-**How the journey set grows.** 24 journeys exist today in `infra/beacon/src/journeys/` —
+**How the journey set grows.** *(Dated. The count below is the **legacy** Beacon's and it
+reproduces exactly; `micro-beacon` ships six, and states at `beacon/src/estate.ts:5-22` why it
+declines to declare the rest. The browser-level successor to the six `web.*` page checks is
+specified in [22-browser-journeys.md](22-browser-journeys.md).)* 24 journeys exist today in
+`infra/beacon/src/journeys/` —
 three `identity.*`, four `pay.*`, one `mint.*`, two `crucible.*`, three `game.*`, three
 `chain.*`, two `platform.*` and six `web.*` page checks. P0 takes them to ~45 by covering every
 money route and the full deposit → convert → spend → withdraw loop on testnet. Every phase after
