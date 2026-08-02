@@ -725,3 +725,107 @@ suite, because none of them happens on one surface.*
 | BJ-XS-12 | An unknown subdomain prefix is left alone | a preview deployment at `pr-42.example.dev` is its own apex and its sign-in redirect does not go somewhere that does not exist (`ui/packages/ui/src/index.tsx:144-147`) | C | T1 | — |
 | BJ-XS-13 ★ | Explorer deep links from Hub and Market | a transaction link from a wallet row and from an order both land on the explorer's two-segment scope path and render the transaction | N | T3 | hub-api, market, indexer |
 | BJ-XS-14 | A Worlds title page links to its Market listings and back | both directions resolve | N | T3 | worlds, market |
+
+---
+
+### 6.19 Group S — the adversarial matrix
+*Doc 05's Part 4 is the strongest section of that document and the weakest part of most browser
+suites. This group is a **matrix**, not a list: six hazards applied to every form in the estate
+that commits something.*
+
+#### The hazards
+
+| # | Hazard | The assertion, in general |
+| --- | --- | --- |
+| H1 | **Double-submit** — the commit control is pressed twice before the first response | exactly one effect. The idempotency key is minted when the intent forms, not per fetch |
+| H2 | **Back-button after a confirmation** | the previous step does not re-arm a second commit against a settled intent |
+| H3 | **Two tabs, one intent** | exactly one effect; the losing tab renders the refusal or the replay in words, never a stack trace |
+| H4 | **The request fails after the optimistic UI moved** | the UI reverts to the server's state with a stated reason. A screen left showing the optimistic value is the failure |
+| H5 | **Session expires mid-flow** | the re-authentication path, with the form's data preserved where it can be, and **no stale data left rendered as current** |
+| H6 | **The upstream is degraded, not down** — slow, or 503 with a retry-after | the control is disabled with the reason, rather than left clickable into a service that will not answer |
+
+#### The forms
+
+Every one below was found by grepping for `<form`, `onSubmit` and `useMutation` across the fifteen
+bundles. **Fifteen commit points exist in the estate today.** None of them is a withdrawal.
+
+| id | Form | Repo | Hazards that apply | T | Needs |
+| --- | --- | --- | --- | --- | --- |
+| BJ-ADV-01 ★ | Buy / bid / offer | `market-web/src/pages/listing.tsx` | H1 H2 H3 H4 H5 H6 | T1 (H1-H4), T3 (H5) | market |
+| BJ-ADV-02 | Create listing, then activate | `market-web/src/pages/sell.tsx` | H1 H3 H4 H6 | T1 | — |
+| BJ-ADV-03 | Open a dispute | `market-web/src/pages/orders.tsx` | H1 H2 H4 | T1 | — |
+| BJ-ADV-04 | Launch order | `mint-web/src/pages/launch.tsx` | H1 H4 H5 | T1 | — |
+| BJ-ADV-05 ★ | Pay, then deploy | `mint-web/src/pages/token.tsx` | H1 H2 H3 H4 H6 | T1 | — |
+| BJ-ADV-06 | Queue a backtest | `trade-web/src/pages/new-backtest.tsx` | H1 H2 | T1 | — |
+| BJ-ADV-07 | Create a bot | `trade-web/src/pages/new-bot.tsx` | H1 H4 | T1 | — |
+| BJ-ADV-08 ★ | Bot actions: start, pause, stop | `trade-web/src/pages/bot.tsx` | H1 H3 H4 H6 | T1 | — |
+| BJ-ADV-09 | List an inventory item | `worlds-web/src/pages/inventory.tsx` | H1 H4 | T1 | — |
+| BJ-ADV-10 ★ | Issue a key / register a webhook / rotate a secret / register an OAuth client | `devportal-web` (4 forms) | H1 H2 H3 H4 H5 | T1 | — |
+| BJ-ADV-11 ★ | Stake | `foresight-web/src/components/stakepanel.tsx` | H1 H2 H4 H6 | T1 | — |
+| BJ-ADV-12 ★ | Approve / reject an approval request | `admin-web/src/pages/approval.tsx` | H1 H2 H3 H4 H5 | T1 | — |
+| BJ-ADV-13 ★ | Resolve / void / deploy / open a market | `foresight-admin-web/src/pages/market.tsx` | H1 H2 H3 H4 | T1 | — |
+| BJ-ADV-14 | Approve / discard / edit an idea | `foresight-admin-web/src/pages/queue.tsx` | H1 H4 | T1 | — |
+| BJ-ADV-15 | Set a flag / publish a broadcast / lower an engagement policy | `admin-web` (3 forms) | H1 H2 H4 | T1 | — |
+| BJ-ADV-16 | Launch a fleet / claim an island / found or join an alliance / queue a building | `aetherholm-web` (5 forms) | H1 H3 H4 H6 | T1 | — |
+| BJ-ADV-17 | Submit a battle / equip a cosmetic | `emberkin-web` (2 forms) | H1 H4 | T1 | — |
+| BJ-ADV-18 ★ | Request a drip | `network-site/src/pages/faucet.tsx` | H1 H2 H6 | T1 | — |
+| BJ-ADV-19 | Revoke one session / revoke all | `hub-web/src/pages/security.tsx` | H1 H3 H5 | T1 | — |
+| BJ-ADV-20 ⛔★ | **Send** | does not exist | H1 H2 H3 H4 H5 H6 — all six | T1 | no UI (§8.2) |
+| BJ-ADV-21 ⛔★ | **Key export** | does not exist | H1 H2 H3 H5 — and H2 is the dangerous one: a back-button that re-arms a reveal | T1 | no UI (§8.2) |
+
+Each row expands to one scenario per applicable hazard, which is the arithmetic behind the count
+in §10. BJ-ADV-01's six hazards are six scenarios: `BJ-ADV-01-H1` … `BJ-ADV-01-H6`.
+
+#### Two hazards that are not in the matrix, because they are page-level
+
+| id | Scenario | The assertion that fails if it breaks | A | T | Needs |
+| --- | --- | --- | --- | --- | --- |
+| BJ-ADV-22 ★ | **Degraded, not down**: every read page with each upstream answering slowly rather than failing | the page paints inside its deadline with the slow tile marked pending, and no request is left hanging past the client deadline | P | T1 | — |
+| BJ-ADV-23 ★ | **A request id is offered on every failure** | every failure state in every bundle that has one renders the request id to quote to support (the pattern in `hub-web/src/pages/security.tsx:288-291`) | P | T1 | — |
+
+---
+
+### 6.20 Group T — accessibility, as scenarios
+
+14 §11 asks for axe on every route and every modal, failing on any serious or critical violation,
+plus keyboard-only traversal of the send flow and the export ceremony. Neither of those two flows
+exists (§8.2), so the keyboard scenarios are written against the four places in the estate where a
+mis-tab **does** cost something today.
+
+| id | Scenario | The assertion that fails if it breaks | A | T | Needs |
+| --- | --- | --- | --- | --- | --- |
+| BJ-A11Y-01 ★ | axe on **every route of every surface** — the ~80 addresses in §5, driven from each repo's own `ROUTES` module | zero serious or critical violations | P | T2 | the surface |
+| BJ-A11Y-02 ★ | axe on every **modal and every confirmation panel** | zero serious or critical violations, with the dialog open and focus inside it | P | T1 | — |
+| BJ-A11Y-03 ★ | axe on every **failure and degraded state** | a degraded tile is still announced; an error is not colour-only | P | T1 | — |
+| BJ-A11Y-04 ★ | **Keyboard-only: the once-modal** (`devportal-web`) | focus moves into the dialog on mount, `Tab` cycles within it and never escapes to the page behind, and the acknowledgement is reachable and operable by keyboard alone. This is the estate's one irreversible reveal, so it is the send flow's stand-in | P | T1 | — |
+| BJ-A11Y-05 ★ | **Keyboard-only: the irreversible-action gate** (`admin-web`, and the same component in `foresight-admin-web`) | the whole sequence — consequences, audit preview, facts, rationale, phrase, commit — is traversable and completable with the keyboard, and the commit control is not reachable before the phrase field is satisfied | P | T1 | — |
+| BJ-A11Y-06 ★ | **Keyboard-only: the stake panel** (`foresight-web`) | outcome selection, amount, and the commit are all keyboard-operable, and the house-seed disclosure precedes the form in **tab order**, not only visually | P | T1 | — |
+| BJ-A11Y-07 | **Keyboard-only: the faucet form** | address field and submit reachable; the disabled state when the faucet did not answer is announced, not merely styled | P | T1 | — |
+| BJ-A11Y-08 ★ | Every chart has its table view | the table is reachable by keyboard and carries the same numbers. 14 §11 makes it both the accessibility fallback and the export path | P | T1 | — |
+| BJ-A11Y-09 ★ | The house-seed panel is a live region | `role="status"` normally and `role="alert"` when symmetry fails, so a screen-reader user is told either way (`foresight-web/src/components/houseseed.tsx:50-56`) | P | T1 | — |
+| BJ-A11Y-10 | Colour is never the only channel | every switcher entry, every state chip and every tone badge carries a glyph or a word as well as a colour | P | T1 | — |
+| BJ-A11Y-11 | Reduced motion is honoured | `emberkin-web`'s battle animation, and any chart transition, respect `prefers-reduced-motion` | P | T1 | — |
+| BJ-A11Y-12 | Skip-to-content and landmark structure on every surface | one `main` landmark, a reachable skip link, and a heading order with no level skipped | P | T1 | — |
+| BJ-A11Y-13 ⛔★ | **Keyboard-only: the send flow** | 14 §11's named requirement | P | T1 | no UI (§8.2) |
+| BJ-A11Y-14 ⛔★ | **Keyboard-only: the export ceremony** | 14 §11's named requirement | P | T1 | no UI (§8.2) |
+
+---
+
+## 7. The critically-run subset
+
+Marked ★ above. These are the scenarios `beacon` runs on its own schedule against the deployed
+estate; everything else is a CI suite. The rule for inclusion is beacon's own: **a journey is
+declared only if it exercises something, and a critical journey that would skip for ever must not
+be declared at all** (`beacon/src/estate.ts:5-22`).
+
+So the ★ set is filtered twice. Of the ★ scenarios above, the ones that could be declared **today**
+are only those needing no sign-in surface and no missing UI:
+
+| Declarable today | Blocked on §8 |
+| --- | --- |
+| BJ-CRE-01, BJ-MKT-01, BJ-WLD-01, BJ-FOR-17, BJ-STA-01, BJ-STA-03, BJ-ADM-02, BJ-NET-06, BJ-NET-07, BJ-SITE-02, BJ-XS-11, and the fifteen `BJ-<KEY>-404` rows | every ★ scenario requiring a session — which is most of them, because §8.1 |
+
+That is the honest position and it is the same one `micro-beacon` already takes about the five
+money journeys. **Eleven browser journeys plus the fifteen 404 assertions can be declared and made
+to pass on the estate as it stands.** Declaring more would produce a gate that skips, and a gate
+that skips is a gate that gets switched off within a week.
