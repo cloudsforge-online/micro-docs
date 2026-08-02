@@ -176,9 +176,18 @@ What is genuinely left is not repositories:
 - **The bootstrap.** No route grants `admin` (§3.3g, deliberate); a fresh deployment has no
   operator until a manual database update, and nothing documents that as a deploy step yet.
 - **The open findings below**, each recorded in its own subsection with what would close it.
-- **Aetherholm** ([20-aetherholm.md](20-aetherholm.md)) — the third Worlds title, designed and in
-  build; three repositories, target set 52 → 55. Phase 1 closes the title-contract gap this
-  document records (no title serves `GET /v1/title` or `POST /v1/provision`).
+- **Aetherholm** ([20-aetherholm.md](20-aetherholm.md)) — the third Worlds title. The service is
+  complete through phase 2 (title contract, fleets, battles, sealing — the title-contract gap this
+  document recorded is closed, and heraldry now lands on the shared profile); the client and the
+  art run remain, target set 52 → 55.
+- **The Engagement Treasury** ([21-engagement-treasury.md](21-engagement-treasury.md)) — the
+  answer to every empty room's cold start: a disclosed, ledger-native platform bucket funded by
+  the platform's own published miners (the consensus carve-out was considered and refused — it
+  would quietly outgrow the "no premine" copy), spent as symmetric at-open-only house seeds in
+  Foresight, subsidies and bounties in Market, season budgets in the titles, and free first
+  experiments in Trade — never as ghost demand. Operator-controlled through three approval-gated
+  admin actions with caps in the schema. Build order in its §8; nothing may move before the caps
+  exist.
 - **One registry footnote:** `faucet`'s row carries `devPort: 3003`, which is *correct by the
   field's contract* — a `basePath` surface's devPort names the host it rides on (`network`), and
   the co-hosting is declared in `CO_HOSTED`. The gap is that no field names where `micro-faucet`
