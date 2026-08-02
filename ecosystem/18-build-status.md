@@ -885,14 +885,30 @@ Found along the way, recorded rather than fixed here: `wallet:provision` and `no
 registered scopes **no gate demands** — the wallet gates on `wallet:write`/`wallet:money` and
 notify's inbox went MAC-only in §3.3p (its dead `notify:ingest` constant is deleted in
 micro-notify rather than registered or exempted); `nda:read`, `emberkin:read` and
-`community:read` are scope constants no gate uses; and **eight** service repositories (`beacon`,
-`hub-api`, `mint`, `settlement`, `studio`, `wallet`, `worlds`, `web-template`) still carry the
-"TEMPORARY" bespoke CI files, so the checker does not run for them until they migrate to the
-reusable workflow — their demands were derived by running the checker locally and are registered
-all the same. This sentence said *ten* until 2026-08-03 and named two repositories that do not
-belong: `service-template` has already migrated (`service-template/.github/workflows/ci.yml:59`
-calls `cloudsforge-online/micro-org/.github/workflows/service-ci.yml@main`), and `hearth` is the
-legacy repository, not a `micro-` repo at all. One precision defect in the compat checker
+`community:read` are scope constants no gate uses. The bespoke-CI gap is **closed as of
+2026-08-03**: all nine remaining repositories (`service-template`, `beacon`, `hub-api`, `mint`,
+`settlement`, `studio`, `wallet`, `worlds`, `web-template`) now call a reusable workflow and are
+green, so the checker runs everywhere it can — beacon 3 scopes, wallet 3, worlds 4,
+mint/settlement/studio 2 each, `service-template` 2 exempted, and hub-api a *checked* zero.
+`hearth` is deliberately excluded and keeps its bespoke CI: its remote is
+`cloudsforge-online/hearth`, it is a Rust/Node blockchain with no `src/`, no `@cloudsforge/*`
+dependency, no `/livez` and **zero scope gates**, so the reusable workflow cannot apply and the
+audit would assert nothing there.
+
+Enforcing the audit is what found the defects, which is the point of enforcing it:
+
+- **`service-template`'s image could never boot**, and every repository cut from the template
+  inherited that. Its Dockerfile's final stage copied `/runtime` but not `/contracts`, while
+  `node_modules/@cloudsforge/contracts-events` is a `link:` symlink into
+  `/contracts/packages/events` that `index.ts → jobs.ts → outbox.ts` imports. The old `docker`
+  job built the image and read its metadata **without ever running it** — a check that could not
+  fail. It now boots and answers `/livez` in two seconds.
+- **`web-ci.yml` had zero callers** across the estate and was not merely waiting for adoption:
+  it did one checkout, while all 13 frontends use `link:../ui/packages/ui`, so `Typecheck` could
+  never have resolved `@cloudsforge/ui`. This is the same defect `service-ci.yml` had already
+  been fixed for.
+- **`service-ci.yml` read `testsupport.ts` as source in rule 1 while the scope audit in the same
+  file skips it** — one file, three readings, and the inconsistent one failed correct work. One precision defect in the compat checker
 surfaced and was fixed both directions (org `1279280`): regrouping the registry's keys
 reordered every union derived from `keyof typeof SCOPES`, and a union is a set — six
 semantically identical signatures read as breaking until member order was canonicalised away,
