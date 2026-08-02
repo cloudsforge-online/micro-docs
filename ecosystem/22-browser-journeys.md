@@ -391,3 +391,174 @@ it is the single richest T1 group in the catalogue.*
 | BJ-DSH-21 | Access page: entitlements and subscriptions in one panel | `active` and `confersAccess` are rendered as billing sent them; no date on the page is recomputed into a flag by the browser's clock (`hub-web/src/pages/entitlements.tsx:9-16`) | P | T1 | — |
 | BJ-DSH-22 ★ | Search: a query matching nothing in the fetched page | the result says "showing matches from your recent history", **not "no results"** — `truncated` must be rendered, because a search that answers nothing when it means nothing-in-the-last-hundred has told the reader their transaction does not exist (`hub-web/src/pages/search.tsx:6-15`) | P | T1 | — |
 | BJ-DSH-23 | Search with one of the four groups unavailable | that group degrades alone and the other three return results | P | T1 | — |
+
+---
+
+### 6.4 Group D — Forge Create
+*Doc 05 §1.5, journey 7. Surface: `mint-web`.*
+
+| id | Scenario | The assertion that fails if it breaks | A | T | Needs |
+| --- | --- | --- | --- | --- | --- |
+| BJ-CRE-01 ★ | Anonymous visitor opens the catalogue | the catalogue renders one entry per entry in `GET /v1/catalogue` with its cost, **without a sign-in prompt** — the handler takes no principal and a catalogue behind a token cannot be browsed (`mint-web/src/pages/catalogue.tsx:4-6`) | P | T2 | mint |
+| BJ-CRE-02 | Launch form: it opens an order and charges nothing | the sentence saying so is **above** the button. A form taking a wallet id and an owner address looks exactly like one about to spend money (`mint-web/src/pages/launch.tsx:4-6`) | P | T1 | — |
+| BJ-CRE-03 ★ | Launch → `POST /v1/tokens` → the order page | the browser lands on the order, and the order state rendered is the state in the response | N | T3 | mint, identity |
+| BJ-CRE-04 ★ | Press Deploy | the page renders **"accepted", never "deployed"**. `POST /v1/tokens/:id/deploy` answers 202 and a status URL; a screen that says deployed because a button returned tells a customer their contract exists at a moment when nothing has been broadcast (`mint-web/src/pages/token.tsx:12-23`) | P | T3 | mint |
+| BJ-CRE-05 | The truth arrives by re-reading the order, not by the button's response | after the deploy job completes, a reload shows the deployed state and the chain facts | P | T3 | mint, indexer |
+| BJ-CRE-06 | Buttons offered from the order's own state | on an order that is not `awaiting_payment`, there is **no pay button**; on one that is not `CLAIMABLE`, no deploy button. A button that will answer 409 has told the customer something false about what is possible (`token.tsx:25-29`) | P | T1 | — |
+| BJ-CRE-07 | Pay twice under one intent | the second press replays: 200 rather than a second charge, and the page does not render `replayed` as an error | C | T1 | — |
+| BJ-CRE-08 | Your launches list is capped at 100 with no cursor | the list **says it is capped** rather than offering a "next" button that cannot work (`mint-web/src/pages/tokens.tsx`) | P | T1 | — |
+| BJ-CRE-09 | Public project page, no account | it renders for anybody with the address; a project page nobody can read without an account cannot do the one job it has (`mint-web/src/pages/project.tsx:3-6`) | P | T2 | mint |
+| BJ-CRE-10 ⛔ | The ten-step launch flow of 05 journey 7 (brand kit → … → publish to Market → create a community) | each step is reachable from the previous one | N | T3 | only five of the ten steps have UI (§8.3) |
+| BJ-CRE-11 | Mainnet is closed by default | the mainnet option is not offered as available; the allowlist refusal is rendered in words, not as a bare disabled control | P | T2 | mint |
+
+---
+
+### 6.5 Group E — Forge Market
+*Doc 05 §1.7, journeys 8 and 15. Surface: `market-web`.*
+
+| id | Scenario | The assertion that fails if it breaks | A | T | Needs |
+| --- | --- | --- | --- | --- | --- |
+| BJ-MKT-01 ★ | Browse, anonymous | one card per listing in `GET /v1/listings`; the filter set offered is exactly the four the route reads, and there is **no search box** — the route reads no text query, and a box that filtered fifty rows client-side would imply an index that is not there (`market-web/src/pages/browse.tsx:3-6`) | P | T2 | market |
+| BJ-MKT-02 ★ | One listing: four independent reads | with the risk call failing, the listing still renders and is still buyable; the page names what is missing rather than showing less and saying nothing (`market-web/src/pages/listing.tsx:12-15`) | P | T1 | — |
+| BJ-MKT-03 ★ | Buy: the price breakdown before the button | platform fee and royalty split in bps are on screen before confirmation, and the total submitted equals the total shown | C | T3 | market, ledger |
+| BJ-MKT-04 ★ | **Double-click Buy** | exactly one order. The `Idempotency-Key` is minted when the intent is formed and reused for every retry of that intent; a key minted per fetch means two clicks are two orders (`market-web/src/lib/idempotency.ts:12-16`) | C | T1 | — |
+| BJ-MKT-05 | Buy: the service replays under the same key | the page reads back the **first** order and does not render `replayed: true` as an error (`idempotency.ts:17-19`) | P | T1 | — |
+| BJ-MKT-06 | Buy: the same key with a different body → 409 `idempotency_key_reused` | this **is** rendered as an error, because it means the client sent two intents under one key — a bug here, not a fault the user can fix (`idempotency.ts:21-24`) | P | T1 | — |
+| BJ-MKT-07 | Back-button after a confirmed purchase | the previous step does not re-arm a second submit against the settled intent | N | T1 | — |
+| BJ-MKT-08 | Two tabs, one listing, both press Buy | exactly one order exists afterwards, and the losing tab shows the reservation refusal in words. The reservation is the lock (05:343) | C | T3 | market, ledger |
+| BJ-MKT-09 ★ | Sell: create an `onchain` listing, then activate it, with the indexer **unavailable** | the page says "we could not confirm — wait", the 503 wording (`market-web/src/pages/sell.tsx:7-18`) | P | T1 | — |
+| BJ-MKT-10 ★ | Same, but the index answers and the escrow is not confirmed (409 `state_conflict`) | a **different sentence, tone and suggested action** from BJ-MKT-09. The estate has already spent a release on a client that reported the two as one | P | T1 | — |
+| BJ-MKT-11 | Sell: your own drafts are visible to you and to nobody else | the draft rows render on `/sell` and are absent from an anonymous `/` | P | T2 | market |
+| BJ-MKT-12 | Orders: raise a dispute | the confirmation names the two facts that **are** visible to the parties — proceeds still held, listing frozen — and says plainly that the dispute's own state is not readable here. It must not invent a status (`market-web/src/pages/orders.tsx:7-18`) | P | T3 | market |
+| BJ-MKT-13 | Orders: re-opening the page after a dispute | the page does **not** re-POST under the old key to scrape the stored response — a write dressed up as a read (`orders.tsx:16-18`) | C | T1 | — |
+| BJ-MKT-14 | Collections index and one collection | both render anonymously; a collection behind a sign-in is a shopfront nobody can link to (`market-web/src/pages/collections.tsx:4-5`) | P | T2 | market |
+| BJ-MKT-15 | Fees page | it makes **no request and cannot fail**, and it says the figures are the platform's stated position rather than the rate charged on any given sale (`market-web/src/pages/fees.tsx:3-8`) | P | T1 | — |
+| BJ-MKT-16 | An auction listing with a leading bid | the leading-bid caveat is rendered beside the figure, not omitted | P | T1 | — |
+| BJ-MKT-17 | A moderated (taken-down) listing | the moderation notice renders and the buy control is not offered; 05 journey 15's user-facing half | P | T1 | — |
+| BJ-MKT-18 ⛔ | 05 journey 15 operator half: moderate a fraudulent listing with computed risk indicators | the indicators are shown as **facts, never as an editorial score** | P | T3 | no moderation UI in `admin-web` (§8.4) |
+
+---
+
+### 6.6 Group F — Forge Trade
+*Doc 05 §1.6, journey 9. Surface: `trade-web`.*
+
+| id | Scenario | The assertion that fails if it breaks | A | T | Needs |
+| --- | --- | --- | --- | --- | --- |
+| BJ-TRD-01 | Strategy catalogue, anonymous | it renders without a sign-in prompt; `GET /v1/strategies` makes no `authenticate()` call and a product's front page is where a signed-out visitor arrives (`trade-web/src/pages/strategies.tsx:3-6`) | P | T2 | trade |
+| BJ-TRD-02 ★ | Queue a backtest | the browser navigates to the **status page**, and the page says the run has not happened. `POST /v1/backtests` answers 202 (`trade-web/src/pages/new-backtest.tsx:3-6`) | N | T3 | trade |
+| BJ-TRD-03 | Backtest status → report once complete | the report replaces the status only when the run reports complete, never on the 202 | P | T3 | trade |
+| BJ-TRD-04 | Another customer's backtest id | the not-found screen, not a permission error — a 404 is the same answer as "no such run", so ids cannot be enumerated (`trade-web/src/pages/backtest.tsx:3-4`) | N | T3 | trade |
+| BJ-TRD-05 | `/backtests/new` is routed before `/backtests/:id` | opening `/backtests/new` renders the form, not a detail view for an id called "new" (`trade-web/src/app.tsx:52-53`) | N | T2 | trade |
+| BJ-TRD-06 ★ | Create a bot | it is created as a **draft**: the page states that nothing is reserved and nothing trades until start | P | T3 | trade |
+| BJ-TRD-07 | Create the same bot twice under one intent | 200 on the replay, not a second bot | C | T1 | — |
+| BJ-TRD-08 ★ | A **stopped** bot | there is **no start button**, and the page says why. Stop is terminal (`trade-web/src/pages/bot.tsx:20-22`) | P | T1 | — |
+| BJ-TRD-09 ★ | A live bot started while the deployment kill switch is off | the button **is** offered and the 409 refusal is rendered in full. Hiding it would remove a feature nobody could file a bug against (`bot.tsx:23-28`) | P | T1 | — |
+| BJ-TRD-10 | Pause a running bot | the page says pause is **not** a flatten and the position stays open, and the equity figure is labelled a mark from the last tick (`bot.tsx:30-33`) | P | T1 | — |
+| BJ-TRD-11 | Bot list equity column | labelled a mark, not a settlement | P | T1 | — |
+| BJ-TRD-12 | Fee settlements panel | one row per settlement and no duplicate settlement id — 05 journey 9's double-billing defect, asserted as presentation against the response | P | T3 | trade, billing |
+| BJ-TRD-13 | Another customer's bot id | the not-found screen (owner-scoped 404) | N | T3 | trade |
+
+---
+
+### 6.7 Group G — Forge Worlds
+*Doc 05 §1.6, §1.8, journey 10. Surface: `worlds-web`.*
+
+| id | Scenario | The assertion that fails if it breaks | A | T | Needs |
+| --- | --- | --- | --- | --- | --- |
+| BJ-WLD-01 ★ | The platform index with an **empty** title registry | it renders as a stated finding with citations — **never a spinner, a skeleton or an empty state implying something is on its way**. `{"titles":[]}` is a 200 and a true answer (`worlds-web/src/pages/platform.tsx:19-24`) | P | T2 | worlds |
+| BJ-WLD-02 | The index is not two game cards | the page opens with what the platform owns; the registry is a section within it (`platform.tsx:5-17`) | P | T1 | — |
+| BJ-WLD-03 ★ | Inventory: a `bound` item | **no sell control at all — not a disabled one.** A disabled button reads as "not yet, ask somebody", and this is never (`worlds-web/src/pages/inventory.tsx:16-20`) | P | T1 | — |
+| BJ-WLD-04 | Inventory: an unbound item | the sell control is offered, and the sentence beside the item describes what it **is** and where it may go — never as an advantage (`inventory.tsx:21-23`) | P | T1 | — |
+| BJ-WLD-05 ★ | Entitlements: an `unsupported` provision | the service's **own sentence, verbatim** (`provisions.last_error`), the word **UNDELIVERABLE** rather than "failed", a pointer to a refund, and **no retry control, not even a disabled one** — the retry route demands admin and could only 403 (`worlds-web/src/pages/entitlements.tsx:12-20`) | P | T3 | worlds |
+| BJ-WLD-06 | Player profile is `null` | rendered as **a new player** — not an error and not a loading state (`worlds-web/src/pages/player.tsx:4-6`) | P | T1 | — |
+| BJ-WLD-07 | A title page, anonymous | achievements and seasons render with no sign-in prompt; both routes are public (`worlds-web/src/pages/title.tsx:3-8`) | P | T2 | worlds |
+| BJ-WLD-08 ⛔ | 05 journey 10: join a world, claim a homestead, complete an objective, see the reward in the Hub portfolio | the reward is visible in Hub **and** spendable in Market — the "one internal economy" test (05:553) | P | T3 | no join/objective UI (§8.3) |
+
+---
+
+### 6.8 Group H — Emberkin
+*A Forge Worlds title, not a sixth product (`ui/packages/ui/src/surfaces.ts:397-420`). Doc 05
+predates it entirely.*
+
+| id | Scenario | The assertion that fails if it breaks | A | T | Needs |
+| --- | --- | --- | --- | --- | --- |
+| BJ-EMB-01 ★ | Play: compose turns, submit the battle | the client posts **an intent** — an enemy and a list of turns — with an Idempotency-Key, and animates the log that came back. The browser must not compute an outcome (`emberkin-web/src/pages/play.tsx:5-11`) | C | T3 | emberkin |
+| BJ-EMB-02 ★ | Play: submit the same battle twice | one battle recorded; the second is a replay | C | T1 | — |
+| BJ-EMB-03 | Play: the whole battle is submitted at once | the screen does not fake an interactive round trip it cannot make (`play.tsx:15-17`) | P | T1 | — |
+| BJ-EMB-04 | Play with WebGL unavailable | the page degrades to the non-WebGL path rather than blanking; `webglAvailable` is asked from its own module so the question does not statically import the renderer (`play.tsx:37-38`) | P | T1 | — |
+| BJ-EMB-05 | Play with reduced motion preferred | the animation honours the preference | P | T1 | — |
+| BJ-EMB-06 | Party: six Kin with Resonance, Temperament and Sync | each meter has its **effect written next to it**; a bar with no caption is not identity (`emberkin-web/src/pages/party.tsx:4-7`) | P | T1 | — |
+| BJ-EMB-07 | Party is not editable | **no reorder, rename or move-to-box controls, and no disabled ones** — the page says so once rather than growing five dead buttons (`party.tsx:9-12`) | P | T1 | — |
+| BJ-EMB-08 | Satchel is read-only, and says why | items are described as spendable **inside a battle**; there is no "use" button with nowhere to send the request (`emberkin-web/src/pages/satchel.tsx:3-11`) | P | T1 | — |
+| BJ-EMB-09 ★ | Wardrobe: the cosmetics claim | "none of this changes a number" appears in the lede, under **every** item, and beside the season pass. A shop that hedges is a shop that expects to be asked (`emberkin-web/src/pages/wardrobe.tsx:5-15`) | P | T1 | — |
+| BJ-EMB-10 ★ | Wardrobe: billing did not answer vs billing answered empty | **two different screens.** "We could not check what you own", with a request id, must never render as "you own no cosmetics yet" — a player who bought something yesterday will read it as a theft (`wardrobe.tsx:17-22`) | P | T1 | — |
+| BJ-EMB-11 | Equip a cosmetic | the applied item changes no stat anywhere on the page | P | T3 | emberkin, billing |
+| BJ-EMB-12 | Dex, anonymous | all fifty Kin render; the "seen" state is absent because it comes from the save (`emberkin-web/src/pages/dex.tsx:3-6`) | P | T2 | emberkin |
+| BJ-EMB-13 | Credits page | it fetches `/art/MANIFEST.json` and renders **the manifest's own words** — the AI-generation disclosure is not paraphrased by the client (`emberkin-web/src/pages/credits.tsx:3-6`) | P | T2 | the bundle |
+| BJ-EMB-14 | Settings: what this build is talking to | every host is resolved at runtime from `window.location.hostname`; no `VITE_` constant, no baked URL (`emberkin-web/src/pages/settings.tsx:3-8`) | P | T1 | — |
+
+---
+
+### 6.9 Group I — Aetherholm
+*The third Forge Worlds title (`ui/packages/ui/src/surfaces.ts:421-442`). Doc 05 predates it.*
+
+| id | Scenario | The assertion that fails if it breaks | A | T | Needs |
+| --- | --- | --- | --- | --- | --- |
+| BJ-AET-01 | The map renders as plain SVG on three altitude rings | islands are click targets and each carries its label; no renderer dependency loads | P | T2 | aetherholm |
+| BJ-AET-02 ★ | City view: stocks tick without a request | the projected number advances between repaints, **the network log shows no poll**, and the projection uses the same floor arithmetic as the server (`aetherholm-web/src/pages/cities.tsx:3-10`) | C | T2 | aetherholm |
+| BJ-AET-03 ★ | City: a write answers | the server's settled stocks replace the projection immediately — the server is the truth the moment any write answers (`cities.tsx:9-10`) | P | T3 | aetherholm |
+| BJ-AET-04 | Building and research forms | costs come from `GET /v1/content/buildings` and `/research` at runtime, never from a copy in this repo (`cities.tsx:12-16`) | C | T2 | aetherholm |
+| BJ-AET-05 ★ | Fleets: the launch button before a preview exists | it is **disabled until a preview exists** — travel time each way, round-trip Aether lift, cargo hold — because the price tag is the rule (`aetherholm-web/src/pages/fleets.tsx:5-9`) | P | T1 | — |
+| BJ-AET-06 | Fleets: the server's `aetherLift` disagrees with the preview | the fleet row shows the **server's** number; the preview was an estimate and the page treats it as one (`fleets.tsx:8-9`) | P | T1 | — |
+| BJ-AET-07 | Fleets: double-submit a launch | one fleet, one idempotency key per intent | C | T1 | — |
+| BJ-AET-08 | No battle is fought on the fleets page | the page shows the flight only; reports are read on Battles, by id (`fleets.tsx:11-14`) | P | T1 | — |
+| BJ-AET-09 ★ | A battle report | rendered **from the store**, exactly as `GET /v1/battles/:id` returned it. This page holds no combat rules; a client that can resolve a battle can lie about one (`aetherholm-web/src/pages/battles.tsx:3-7`) | P | T2 | aetherholm |
+| BJ-AET-10 ★ | Alliance: found one | the form asks for the id of a community that **already exists** and says where governance lives. **A "create community" button on this page is the failure** — it would be the second voting system the design forbids (`aetherholm-web/src/pages/alliance.tsx:3-11`) | C | T3 | aetherholm, community |
+| BJ-AET-11 | Alliance directory | it lists the world with the caller's own membership marked | P | T3 | aetherholm |
+| BJ-AET-12 | Chronicle, anonymous | sealed seasons render and **every read goes out with no token** — sending a credential to a route that does not read one is the defect (`aetherholm-web/src/pages/chronicle.tsx:5-8`) | C | T2 | aetherholm |
+
+---
+
+### 6.10 Group J — Forge Foresight, the player surface
+*Doc 05 predates this product entirely. Surface: `foresight-web`. It has no `ProtectedRoute`:
+resolution criteria are a contract with strangers and are readable without an account.*
+
+| id | Scenario | The assertion that fails if it breaks | A | T | Needs |
+| --- | --- | --- | --- | --- | --- |
+| BJ-FOR-01 ★ | **The page order is the argument.** Open one market | in document order: the question, the resolution criteria, the settling source, the close time and dispute window, why the market exists — and **only then** the pool and the stake form. A stake button above the terms is a signature line above a contract (`foresight-web/src/pages/market.tsx:4-11`) | P | T1 | — |
+| BJ-FOR-02 ★ | **The house-seed disclosure is visible.** A market with a planned or placed house seed | the disclosure is **inside the pool panel, above the ratio bar, and therefore above the stake form**, as a sentence in running text at body size — not a chip, not an icon, not a tooltip (`foresight-web/src/components/houseseed.tsx:5-26`) | P | T1 | — |
+| BJ-FOR-03 ★ | The house seed's sentence is the platform's own | it is rendered **verbatim** from `disclosure.sentence`; the client composes no wording of its own (`houseseed.tsx:60-62`) | P | T1 | — |
+| BJ-FOR-04 ★ | The house seed fails its symmetry check | the panel renders as an **alert** (`role="alert"`), in the same shape as a document-hash mismatch, because it is the same kind of failure: the page saying something the numbers on it do not support (`houseseed.tsx:28-33`, `:50-56`) | P | T1 | — |
+| BJ-FOR-05 | The service sends an explicit `null` disclosure | nothing renders — the one case where silence is correct, because no house money was ever planned. **Every other degradation still discloses** (`houseseed.tsx:41-43`) | P | T1 | — |
+| BJ-FOR-06 | The share-of-pool and symmetry figures | re-derived in the browser from the pool numbers rather than repeated off the wire (`foresight-web/src/lib/houseseed.ts`) | P | T1 | — |
+| BJ-FOR-07 ★ | Provenance is rendered | query, sources, model id, prompt hash and timestamp are on the market page. The pipeline records them so this page can show them; a page that dropped them makes the whole provenance apparatus decorative (`market.tsx:13-19`) | P | T2 | foresight |
+| BJ-FOR-08 ★ | Stake panel: where the money goes | the panel **names the contract** and says in as many words that the stake is not sent to, held by, or refundable from CloudsForge (`foresight-web/src/components/stakepanel.tsx:3-9`) | P | T1 | — |
+| BJ-FOR-09 ★ | Stake panel: the projection | the sentence saying the projection is only true if nobody stakes after you is present. It is the difference between a projection and a quote, and it is **not optional decoration** (`stakepanel.tsx:11-17`) | P | T1 | — |
+| BJ-FOR-10 ★ | Stake: build the transaction with a stubbed EVM provider | the transaction the browser hands to the wallet carries the contract, the outcome and the amount shown on screen — byte-identical | C | T1 | — |
+| BJ-FOR-11 | Stake: the user rejects in the wallet | a rejection is rendered as a rejection, not as a failure | P | T1 | — |
+| BJ-FOR-12 | Stake: no injected provider at all | the panel says so and does not offer a button that cannot work | P | T1 | — |
+| BJ-FOR-13 | Markets list: the filter set | exactly the seven statuses the service knows. A filter this page offered that the service did not know would be a 400 rendered at a reader who cannot act on it (`foresight-web/src/pages/markets.tsx:3-6`) | P | T2 | foresight |
+| BJ-FOR-14 ★ | Portfolio by address, no account | `/portfolio/<address>` renders for a reader with no wallet, **every figure carries the instant it was observed**, the page carries the oldest of them, and a row that did not load says so instead of disappearing (`foresight-web/src/pages/portfolio.tsx:4-10`) | P | T2 | foresight |
+| BJ-FOR-15 | Portfolio says it is a mirror | the caveat is on **every row**, not once at the top (`portfolio.tsx:4-11`) | P | T1 | — |
+| BJ-FOR-16 | Claim panel on a resolved market | the claim path is offered against the contract, and the page states that a dead mirror does not stop a claim (`portfolio.tsx:7-8`) | P | T1 | — |
+| BJ-FOR-17 ★ | Rules page, anonymous | the refusal list renders without a token. **A refusal list behind a token is a refusal list nobody can hold the platform to** (`foresight-web/src/pages/rules.tsx:4-8`) | P | T2 | foresight |
+| BJ-FOR-18 | `/markets` on its own, and `/markets/a/b` | both render the not-found screen under a 404 — there is nothing at either address (`market.tsx:47-50`) | N | T2 | the bundle |
+| BJ-FOR-19 | A market's settlement document hash mismatches | rendered as an alert, in the same shape as the seed symmetry failure | P | T1 | — |
+
+---
+
+### 6.11 Group K — Foresight operator console
+*Surface: `foresight-admin-web`. Every route protected.*
+
+| id | Scenario | The assertion that fails if it breaks | A | T | Needs |
+| --- | --- | --- | --- | --- | --- |
+| BJ-FADM-01 ★ | The idea queue: a proposal whose sources have not been opened | the approve control **does not release**. The gate is `approvalGate`, a pure function so it can be proven to refuse rather than reviewed for whether it does (`foresight-admin-web/src/pages/queue.tsx:5-16`) | P | T1 | — |
+| BJ-FADM-02 ★ | A model proposal with **no sources** | it **cannot be approved at all** — not a warning, a refusal. Nothing a model produces may open a market (`queue.tsx:5-7`) | P | T1 | — |
+| BJ-FADM-03 | The sources are the loudest thing on each card | they precede the approve control in document order | P | T1 | — |
+| BJ-FADM-04 | There is no per-idea address | `/ideas/<id>` is not a route; the queue holds all of them (`queue.tsx:18-22`) | N | T2 | the bundle |
+| BJ-FADM-05 | Default market filter is `closed`, not everything | the front page opens on the one lifecycle state that is waiting on a person with money already in it (`foresight-admin-web/src/pages/markets.tsx:4-8`) | P | T2 | foresight |
+| BJ-FADM-06 ★ | One market: decision order | question and criteria, then the named source, then the pool with its observation time and mirror caveat, then the actions — **the two reversible ones before the two irreversible ones** (`foresight-admin-web/src/pages/market.tsx:4-11`) | P | T1 | — |
+| BJ-FADM-07 ★ | Resolve and Void are not two buttons in a row | they are two clearly separate blocks with different words. A console that renders them side by side is one where the difference between paying one side and refunding everybody is four pixels (`market.tsx:13-18`) | P | T1 | — |
+| BJ-FADM-08 ★ | Void on a deployed market | the button is not offered, and **the resolve block says in words why** rather than leaving a disabled control for the operator to wonder about (`market.tsx:19-22`) | P | T1 | — |
+| BJ-FADM-09 ★ | Resolve: the confirmation gate | the operator must write out a phrase naming the market and the outcome. "Are you sure?" has never once been answered no by somebody about to make a mistake (`admin-web/src/components/irreversible.tsx:14-19`, the shared pattern) | C | T1 | — |
+| BJ-FADM-10 | Categories page has no controls | it is a reference an approver reads at the moment of decision; a rule an operator cannot find then is a rule they apply from memory (`foresight-admin-web/src/pages/categories.tsx:3-6`) | P | T2 | foresight |
