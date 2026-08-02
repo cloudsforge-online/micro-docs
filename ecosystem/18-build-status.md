@@ -801,6 +801,16 @@ The seam is now a standing check: `slice-verify.sh` seeds the one subscription n
 record reaches the right user within 30 seconds. **It passes.** The first event the estate ever
 delivered was `identity.session.created`, and it took six fixes to get one login across.
 
+**And the second thing it delivered was an erasure.** The registry's header had said since it was
+written that `identity.user.deleted` has no subscriber anywhere, "which is precisely why there is
+no GDPR erasure path at all". The slice now drives that path end to end: an account is deleted
+(grace zeroed in the slice, the hourly tombstone pulled forward — the clock compressed, the sweep
+not bypassed), the event is written in the same transaction as the state change, delivered over
+the signed bus, and `activity` provably forgets the subject — records for the user go to zero and
+the inbox row is the acknowledgement the registry demands. Remaining: wire `notify` (addresses,
+phone numbers, push tokens — the service that most needs it) and every other user-data holder
+into the same subscription at deploy time.
+
 ### 3.4 What only CI could catch
 
 The point of the exercise, and the answer to "the suites pass locally, why bother": four real
