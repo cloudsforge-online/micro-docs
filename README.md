@@ -1,6 +1,7 @@
 # micro-docs
 
 [![ci](https://github.com/cloudsforge-online/micro-docs/actions/workflows/ci.yml/badge.svg)](https://github.com/cloudsforge-online/micro-docs/actions/workflows/ci.yml)
+![licence](https://img.shields.io/badge/licence-MIT-97CA00)
 ![ecosystem docs](https://img.shields.io/badge/ecosystem%20docs-26-1F6FEB)
 
 The design authority for the CloudsForge microservice estate. Every other repository in the
