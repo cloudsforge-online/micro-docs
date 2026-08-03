@@ -377,5 +377,226 @@ this title needs:
 
 ---
 
-*Sections 3 onward — the world, the loop, systems at scale, the economy, the repositories, the
-inherited rules, and the tests — follow.*
+## 3. What it is, in three sentences
+
+Tessera is a persistent isometric world in a browser tab where the ground is free and the only
+scarce thing is other people's attention: you claim a Homestead nobody can ever take, describe an
+object into existence in the Kiln, and open a place for people to walk into. Everything anyone
+makes is content-addressed by the sha256 of its own bytes, so authorship is not a claim anybody
+files but a fact about the file — which is what turns Second Life's copybot problem from a policing
+exercise into an accounting one. And every unit of value that moves is **EMBER that already exists
+on Hearth**, because the world has no mint: a creator paid 400 Sparks is paid coin somebody else
+deposited, and they can withdraw it to their own wallet the same afternoon.
+
+### 3.1 Scale, against the named reference
+
+| Dimension | Second Life | Tessera |
+| --- | --- | --- |
+| Client | ~400 MB download, GPU required | **A browser tab.** Canvas 2D, no install, no plugin |
+| Dimension | 3D, free-look, physics | **2D isometric, 2:1 dimetric.** §1 |
+| Creation tool | in-world prims + Blender/Maya + a month of tutorials | **A prompt.** `micro-studio`, FLUX 2 Pro, provenance per asset |
+| Scripting | LSL, a bespoke language | **None in v1.** Deliberately — §5.6 |
+| Land supply | fixed, operator-controlled, sold | **Elastic.** New wards mint at 70% occupancy; the platform never sells land |
+| Land cost | US$ tier fees, monthly, punishing | **Free to claim.** Held by liveliness, not by rent |
+| Object budget | prims, sold as a tier upgrade | **Fixed per parcel tier, never purchasable.** §5.2 |
+| Currency | Linden Dollar, an operator IOU | **EMBER**, a CPU-mined chain asset, denominated in **Sparks** |
+| Cash-out | LindeX + a US$ processor + weeks | **A chain withdrawal.** No fiat path exists anywhere in this estate |
+| Anti-theft | DMCA takedowns, after the fact | **Content-addressed authorship + a ledger that enforces royalties**, §5.4 |
+| Governance | operator support tickets | **`micro-community`** — proposals, votes, officers, timelocks |
+| Discovery | search that did not work; vast empty regions | **Footfall and dwell**, on the shared activity timeline. Never purchasable |
+| Concurrency per region | ~40–100 avatars | **60 per ward instance**, then the ward shards |
+| Where it is deliberately smaller | — | No 3D, no physics, no voice, no scripting, no flight, no user-run servers, no adult-content economy |
+
+That last row is not a roadmap. Voice, scripting and physics are the three things most likely to be
+asked for and each is refused for a stated reason in §5.6.
+
+## 4. The world
+
+**The Mosaic** is a set of **wards**. A ward is a **256×256 tile grid** — 65,536 tiles — generated
+from the world seed against one of eight archetypes (§2.4). It has one **Gate**, which is where
+arrivals land, and **Ways** radiating from it, which are public and cannot be claimed.
+
+**Three quarters of a ward is claimable; one quarter is permanently public.** 49,152 tiles of
+65,536 may be held; the remaining 16,384 are Ways, verges and the ward Commons. This is a hard
+number with a reason: a ward where every frontage is private becomes a corridor of walls, and the
+one thing a social world cannot recover from is having nowhere to stand.
+
+**Land is claimed, not bought, and the platform never sells it.** A parcel is a claim over a
+rectangle of tiles in one of four tiers (§5.2). Claiming free land costs nothing. Parcels are
+traded **between players** on `micro-market`, and the platform takes its ordinary 2.5% fee on that
+trade (`market/src/env.ts:183`, `MARKET_PLATFORM_FEE_BPS` default 250) — but it never mints supply
+for money, because a platform that sells land has a permanent incentive to keep land scarce, and
+that incentive is precisely what strangled the reference.
+
+**Supply is elastic; location is not.** When a ward crosses **70% occupancy**, the next ward mints
+automatically. So there is always free ground. What there is not always is *good* ground: a parcel
+on a Way, three tiles from a busy Gate, is scarce because the footfall passing it is scarce, and
+footfall is scarce because human attention is. **Scarcity here is positional and earned, never
+manufactured.** You get a good location by making somewhere people go, or by buying it from
+somebody who did.
+
+**The Homestead is the floor nobody can take.** Every account may claim exactly one **16×16
+Homestead**, free, forever. It is **never fallow, never contestable, and not tradeable** — a
+partial unique index makes a second one unrepresentable (§9). Everything above the Homestead is
+subject to the fallow rule; the Homestead is not. You can always come home, and you cannot hoard
+the commons.
+
+**Fallow, which replaces rent.** A non-Homestead parcel with **no visitor and no edit for 90 days**
+becomes `fallow`; after a further **30 days** its claim may be contested by anyone. An owner may
+**bank** a parcel once per year, extending the clock to 270 days, free. This is the structural
+answer to the reference's dead continents: there, empty land stayed empty because its owner paid
+rent to hold it and nobody could reclaim it. Here, dead land returns to the commons and nobody pays
+rent at all.
+
+Fallow is **computed lazily on read** from `(lastFootfallAt, lastEditAt, bankedUntil)` and settled
+on write — the Aetherholm discipline ([20-aetherholm.md:139-141](20-aetherholm.md)). There is no
+per-day sweep marking parcels dead, because that would be a timer doing domain work and CI
+forbids it (`org/.github/workflows/service-ci.yml:1043-1054`).
+
+**Persistence means Postgres, and nothing else.** The authoritative world is rows in
+`micro-tessera`'s database. The client is a viewer: it renders what it is told and decides nothing.
+Nothing runs on a player's machine but a canvas, no per-user simulation process exists, and there is
+no per-ward tick. An object placed is a row; it is there in ten years unless somebody moves it.
+
+**Presence is push-on-change, not polled.** A move writes a row and raises a Postgres `NOTIFY`; the
+SSE handler forwards it. There is no broadcast timer anywhere — which is both the rule and, here,
+the simpler design. A ward instance carries **60 avatars**; the 61st arrival opens instance 2, and
+the ward's own page says which instance holds whom, because a friend you cannot find is worse than
+a crowd you cannot join.
+
+## 5. The loop
+
+```
+   arrive at the Commons                     a browser tab; no download, no plugin, no account wall
+              │
+              ▼
+   claim a Homestead                         16x16, free, one per account, never fallow, never taken
+              │
+              ▼
+   fire an object in the Kiln                a prompt, not a modelling skill
+              │                              micro-studio generates; the sha256 IS the identity
+              ▼
+   place it; open your gate                  a parcel with an open gate is a place people can enter
+              │
+              ├──► someone walks in                 footfall and dwell — the only ranking signals
+              ├──► they buy what you made           micro-market, custodial, royalty enforced at
+              │                                     settlement, not requested afterwards
+              ├──► they hire the place              a Venue booking is an escrowed ledger hold
+              └──► the ward decides something       micro-community: proposals, one member one vote
+              │
+              ▼
+   EMBER lands in your AVAILABLE account      creator_payout / royalty_paid — double-entry, and the
+              │                               counterparty is another human being, not the platform
+              ▼
+   withdraw to your own wallet on Hearth      settlement signs and broadcasts; ~15 min at depth 60
+              │
+              ▼
+   it was never ours to begin with
+```
+
+The loop ends on a chain transaction because that is the only ending that proves the rest of it.
+A creator economy whose last arrow points back into the platform is a scrip system.
+
+## 6. Systems at scale
+
+Counts are the contract implementation is built against. The trees live as canonical JSON in
+`micro-tessera-assets/content/`, so the engine and the art prompts read the same file and cannot
+drift — the Emberkin pattern ([19-new-products.md:86](19-new-products.md)).
+
+### 6.1 Space
+
+| Thing | Count |
+| --- | --- |
+| Ward archetypes | **8** (§2.4) |
+| Wards at launch | **12** — the Commons plus eleven themed |
+| Ward grid | **256×256 = 65,536 tiles** |
+| Claimable share of a ward | **75%** (49,152 tiles); 25% permanently public |
+| New-ward trigger | **70% occupancy** |
+| Parcel tiers | **4** |
+| Ward instance capacity | **60 avatars** |
+| Ward governance | one `micro-community` community per ward |
+
+### 6.2 Parcel tiers, and the object budget
+
+The object cap is **five objects per eight tiles**, applied uniformly. It is a **rendering budget**,
+it is stated as one, and it is **not purchasable at any price** — the reference sold prims, which
+converted "how much can you build" into "how much can you pay", and that is the exact conversion
+§7 forbids.
+
+| Tier | Tiles | Object cap | Per account | Fallow? | Tradeable? |
+| --- | --- | --- | --- | --- | --- |
+| Homestead | 16×16 = 256 | **160** | exactly 1, free | **never** | **no** |
+| Plot | 32×32 = 1,024 | **640** | up to the Deed Slot cap | yes | yes |
+| Court | 64×64 = 4,096 | **2,560** | up to the Deed Slot cap | yes | yes |
+| Quarter | 128×128 = 16,384 | **10,240** | up to the Deed Slot cap | yes | yes |
+
+A ward's claimable area is therefore **48 Plot-equivalents**, or 192 Homesteads, or 12 Courts, or 3
+Quarters, or any mix summing to 49,152 tiles.
+
+**Deed Slots** — how many non-Homestead parcels one account may hold at once — start at **2** and
+are the one space-related thing money buys (§7.3). They are **capped at 12 by a CHECK constraint**
+regardless of spend, so money buys you up to the cap and never past it.
+
+### 6.3 Things
+
+| Thing | Count |
+| --- | --- |
+| Object categories | **12** (§2.6) |
+| Platform seed objects, free forever | **96** |
+| Structure kit parts | **24** |
+| Avatar bases | **4 builds × 2 poses = 8** |
+| Avatar overlay slots | **5**, eight options each |
+| Distinct avatars from 48 assets | **4 × 8⁵ = 131,072** before colourway |
+| Object footprints | **2** — `1x1` and `2x2` |
+| Facings per object | **2** — one canonical render plus its mirror (§2.1) |
+
+### 6.4 Social spaces — six kinds
+
+**Commons** (platform-held, one per ward, never claimable) · **Gate** (arrival, public) ·
+**Parcel** (private by default, gate open or shut) · **Venue** (a parcel flagged for events; gains
+Beacon rights and a bookable calendar) · **Workshop** (a creator's public storefront; the only
+space that lists) · **Kiln** (where objects are fired — a place, not a modal).
+
+### 6.5 Discovery — two signals, neither for sale
+
+| Signal | What it measures |
+| --- | --- |
+| **Footfall** | distinct accounts that entered the parcel, per day |
+| **Dwell** | median seconds those accounts stayed |
+
+That is the whole ranking function, and the shortness is the point. Dwell is included because
+footfall alone rewards a doorway that tricks people in; dwell punishes it. **There is no third
+signal, and specifically there is no paid one — ever.** See §7.1.
+
+**Beacons** light a Venue for an event and appear in the feeds of people following that ward or
+that creator. Free, and rate-limited to **3 per parcel per 7 days** — a limit that exists so that
+a Beacon means something, and which cannot be raised by paying.
+
+Discovery rides `micro-activity`, the estate's shared timeline. That is a real integration with
+real constraints, spelled out in §9.
+
+### 6.6 Deliberately not doing, each with its reason
+
+- **No scripting language.** The reference's LSL was its best feature and its worst attack
+  surface. A user-authored script executing on our servers is arbitrary code execution with a
+  friendly name, and this estate's whole security posture (`12-security-decisions.md`) is built the
+  other way. Interactivity in v1 is a fixed vocabulary: a door opens, a seat seats, a sign says, a
+  Workshop sells. If scripting ever lands it lands as a sandboxed, declarative, non-Turing-complete
+  behaviour grammar, and that is a separate design document.
+- **No voice.** Voice moderation is a full-time human function, not a feature, and a world that
+  ships voice before it can moderate it has shipped a harassment vector.
+- **No physics.** §1.
+- **No user-run servers.** The authoritative world is one database; a federated Tessera is a
+  different product with a different trust model.
+- **No adult-content economy.** The reference's was large, and building the age-assurance and
+  payment-risk apparatus it requires is a company, not a feature. `worlds` already models
+  `ageBracket` and `parentalControls` (`worlds/src/players.ts:52-64`) and **enforces neither** —
+  no route sets a sanction and `parentalControls` is accepted as free-form JSON at
+  `worlds/src/server.ts:602-604` and never read by any decision. Building on an unenforced gate
+  would be the worst version of this.
+- **No land sold by the platform, at any tier, ever.** §4.
+
+---
+
+*Sections 7 onward — no-pay-to-win, the economy in EMBER and Sparks, the repositories, the
+inherited rules applied concretely, and the tests — follow.*
