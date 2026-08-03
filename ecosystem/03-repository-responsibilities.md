@@ -86,7 +86,18 @@ Grouping them is what keeps the release tax survivable.
 | `cloudsforge-ui` | `@cloudsforge/ui`, `@cloudsforge/ui-charts` | Design system, tokens, chrome, and the validated chart layer ([assets/chart-palette.md](assets/chart-palette.md)). |
 | `cloudsforge-sdk` | `@cloudsforge/sdk`, `@cloudsforge/cli` | **Public.** The third-party developer surface. Separate from `contracts` because it is generated from the public OpenAPI description and versioned on the public API's cadence, not on internal contract churn. |
 
-### 1.5 Kept as they are — 3 repos
+### 1.5 Kept as they are — 1 repo, down from 3
+
+**Only `hearth` is still kept.** `asset-forge` and `stack` were planned to survive the migration
+and did not: both were **archived read-only on 2026-08-03** with the other seven legacy
+repositories, because their remaining responsibilities had in fact moved. `asset-forge`'s engine
+role is served by `micro-studio`, and `stack`'s compose, gateway, telemetry and release manifests
+are `micro-deploy`, its `docs/` is `micro-docs`, and its registry and shared CI are `micro-org`.
+Their rows are kept below rather than deleted, because the *reasoning* for keeping them is what
+explains why they were archived anyway.
+
+`hearth` is not legacy and must never be archived: it is the EMBER chain, it is in the working
+tree, the testnet runs from it, and the organization page links it as Forge Network.
 
 | Repo | Change |
 | --- | --- |
