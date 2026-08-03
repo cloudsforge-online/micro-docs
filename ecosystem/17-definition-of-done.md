@@ -176,12 +176,26 @@ The decomposition is complete when **all eight** of these are true. Not seven.
    exactly zero.**
 8. **Every legacy repository is unambiguously superseded** — its README states that it is legacy
    and points at the repositories that replaced it, and no CI in it deploys or publishes
-   anything. **It is not archived and not deleted**, by standing instruction from the owner:
-   "don't delete any existing repo, dont archive them". This item was written as "archived
-   read-only" and was rewritten on 2026-08-03, because a gate item that instructs an action the
-   owner has forbidden cannot ever be closed and would have held the whole gate open for ever.
-   Read-only-ness was the means; *nobody mistakes a legacy repo for a live one* was the end, and
-   that end is reachable without archiving.
+   anything. **The nine are also archived read-only**, done 2026-08-03: `asset-forge`,
+   `crucible`, `forge-keyvault`, `forge-mint`, `forge-pay`, `ninety-days-after`, `platform`,
+   `shared-libs` and `stack`.
+
+   This item has now been written three ways, and the history is the useful part. It began as
+   "archived read-only"; it was rewritten earlier on 2026-08-03 to *forbid* archiving, on the
+   owner's standing instruction "don't delete any existing repo, dont archive them", because a
+   gate item instructing a forbidden action can never be closed and would hold the whole gate
+   open for ever; and the owner then reversed that instruction the same day and asked for the
+   archive directly. Archiving is reversible, which is why the reversal is cheap — but the
+   distinction that survived all three revisions is the one to keep: **read-only-ness is the
+   means, and *nobody mistakes a legacy repo for a live one* is the end.** The README and CI
+   requirements above are therefore not superseded by the archive flag. An archived repo whose
+   README still reads like a live one has met the means and missed the end.
+
+   **Two repositories in the org carry no `micro-` prefix and are NOT legacy**, which is the
+   trap this item exists to disarm: `hearth` is the EMBER chain itself — live, in the working
+   tree, the thing the testnet runs from, and linked from the organization page as Forge Network
+   — and `.github` serves that organization page from `profile/README.md`. Absence of the prefix
+   is not evidence of being superseded.
 
 ---
 
