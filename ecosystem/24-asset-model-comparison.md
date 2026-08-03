@@ -165,7 +165,7 @@ out of a set that is incomplete elsewhere.
 
 ### 3.2 Two alternatives rejected on measurement, not taste
 
-Both rejections are recorded in `micro-brand/materialise.py:29-52`, and both rest on the same
+Both rejections are recorded in `micro-brand/materialise.py:30-55`, and both rest on the same
 measured fact: **nothing in the estate reads these repositories at run time.** Every consumer holds
 a committed copy in its own `public/`, which Vite copies into `dist/` and the Dockerfile bakes into
 an nginx image; `deploy/compose/docker-compose.estate.yml` mounts exactly one volume and it is
@@ -287,8 +287,15 @@ has exactly one available explanation.
 **"Positive" is enforced, not claimed.** `dialects.json` declares the vocabulary the dialect forbids
 itself — *no, not, never, nothing, neither, nor, without, cannot, avoid, omit, exclude*
 (`micro-brand/dialects.json:44`) — the transformed prompt is scanned for it on word boundaries
-(`dialects.py:136`, a `\b`-anchored regex), and a prompt still carrying any of it **cannot be
-sent**: `promptForProvider` throws before a socket is opened (`dialects.ts:83`).
+(`dialects.py:136` and `dialects.ts:110-116`, both `\b`-anchored regexes), and a prompt still
+carrying any of it **cannot be sent**: `prompts.ts:381` throws `ResidualNegationError` before a
+socket is opened.
+
+The error class is worth reading (`dialects.ts:117-137`), because it names why it exists rather
+than merely what it checks: *"This is a refusal to SPEND, not a lint… generating against a brief
+that still holds four of them would answer a question nobody asked, on a deployment billed by the
+hour, and the resulting set would carry a `dialect: positive` label that is not true of its own
+prompts."*
 
 ### 5.3 The result: rejected on measurement
 
