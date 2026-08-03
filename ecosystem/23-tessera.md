@@ -138,11 +138,18 @@ micro-tessera-assets/
 
 **Two c2pa lessons this repo must inherit rather than relearn:**
 
-- `brand` ships **zero** C2PA — all 94 entries are `c2pa: false`, including the 54 FLUX
-  generations, because `normalise_ground.py`'s PNG writer keeps no ancillary chunks and the
-  re-encode drops the box the hash is bound to (`brand/verify.py:16-24`, `brand/MANIFEST.json:7`).
-  `emberkin-assets` and `aetherholm-assets` fixed it by copying ancillary chunks through
-  (`aetherholm-assets/MANIFEST.json:8`). **Tessera uses the fixed writer from the first asset.**
+- `brand` ships **almost no** C2PA — 96 of its 98 entries are `c2pa: false`, including all but two
+  of its 56 FLUX generations, because `normalise_ground.py`'s PNG writer keeps no ancillary chunks
+  and the re-encode drops the box the hash is bound to (`brand/verify.py:16-24`,
+  `brand/MANIFEST.json:7`). **The two exceptions prove the rule rather than weakening it:**
+  `assets/currency-ember/mark-1024x1024.png` and `assets/currency-spark/mark-1024x1024.png` were
+  generated after the comparison concluded and never went through the normaliser, so they still
+  carry the chunk. `emberkin-assets` and `aetherholm-assets` fixed it properly by copying ancillary
+  chunks through (`aetherholm-assets/MANIFEST.json:8`). **Tessera uses the fixed writer from the
+  first asset.**
+  *(Counts corrected 2026-08-03 against `brand/MANIFEST.json`; this line previously read "zero"
+  and "all 94 entries". `brand/COMPARISON.md:8,224` still carries the pre-currency figures —
+  see [24](24-asset-model-comparison.md) §8.2.)*
 - `emberkin-assets/verify.py` has **no c2pa check at all** — `grep -c c2pa` on it returns 0, so its
   83 `c2pa: true` entries are asserted by `generate.ts:509-510` at write time and never measured.
   **Tessera's `verify.py` measures c2pa off the bytes**, the way `brand/verify.py:328-331` and
