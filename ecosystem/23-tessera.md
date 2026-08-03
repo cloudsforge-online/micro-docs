@@ -1106,5 +1106,279 @@ quarantined event or a failing estate check.
 
 ---
 
-*Sections 11 onward — the inherited rules applied concretely, the tests, what could not be
-verified, and programme impact — follow.*
+## 11. The rules it inherits, applied concretely
+
+Assertion is not application. Each rule below is followed by what Tessera actually does about it.
+
+### 11.1 Outbox → signed HTTP → inbox
+
+Events leave through an outbox row written **in the same transaction as the domain change**, and a
+relay job delivers them. The relay pattern to copy is `community/src/outbox.ts:281-357`: scan
+unpublished rows in `occurred_at` order, resolve active subscriptions per topic, **sign the exact
+bytes** (`signEvent(JSON.stringify(envelope), …)` at `:317`), mark published only when zero
+deliveries are outstanding (`:340-351`), and call `ctx.heartbeat()` so a long backlog does not
+outlive its lease (`:354`).
+
+Signing is `t=<seconds>,v1=<hmac>` under `cf-signature`
+(`contracts/packages/events/src/index.ts:1272-1275`), with a 5-minute tolerance (`:1243`) and
+`timingSafeEqual` comparison plus multi-secret rotation in `verifyDelivery` (`:1285-1330`).
+
+On the receiving side Tessera **verifies the signature over the raw bytes before parsing** —
+`activity/src/ingest.ts:83-95`, whose header at `:76-82` explains why re-serialising before
+verifying is forbidden — and dedupes with `withInbox`: `insert into inbox (topic, event_id) … on
+conflict (topic, event_id) do nothing returning event_id`, with the handler running **inside the
+same transaction**, so a failed handler leaves no row and the event is retried
+(`service-template/src/outbox.ts:311-328`, `:307-309`).
+
+**Versions are `"major.minor"` strings**, per `EventVersion = \`${number}.${number}\``
+(`contracts/packages/events/src/index.ts:110`). One trap worth naming: `worlds` stores its version
+as an `integer` column (`worlds/src/migrations.ts:65`) and maps it to `"n.0"` on the wire via
+`wireVersion` (`worlds/src/outbox.ts:52`). **Tessera stores the string**, so the stored value and
+the wire value are the same value.
+
+### 11.2 Topics, keyed by a subject that is the right one
+
+Names are `<service>.<aggregate>.<past-tense-verb>`, exactly three lowercase segments, first
+segment equal to the producer (`contracts/packages/events/src/index.ts:749-756`, enforced at
+`contracts/packages/events/src/index.test.ts:37`, `:43`). `keyedBy` is documented as the ordering
+partition and therefore **part of the contract, not a producer's private choice** (`:213-218`).
+
+| Topic | `keyedBy` | Why that key |
+| --- | --- | --- |
+| `tessera.parcel.claimed` | `parcel_id` | two claims on one parcel must serialise |
+| `tessera.parcel.fallowed` | `parcel_id` | fallow and contest order against the same parcel |
+| `tessera.parcel.transferred` | `parcel_id` | a transfer must not overtake the claim that preceded it |
+| `tessera.object.fired` | `object_id` | |
+| `tessera.object.anchored` | `object_id` | the authorship write, §9.3 |
+| `tessera.ward.opened` | `ward_id` | |
+| `tessera.venue.booked` | `parcel_id` | **not `booking_id`.** The contended resource is the parcel's calendar; keying by booking would let two bookings for one slot be processed in either order, which is precisely the failure `keyedBy` exists to prevent |
+
+That last row is the rule doing work rather than being quoted. Seven topics, all registered in
+`contracts-events` **in the same commit** as the code that emits them — otherwise they are
+quarantined as `internal` and appear in nobody's feed (`activity/src/classify.ts:1139-1150`), which
+is how `micro-market` ended up emitting ten topics with one registered
+(`market/src/topics.ts:65`, `contracts/packages/events/src/index.ts:497`) and `micro-community`
+eleven with three (`community/src/events.ts:4-8`).
+
+### 11.3 Scopes, registered in the same commit as the gate
+
+Convention is `service:noun` or `service:noun:verb`, first segment equal to the service
+(`contracts/packages/auth/src/index.ts:150-153`). Tessera registers **`tessera:read`**,
+**`tessera:write`** and **`tessera:provision`** — the last following Aetherholm's precedent for the
+title contract (`aetherholm/src/server.ts:119`).
+
+"Same commit" is not a convention here, it is a build failure: the check lives in CI at
+`org/.github/workflows/service-ci.yml:197-212` ("Every scope this service demands is registered"),
+derives demanded scopes from inline literals, sibling constants and wrapper arguments
+(`:495-597`), treats an unresolvable derivation as fatal (`:550`, `:556`, `:597`), and is itself
+unit-tested at `org/test/workflow-shell.test.ts:300` — "a demanded scope missing from the registry
+fails the build **and names the gate**".
+
+**A caution, verified rather than assumed:** the reverse direction is weaker. `community` demands
+`community:read` (`community/src/scopes.ts:37-46`) and that scope is **absent** from the registry —
+grepping `'community:` in `contracts/packages/auth/src/index.ts` returns exactly two hits,
+`community:execute` at `:236` and `community:write` at `:241`. Tessera registers all three of its
+scopes before the first gate ships.
+
+### 11.4 Leased jobs, and no timer doing domain work
+
+**The lease key names the contended resource, not the row** (`service-template/src/jobs.ts:10-20`).
+Tessera's keys:
+
+| Key | Contended resource |
+| --- | --- |
+| `parcel:<parcelId>` | claim, transfer, fallow settlement, contest resolution |
+| `ward:<wardId>` | ward minting, occupancy recompute |
+| `owner:<subject>` | Kiln firings — deliberately the same key shape studio uses (`studio/src/generation.ts:234`), so one player's firings serialise consistently on both sides |
+| `stream` | the outbox relay singleton, as `market/src/jobs.ts:104-110` and `settlement/src/jobs.ts:91` both do |
+
+Claims are `for update skip locked` (`runtime/packages/jobs/src/index.ts:183`, full query
+`:168-194`). Backoff is `min(1000 × 2^(attempt−1), 5 min)` with full jitter (`:275-279`, applied
+`:417`); five attempts then `dead` (`:90`, `:93`).
+
+**No `setInterval` doing domain work** is enforced by a CI grep, not a lint rule:
+`org/.github/workflows/service-ci.yml:1036-1056`, exiting 1 on a hit (`:1054`), with an inline
+`cfctl-allow setInterval` comment as the only escape hatch (`:1046`). **Tessera uses no escape
+hatch**, and it does not need one, because the two things that look like they want a timer do not:
+
+- **Presence** is push-on-change — a move writes a row and raises a Postgres `NOTIFY`; the SSE
+  handler forwards. No broadcast loop exists.
+- **Fallow** is lazy — computed on read from `(lastFootfallAt, lastEditAt, bankedUntil)` and
+  settled on write, so there is no nightly sweep marking parcels dead. Aetherholm's lazy-accrual
+  discipline ([20-aetherholm.md:139-141](20-aetherholm.md)), applied to time rather than resources.
+
+### 11.5 Money as `bigint`, and `BigInt('')`
+
+`BigInt('')` is `0n`, which turns a missing amount into a free purchase. `micro-market` makes it
+**unreachable rather than handled**: `parseAmount` requires `/^\d{1,78}$/` before calling `BigInt`
+(`market/src/money.ts:222-227`). **Tessera imports that helper rather than writing a second one.**
+
+Amounts are `numeric(78,0)` in Postgres, read as `::text` then `BigInt`
+(`market/src/escrow.ts:100-102`), and decimal strings on the wire — never a JSON number, because
+`Number.MAX_SAFE_INTEGER` is about 9×10¹⁵ and a single EMBER is 10¹⁸ wei.
+
+### 11.6 Invariants in the schema, in all three forms
+
+**CHECK constraints** — the form for a single-row, single-column truth
+(`ledger/src/migrations.ts:227` is the estate's canonical example):
+
+- `tessera_price_whole_sparks CHECK (price_wei % 1000000000000 = 0)` — §8.1's floor, in the
+  database rather than in a validator.
+- `tessera_deed_slots_capped CHECK (deed_slots BETWEEN 2 AND 12)` — §7.3's pay-to-win ceiling. A
+  purchase path that tried to grant a thirteenth slot fails at the database, which is the only
+  place a monetisation refusal is actually safe.
+- `tessera_parcel_tier_known CHECK (tier IN ('homestead','plot','court','quarter'))`.
+
+**Partial unique indexes** — the form for "at most one of these, under a condition"
+(`identity/src/migrations.ts:292-294` is the pattern):
+
+- `create unique index tessera_one_homestead on parcels (owner_subject) where tier = 'homestead'
+  and status = 'held'` — **a second Homestead is unrepresentable**, not merely refused.
+- `create unique index tessera_one_open_booking on bookings (parcel_id, slot) where status =
+  'open'`.
+
+**Deferred constraint triggers** — the form for a cross-row invariant Postgres cannot express as a
+CHECK. The rationale is written out at `community/src/migrations.ts:660-670` and the shape at
+`:691-695`:
+
+- **Object cap.** Placements may not exceed the parcel's cap, checked `deferrable initially
+  deferred` at commit — so pasting 200 objects is one check, not 200.
+- **Contest window.** A fallow parcel cannot be contested before its 30 days, evaluated on the
+  **database clock**, the way community enforces timelocks before insert on the DB clock
+  (`community/src/migrations.ts:720-752`) rather than on a clock the caller supplies.
+- **The Homestead is not tradeable.** An UPDATE moving `owner_subject` on a `homestead` row raises.
+  An error, not a policy.
+
+### 11.7 Postgres per service, no shared schema
+
+`micro-tessera` owns its own database and reaches no other service's. Ward governance is HTTP to
+`community`; listings are HTTP to `market`; balances are HTTP to `ledger`. Migrations run in a
+**separate migrator process**, serialised by an advisory lock derived from the service name, and
+never from `index.ts` (`service-template/src/migrator.ts:34-53`, `:4-15`).
+
+Migrations are versioned, ascending and **immutable once released** — `@cloudsforge/db` checksums
+the text and refuses a changed migration; the fix is always a new one
+(`service-template/src/migrations.ts:1-15`). Version 1 is `JOBS_SCHEMA_SQL` taken **verbatim** from
+`@cloudsforge/jobs` (`service-template/src/migrations.ts:29`) so the lease claim query's table
+cannot drift from the query that claims against it.
+
+### 11.8 The title contract, which Tessera actually implements
+
+`worlds` calls exactly two routes, despite its own client header saying four
+(`worlds/src/titleclient.ts:7`): `GET /v1/title` returning `{slug, name, capabilities[]}`
+(`worlds/src/titleclient.ts:122`), and `POST /v1/provision` taking
+`{entitlementId, subject, userId, sku, scope, metadata}` and returning `{urn, replayed}`
+(`:134-152`, `:69-74`), with the `entitlementId` sent as **both** the `Idempotency-Key` header and
+a body field (`:149`).
+
+Capabilities come from a **closed set** — `private_world | cosmetics | achievements | seasons |
+inventory` (`worlds/src/titles.ts:43`, runtime array `:45-51`), duplicated in the contract package
+at `contracts/packages/worlds/src/index.ts:121`. Tessera declares
+**`['private_world', 'cosmetics', 'inventory']`**. `private_world` is the one that matters: the
+provisioning bridge calls a title only when that capability holds
+(`worlds/src/provisioning.ts:441-451`), and provisioning a **Private Ward** is how the existing,
+currently-unserved `world.private.small` SKU (`billing/src/migrations.ts:405`) finally gets a code
+path.
+
+## 12. What must be proven by test, before it ships
+
+1. A second Homestead is refused **by the database**, even for a caller holding a connection.
+2. A price that is not a whole number of Sparks is refused by CHECK.
+3. Deed Slots cannot exceed 12 through **any** purchase path — asserted as an absence with force,
+   the way `admin-web` asserts its missing og card.
+4. **No SKU grants discovery ranking, a vote, safety, land, object-cap headroom, or a fee or
+   royalty discount.** Six absences, each a test. And the converse: every SKU in §7.3 resolves to a
+   deliverable entitlement or billing product, or the suite fails — principle 3 of
+   `01-product-vision.md`.
+5. Two replicas racing one parcel claim produce exactly one claim. Lease, not luck.
+6. Placing past the object cap is refused at commit by the deferred trigger, including via a bulk
+   paste that is individually under the cap and collectively over it.
+7. `fee + royalty + proceeds === price` across randomised prices, fee/royalty rates and recipient
+   splits — property-tested, and asserted again by `orders_partition`
+   (`market/src/migrations.ts:516`).
+8. A grant against an unfunded `engagement:tessera` is refused by the overdraft trigger
+   (`ledger/src/migrations.ts:441`, `:479`) — the world cannot pay EMBER it does not hold.
+9. **An unconfirmed deposit appears in no balance and no total.** An absence, asserted with force,
+   because the alternative is the estate's oldest defect.
+10. `payout_due` cannot be spent; the release moves it to `available` and only the release does.
+11. `GET /v1/title` and `POST /v1/provision` satisfy `worlds`' client against the real service, and
+    provision replays idempotently on `entitlementId` — same `urn`, `replayed: true` on the second
+    ask, the way `worlds/src/conformance.ts:233-246` checks it.
+12. Ranking admits exactly two inputs. A test on the ranking function's signature, so that adding a
+    third — paid or otherwise — cannot happen quietly.
+13. No `setInterval` doing domain work, and **no `cfctl-allow` escape hatch anywhere in the repo**.
+14. Every topic emitted is registered in `contracts-events`; every scope demanded is registered in
+    `contracts-auth`. Both are already CI, and both name the offending gate.
+15. Assets: `verify.py` passes on all 392 × 2 — c2pa measured off the bytes, cross-provider parity,
+    avatar-overlay bounding-box registration, and the Qwen transposition check (§2.15).
+
+## 13. What I could not verify, recorded rather than smoothed over
+
+Every claim above about existing code was read from source and cited. These were not, and the
+document says so rather than writing a plausible sentence:
+
+- **Whether a Solidity contract has ever actually been deployed to a running Hearth node.** The EVM
+  is Shanghai-complete by inspection and 24 contracts carry pinned `0.8.26` pragmas, but I read the
+  interpreter; I did not run it. §9.3's v1 anchor depends on this working.
+- **EMBER's value.** Hearth's mainnet is not live, so §8.1's price table is a design target, not a
+  tested one. The structural claims around it (one asset code, Sparks as a denomination, whole-Spark
+  prices) hold regardless of the number.
+- **Whether `micro-studio`'s FLUX endpoint is live right now.** `studio/src/backend.ts` probes it
+  and the three completed asset runs prove it worked; I did not call it.
+- **Browser rendering performance for a densely built parcel.** No prototype exists. The object
+  caps in §6.2 are reasoned from tile counts, not measured. **This is the riskiest unmeasured
+  number in the document**, and measuring it should be the first thing phase 1 does — if 640
+  sprites in a Plot does not hold 60 fps on a mid laptop, the caps change and several other numbers
+  move with them.
+- **Whether the Qwen A100 deployment is still billing.** `brand/candidates/qwen-image-2512/
+  DEPLOYMENT.json` records `teardown.state: "NOT TORN DOWN — STILL BILLING"`. I read the file; I did
+  not check Azure. Somebody should.
+- **The true scope of the estate-wide Shard removal.** A recount found **2,457 occurrences across
+  340 files in 44 repos** — larger than the 1,541/38 figure circulating — but I did not check that
+  every occurrence is in scope, and the 193 in `emberkin*` are a different game's shard item that
+  may not be.
+- **Concurrency behaviour of Postgres `LISTEN/NOTIFY` at ward scale.** The presence design in §4
+  assumes it carries 60 avatars per ward across many wards. That is a normal load for the mechanism
+  and an abnormal one to assume without measuring.
+
+## 14. Programme impact
+
+Target set grows **55 → 58**.
+
+### 14.1 Which of the eleven "one platform" claims it moves
+
+`01-product-vision.md` §2 lists eleven statements and records that three are true. Tessera moves
+two outright and contributes to three more.
+
+| # | Claim | Today | With Tessera |
+| --- | --- | --- | --- |
+| **7** | Assets you create in one product are usable in the others | **False** (`01:55`) | **True.** A Tessera object is a `micro-studio` asset with provenance, sold on `micro-market` as `asset_kind: 'game_item'`, and wearable as a cosmetic on the `worlds` shared profile (`worlds/src/players.ts:56`). One asset, three products, no export step |
+| **6** | One internal economy — spend and earn identically everywhere | **Partly** — `01:54` says it plainly: "Shards are universal; **nothing earns them**" | **True.** Tessera is the first surface in the estate where a user *earns*, and it earns EMBER, not scrip |
+| **10** | One financial source of truth that reconciles against the chain | False | **Moved, not closed.** The custody-vs-chain half of reconciliation still needs the indexer and is unwired (`ledger/src/migrations.ts:547-551`). But a chain-backed world economy is the most demanding possible test of the half that exists |
+| **5** | One activity history | False | **Contributes.** Tessera's seven topics land on the shared timeline in existing categories — no new category needed (`activity/src/categories.ts:31-51`) |
+| **2** | One identity — the same profile and reputation everywhere | Partly | **Contributes, specifically.** `players.reputation` is a column **no code writes**: it is declared at `worlds/src/migrations.ts:146` and read at `worlds/src/players.ts:56`, `:70`, `:89`, and grepping `worlds/src` finds no UPDATE anywhere. Tessera would be the first surface to write it, from footfall and completed sales |
+
+Claim 7 is the one Tessera exists for. The platform has claimed cross-product assets since
+`01-product-vision.md` was written and has never had a product that produced one.
+
+### 14.2 Build order, and the one hard dependency
+
+1. **`micro-tessera-assets` — first, and in parallel with everything else.** Art bible, content
+   JSON, then the generation session batched like the brand run. It blocks nothing and nothing
+   blocks it, and an H100 is billing.
+2. **`micro-tessera` phase 1** — schema, wards, parcels, claims, the fallow clock, placements, the
+   title contract, the registry row. The highest-certainty slice, and it closes the
+   `world.private.small` gap.
+3. **`micro-tessera` phase 2** — the Kiln against `micro-studio`, market bindings and royalties,
+   community bindings, presence, footfall and dwell.
+4. **`micro-tessera-web`** — against the routes phases 1–2 actually serve, cited line by line, the
+   way `aetherholm-web` pins every route to the line that serves it.
+5. **The Registry of Authorship** contract and its deployment.
+
+**The one hard dependency is not in this document.** Tessera cannot ship denominated in EMBER while
+`micro-billing`'s SKUs are priced in SHARD (`billing/src/migrations.ts:402-406`) and
+`contracts/packages/money/src/index.ts:239` still defaults `assetCode` to `'SHARD'` as a silent
+parameter default. **The estate-wide Shard removal is a prerequisite for phase 2, not a parallel
+tidy-up**, and §13 records that it is roughly 60% larger than currently briefed.
+
+Nothing else here blocks, or is blocked by, deployment work — the two proceed independently.
