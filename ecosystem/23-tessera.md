@@ -395,20 +395,20 @@ deposited, and they can withdraw it to their own wallet the same afternoon.
 | Client | ~400 MB download, GPU required | **A browser tab.** Canvas 2D, no install, no plugin |
 | Dimension | 3D, free-look, physics | **2D isometric, 2:1 dimetric.** §1 |
 | Creation tool | in-world prims + Blender/Maya + a month of tutorials | **A prompt.** `micro-studio`, FLUX 2 Pro, provenance per asset |
-| Scripting | LSL, a bespoke language | **None in v1.** Deliberately — §5.6 |
+| Scripting | LSL, a bespoke language | **None in v1.** Deliberately — §6.6 |
 | Land supply | fixed, operator-controlled, sold | **Elastic.** New wards mint at 70% occupancy; the platform never sells land |
 | Land cost | US$ tier fees, monthly, punishing | **Free to claim.** Held by liveliness, not by rent |
-| Object budget | prims, sold as a tier upgrade | **Fixed per parcel tier, never purchasable.** §5.2 |
+| Object budget | prims, sold as a tier upgrade | **Fixed per parcel tier, never purchasable.** §6.2 |
 | Currency | Linden Dollar, an operator IOU | **EMBER**, a CPU-mined chain asset, denominated in **Sparks** |
 | Cash-out | LindeX + a US$ processor + weeks | **A chain withdrawal.** No fiat path exists anywhere in this estate |
-| Anti-theft | DMCA takedowns, after the fact | **Content-addressed authorship + a ledger that enforces royalties**, §5.4 |
+| Anti-theft | DMCA takedowns, after the fact | **Content-addressed authorship + a ledger that enforces royalties**, §9 |
 | Governance | operator support tickets | **`micro-community`** — proposals, votes, officers, timelocks |
 | Discovery | search that did not work; vast empty regions | **Footfall and dwell**, on the shared activity timeline. Never purchasable |
 | Concurrency per region | ~40–100 avatars | **60 per ward instance**, then the ward shards |
 | Where it is deliberately smaller | — | No 3D, no physics, no voice, no scripting, no flight, no user-run servers, no adult-content economy |
 
 That last row is not a roadmap. Voice, scripting and physics are the three things most likely to be
-asked for and each is refused for a stated reason in §5.6.
+asked for and each is refused for a stated reason in §6.6.
 
 ## 4. The world
 
@@ -422,7 +422,7 @@ number with a reason: a ward where every frontage is private becomes a corridor 
 one thing a social world cannot recover from is having nowhere to stand.
 
 **Land is claimed, not bought, and the platform never sells it.** A parcel is a claim over a
-rectangle of tiles in one of four tiers (§5.2). Claiming free land costs nothing. Parcels are
+rectangle of tiles in one of four tiers (§6.2). Claiming free land costs nothing. Parcels are
 traded **between players** on `micro-market`, and the platform takes its ordinary 2.5% fee on that
 trade (`market/src/env.ts:183`, `MARKET_PLATFORM_FEE_BPS` default 250) — but it never mints supply
 for money, because a platform that sells land has a permanent incentive to keep land scarce, and
@@ -573,7 +573,7 @@ that creator. Free, and rate-limited to **3 per parcel per 7 days** — a limit 
 a Beacon means something, and which cannot be raised by paying.
 
 Discovery rides `micro-activity`, the estate's shared timeline. That is a real integration with
-real constraints, spelled out in §9.
+real constraints, spelled out in §11.
 
 ### 6.6 Deliberately not doing, each with its reason
 
@@ -690,7 +690,7 @@ account forever** (§2.6), plus a **free daily firing allowance**. Nobody is eve
 
 **Refusals, stated once and testable:** no discovery, no votes, no safety, no land from the
 platform, no object-cap increases, no fee or royalty discount, no loot boxes, no gambling, no
-parcel or object as a tradeable chain token that a title mints for money. §11 asserts each one as
+parcel or object as a tradeable chain token that a title mints for money. §12 asserts each one as
 an absence with a test, the way `admin-web` asserts its missing og card.
 
 ## 8. The economy: EMBER, and Sparks
@@ -911,5 +911,200 @@ own discovery.
 
 ---
 
-*Sections 9 onward — the repositories, the inherited rules applied concretely, and the tests —
-follow.*
+## 9. The Kiln, and the answer to copybot
+
+### 9.1 Creating a thing is a prompt
+
+The reference's creation pipeline was its greatest strength and its highest wall: in-world prims
+for the patient, Blender or Maya for the serious, and a month of tutorials before anything looked
+deliberate. The overwhelming majority of residents never made a thing, and a world where 1% create
+and 99% shop is a shopping mall with weather.
+
+Tessera inverts the wall because **the estate has already built the pipeline**. Firing an object
+is: describe it, pick a footprint, wait about a minute.
+
+The flow, against the source:
+
+1. The client posts a description to `micro-tessera`, which calls `micro-studio` with a service
+   token holding `studio:write`. A **service** principal skips ownership narrowing entirely —
+   `assertOwned` returns early at `studio/src/server.ts:561` — and names the acting user via
+   `body.userId` (`subjectOf`, `studio/src/server.ts:533-536`). So a title can generate on a
+   player's behalf without impersonating them, which is exactly the shape needed.
+2. Studio returns **202 with a `statusUrl`** (`studio/src/server.ts:454-465`). Generation is a
+   **leased job**, not a request handler: `requestGeneration` opens no socket
+   (`studio/src/generation.ts:173-238`) and `runGeneration` executes inside a lease
+   (`studio/src/generation.ts:263-386`) claimed `for update skip locked`
+   (`runtime/packages/jobs/src/index.ts:183`). The lease key is `owner:<subject>`
+   (`studio/src/generation.ts:234`), so one player's firings serialise and cannot stampede the
+   provider.
+3. The bytes come back, `cutout.py` keys the ground to alpha, and the asset is stored
+   **content-addressed**: `ab/<hex>.<format>` under a sha256 checksum prefixed `sha256:`
+   (`studio/src/assets.ts:93`, `:77-79`).
+4. Provenance is recorded per asset — prompt, backend, model, requested size, attempts, cost
+   (`studio/src/migrations.ts:154-252`) — and `c2pa` is **measured off the bytes**, never asserted:
+   `const C2PA_MARKER = Buffer.from('c2pa')` at `studio/src/backend.ts:269`, set by
+   `outcome.bytes.includes(C2PA_MARKER)` at `:460` under the comment "Read from the bytes rather
+   than assumed".
+
+**One studio change is required and it is small:** asset kinds are a fixed eight-item catalogue
+(`studio/src/specs.ts:61-73`). Tessera needs a `world_object` kind with a 512×512 default. That is
+the only change to `micro-studio` the design depends on.
+
+### 9.2 Why copybot is dead here, and what is honestly still alive
+
+The reference's copybot problem was existential for its creators: a client could read an object's
+geometry off the wire and re-upload it as its own, because an object was a mutable database row
+with an `owner` field the server had no way to derive. Enforcement was DMCA takedowns — a legal
+process applied to a technical failure, arriving weeks after the theft.
+
+Three structural differences, in increasing order of how much they matter:
+
+**1. Identity is the hash, so "copying" resolves to the original.** A Tessera object *is* its
+bytes. Re-uploading identical bytes does not create a second object with a second owner; it
+resolves to the existing content address and its existing Author of record. The forgeable `owner`
+field simply does not exist, because ownership is derived rather than stored. This is not a policy
+that must be enforced — it is an addressing scheme.
+
+**2. Placing someone else's object is licensing, not theft.** The response to somebody wanting your
+chair is not a takedown, it is a payment: the royalty is enforced inside the settlement entry
+(§8.5, `market/src/ledgerclient.ts:250-252`), snapshotted at listing creation so it cannot be
+re-cut mid-sale (`market/src/listings.ts:477-482`), and split deterministically across multiple
+recipients (`market/src/money.ts:68-113`) so a remix can pay its original. **The estate has a
+ledger that can enforce a royalty rather than request one**, and that converts the reference's
+central creator grievance from a policing problem into an accounting one.
+
+**3. Provenance is measured, not claimed.** Every object carries the prompt that made it, the model
+that made it, and a c2pa flag read off its own bytes.
+
+**What this does not solve, said plainly:** *imitation*. Someone who prompts a chair that looks
+like your chair produces different bytes, and content addressing has nothing to say about it. A
+design that claimed otherwise would be lying. What dies here is the **cheap, automated, scalable**
+theft — the copybot copies bytes, and bytes are the identity — and what remains is hand-imitation,
+which is a governance matter for the ward and, at the estate level, `micro-community`'s existing
+moderation machinery. That is the same place human societies put it.
+
+### 9.3 Anchoring authorship on Hearth — what is possible today, and what is not
+
+The owner's decision is that nothing exists which the chain does not back. For **value**, §8.3
+discharges that completely. For **authorship**, the design anchors a claim on Hearth, and here the
+source draws the line for us rather than the other way round.
+
+**The good news: Hearth's EVM is real and Shanghai-complete.** It is a self-written, zero-dependency
+JavaScript EVM (`hearth/node/src/evm/`, 3,705 lines) targeting Shanghai
+(`hearth/node/src/evm/opcodes.js:2`). It has `CREATE` and `CREATE2` (`opcodes.js:197`, `:204`,
+implemented `interpreter.js:707`, `:910` with EIP-1014 address derivation at `:159-161`), the full
+call family including `DELEGATECALL` and `STATICCALL` (`opcodes.js:199-206`), **`LOG0`–`LOG4`**
+(`opcodes.js:191-194`, feeding a bloom filter at `hearth/node/src/chain/bloom.js`), all nine
+precompiles (`precompiles.js:2-5`), and the EIP-170 / EIP-3541 / EIP-3860 deployment guards
+(`interpreter.js:474`, `:475`, `:914`). The estate pins **Solidity 0.8.26**
+(`hearth/contracts/src/WEMBER.sol:2` and 23 siblings). **Do not target Cancun** — `TLOAD`, `TSTORE`
+and `MCOPY` are deliberately undefined (`opcodes.js:38-40`), so no `ReentrancyGuardTransient`.
+
+**The bad news, in two named blockers that decide v1's scope:**
+
+- **A player cannot sign an on-chain transaction through custody.** Signing purposes are
+  `deployer | treasury | deposit`; **`user` is deliberately excluded** (`custody/src/gates.ts:31`,
+  `:34`) even though the DB constraint admits the address purpose
+  (`custody/src/migrations.ts:117`). And a `deployer` key may sign **contract creations only** —
+  `custody/src/signing.ts:213` refuses anything with a non-null `to`.
+- **The indexer cannot subscribe to a contract's logs.** Its entire emitted-topic set is
+  `[DEPOSIT_OBSERVED, DEPOSIT_CONFIRMED]` (`indexer/src/topics.ts:59`); there is no `/logs` route
+  (`indexer/src/server.ts:154-162`); and ERC-721 `Transfer`s are *explicitly skipped*
+  (`indexer/src/evm.ts:320-322`). **There is no ERC-721 anywhere in the estate** — grepping
+  `*.ts`/`*.sol` returns three hits, all in the indexer, all present to exclude it. Logs *are*
+  stored and indexed by address and topic0 (`indexer/src/migrations.ts:207`, `:228`, `:231`), so a
+  log-query endpoint is cheap — but it is **unbuilt work**, not a capability.
+
+So the design splits, honestly:
+
+**v1 — the Registry of Authorship.** One platform-deployed contract on Hearth storing
+`(sha256, authorAddress, firstAnchoredBlock)`, written by a platform key. This needs **zero new
+signing paths**: it deploys through the existing `mint` route — a resumable job-driven state
+machine, not a request handler (`mint/src/deploy.ts:5`, `:33-38`) — with custody signing the
+creation and settlement broadcasting it. Anchoring is **lazy and user-initiated**: written when a
+creator first *lists* an object, not when they fire it, because most objects are never sold and
+paying gas to anchor a chair nobody sells is waste.
+
+**v2 — player-signed deeds**, gated explicitly on two changes named above: a `user` signing purpose
+in `custody`, and a log-query surface or `chain.log` topic in `indexer`. Until both land, a parcel
+deed is a `micro-tessera` row plus a ledger position, and the document says so rather than
+implying otherwise. **This is exactly the class of assumption that produces an implementation phase
+which discovers the problem in week three**, so it is written down in week zero instead.
+
+## 10. Where it lands — three repositories
+
+| Repo | Owns | Port |
+| --- | --- | --- |
+| `micro-tessera` | World state: wards, parcels, claims, fallow, objects, placements, gates; Kiln orchestration against `micro-studio`; presence and the footfall/dwell counters; **the title contract**; bindings to `market` (listings), `community` (ward governance) and `worlds` (profile, entitlements); the Registry of Authorship deployment | **4022** |
+| `micro-tessera-web` | The client: canvas isometric renderer, build and place tools, the Kiln, the ward map, Workshop pages, the three-figure wallet strip | vite **5172** |
+| `micro-tessera-assets` | `ART_BIBLE.md`, `content/` canonical JSON, FLUX in `assets/`, Qwen in `candidates/qwen-image-2512/`, `verify.py` | — |
+
+### 10.1 The port, stated carefully, because this estate has three port spaces
+
+Getting this wrong is easy and two live repos already have. The three spaces are:
+
+1. **The port a service binds in its container.** Every domain service ships `PORT=4000`
+   (`service-template/.env.example:26`, and `worlds/.env.example:51`, `market`, `community`,
+   `ledger`, `identity`, all the same).
+2. **The host port in the estate compose file.** This is **derived, never chosen**: `4100 + index
+   in deployableRepos()` (`org/tools/cfctl.ts:864-871`, `org/tools/registry.ts:134`), documented at
+   `deploy/compose/docker-compose.estate.yml:1313-1321`. The four repos absent from micro-org's
+   registry got hand-picked numbers at `deploy/compose/docker-compose.estate.yml:1333-1338` —
+   foresight-web 4136, foresight-admin-web 4137, emberkin-web 4138, aetherholm-web 4139.
+3. **The `devPort` in the `micro-ui` surface registry**, which is documented as *"not an
+   allocation; it is a fact about a service"* (`ui/packages/ui/src/surfaces.ts:455`) — the port the
+   service actually binds.
+
+**The live defect Tessera avoids:** emberkin binds 4100 (`emberkin/.env.example:40`), which is
+identity's compose host port; aetherholm binds 4120 (`aetherholm/.env.example:31`), which is
+admin-api's; `nda` binds 4110, which is notify's. Spaces (2) and (3) already collide three times.
+
+So **`micro-tessera` binds 4022** — verified free, and chosen deliberately *below* the derived
+4100+ block so that it can never be collided with by a future `deployableRepos()` index no matter
+how many repos are appended. Compose host ports **4140** (service) and **4141** (web), the next
+after aetherholm-web's 4139. Vite dev port **5172** — verified free, adjacent to aetherholm-web's
+5171 and in the gap before 5173, which is vite's default and is avoided.
+
+### 10.2 What existing repositories must change
+
+Every item below is a required edit, with the line that will need it. Nothing here is optional and
+nothing here is large — but several are the kind that are silently forgotten and then surface as a
+quarantined event or a failing estate check.
+
+| Repo | Change | Line |
+| --- | --- | --- |
+| `ui` | A registry row: `kind: 'service'`, `subdomain: 'tessera'`, `devPort: 4022`, `accent: '#6d9a49'`, `inSwitcher: false`, `verb: null`, `glyph: '◆'`, `markId: null` | `ui/packages/ui/src/surfaces.ts:169` |
+| `ui` | A `BOUND` entry pinning 4022 with a `tessera/src/env.ts:NN` citation; the test asserts the registry agrees with what the service binds and that no two unrelated surfaces share a port | `surfaces.test.ts:187`, `:189-196`, `:326` |
+| `contracts` | **`'tessera'` added to the `ProducerService` union** — a topic cannot be registered without it | `contracts/packages/events/src/index.ts:183-205` |
+| `contracts` | Tessera's topics registered as `TopicSpec`s (`producer`, `payloadType`, `version`, `keyedBy`, `description`) | `contracts/packages/events/src/index.ts:231-740` |
+| `contracts` | The **pinned enumerated inventory** — a sorted literal list of every topic — must be edited or the package test fails | `contracts/packages/events/src/index.test.ts:153-215` |
+| `contracts` | Tessera's scopes registered | `contracts/packages/auth/src/index.ts:168-458` |
+| `studio` | A `world_object` asset kind, 512×512 default | `studio/src/specs.ts:61-73` |
+| `activity` | Classify rules mapping Tessera's topics to `category` / `visibility` / `userId` / `summary`. **No new category is needed** — the sixteen are closed (`activity/src/categories.ts:31-51`) and Tessera's events land on `ownership`, `market`, `reward` and `community`, as worlds, emberkin and aetherholm already do | `activity/src/classify.ts:1134` |
+| `notify` | Routing rules and templates — both are hardcoded maps, so registration is a PR, not an API | `notify/src/catalogue.ts:276`, `notify/src/templates.ts:54` |
+| `billing` | Seed rows for the §7.3 SKUs. `world.private.small` already exists and is unserved | `billing/src/migrations.ts:405`, `:418` |
+| `worlds` | **A data row, not code** — `POST /v1/titles` with capabilities drawn from the closed set | `worlds/src/server.ts:524-554`, `worlds/src/titles.ts:43-51` |
+| `org` | Append to `REGISTRY`. **Warning: appending renumbers every host port after the insertion point**, so append at the end of the block | `org/tools/registry.ts:52`, `:134` |
+| `deploy` | Compose services, gateway routes (`cf-web-aetherholm` at `estate-web.yml:310-315`, `:426-428` is the pattern), CORS origins, scope grants, smoke checks | `docker-compose.estate.yml`, `gateway/dynamic/estate-web.yml`, `policy.yml:80`, `:118`, `estate/grant-gaps.json`, `scripts/estate-verify.sh` |
+
+**And two repositories that need nothing, which is the more useful finding:**
+
+- **`micro-market` needs no change to sell a Tessera object.** `item_urn` has no format constraint
+  (`market/src/migrations.ts:205`) and `asset_kind` already includes `game_item`
+  (`market/src/migrations.ts:245-247`). §8.5.
+- **`micro-community` needs no change to govern a ward.** A ward is a community of
+  `kind: 'public'` with `governance_model: 'one_member_one_vote'`
+  (`community/src/migrations.ts:121-123`, `:129-131`). Ward decisions ride **`parameter_change`**
+  proposals — one of the four kinds in the closed catalogue
+  (`community/src/proposals.ts:23-28`) — and Tessera **subscribes to
+  `community.proposal.executed`**, which is one of only three community topics actually registered
+  in contracts (`community/src/events.ts:4-8`), and applies the parameter itself. This matters:
+  community's execution handler does nothing for any kind except `treasury_spend`
+  (`community/src/executions.ts:217-219`), so a design that expected community to *enact* a world
+  change would have needed a new execution kind and a new handler in somebody else's repo. Putting
+  the effect in Tessera keeps the change count at zero and puts the game logic in the game.
+
+---
+
+*Sections 11 onward — the inherited rules applied concretely, the tests, what could not be
+verified, and programme impact — follow.*
