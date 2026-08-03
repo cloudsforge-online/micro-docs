@@ -1,5 +1,8 @@
 # micro-docs
 
+[![ci](https://github.com/cloudsforge-online/micro-docs/actions/workflows/ci.yml/badge.svg)](https://github.com/cloudsforge-online/micro-docs/actions/workflows/ci.yml)
+![ecosystem docs](https://img.shields.io/badge/ecosystem%20docs-26-1F6FEB)
+
 The design authority for the CloudsForge microservice estate. Every other repository in the
 programme is governed by a document in here.
 
@@ -15,5 +18,5 @@ standalone on GitHub and this one is `micro-docs`, not `docs`.
 
 ## Provenance
 
-The code in this repository was written by **Claude Opus 5** and **Claude Fable 5**, under
-human direction and review.
+The code in this repository was written by **Claude Opus 5** and **Claude Fable 5**, assets
+generated with **FLUX 2 Pro**, under human direction and review.
