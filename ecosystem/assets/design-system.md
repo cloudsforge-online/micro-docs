@@ -21,8 +21,28 @@ attributes on `<html>`:
 `800 #1b1710` · `700 #262019` · `600 #362d22` · `500 #493c2d`. Bone `#ece5d6`, dim `#b7ae9b`,
 khaki `#8e866f`.
 
-**Substrate, cool.** Ash `#0b0f11 → #43555e`, bone `#dfe6e4 / #96a5a6 / #63757a`. One consumer
-today (Forge Trade).
+**Substrate, cool.** Ash `#0b0f11 → #43555e`, bone `#dfe6e4 / #abbcbd / #7d9399`. Three consumers
+today: `micro-web-template` (and so every frontend cut from it), `micro-aetherholm-web`,
+`micro-foresight-admin-web`.
+
+> **These six values are a copy, and the copy has already been wrong.** As shipped, the cool bone
+> ramp read `#dfe6e4 / #96a5a6 / #63757a`, and it was **not** a hue rotation of the warm ramp: it
+> darkened the two dimmed steps while lightening the ash beneath them. `--cf-fg-mute` therefore
+> landed at **3.54:1** on the cool panel `#151d21`, under the 4.5:1 AA floor for normal text — and
+> since that token draws every secondary label, timestamp, caption and chart axis, it failed on all
+> three cool surfaces and on none of the fourteen warm ones. `micro-ui` `2f990be` retuned it to the
+> values above (`--cf-fg-dim` 8.67:1, `--cf-fg-mute` 5.29:1). This paragraph was stale for as long
+> as that defect existed and for a while afterwards.
+>
+> **So do not read hexes off this page.** `@cloudsforge/ui/tokens.css` is the definition; the
+> values here are an orientation for a reader deciding whether the system suits them. The reason
+> the estate now has `ui/packages/ui/src/contrast.test.ts` — which resolves the real stylesheet per
+> substrate and measures every `color:` against the ground it is actually painted on — is precisely
+> that duplicated colour cannot be kept honest by review. A prose copy is not checkable, and a
+> per-frontend axe run only fires on surfaces that happen to render the token, which is why one
+> number (3.54:1, the cool panel) was reported three times and the warm ramp was never measured at
+> all. Anything load-bearing belongs in the package, with a test; this document should be shrinking
+> towards prose that explains *why* the ramps are shaped as they are.
 
 **Semantic layer.** `--cf-bg` (ash-900) · `--cf-bg-raised` (ash-850) · `--cf-bg-sunken`
 (ash-950) · `--cf-fg` (bone) · `--cf-fg-dim` · `--cf-fg-mute` · `--cf-line` · `--cf-line-strong`
