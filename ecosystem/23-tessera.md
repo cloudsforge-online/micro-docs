@@ -598,5 +598,318 @@ real constraints, spelled out in §9.
 
 ---
 
-*Sections 7 onward — no-pay-to-win, the economy in EMBER and Sparks, the repositories, the
-inherited rules applied concretely, and the tests — follow.*
+## 7. No pay-to-win, in a world whose entire point is commerce
+
+`01-product-vision.md:128` states the rule:
+
+> **No pay-to-win.** In Forge Worlds, purchasable means cosmetic, convenience or access — never
+> power. Scarcity is the game.
+
+A world about property and trade looks like it violates that on its face, so the rule has to be
+resolved here, in writing, because every later implementation decision leans on the resolution.
+
+### 7.1 What "power" means when there is no win condition
+
+Tessera has no victory, no ladder, no stats and nothing to lose a fight with. So "power" cannot
+mean what it means in Aetherholm, where a bought shield is power on the defensive axis
+([20-aetherholm.md:96](20-aetherholm.md)). It needs a definition that survives having no combat:
+
+> **Power is the ability to affect another player's experience against their will.**
+
+Everything else — space, appearance, capacity, convenience — affects only your own. That single
+line resolves every case, and it resolves them the way the owner's instinct predicted, but it does
+so from a definition rather than from taste, which is what makes it hold up under a SKU proposal
+nobody has thought of yet.
+
+Four things in this world could affect someone against their will. Each becomes a refusal.
+
+**1. Visibility — discovery cannot be bought. Ever.**
+This is the one that matters most, because it is the one every virtual world eventually sells and
+it is unambiguously advantage over another player: a promoted parcel takes footfall *from* an
+unpromoted one, and footfall is the only scarce resource in the design (§4). So: **no promoted
+placement, no paid ranking, no sponsored beacons, no boost.** The feed is ordered by footfall,
+dwell and recency, and by nothing else, forever. If Tessera ever needs money badly enough to sell
+discovery, it needs to be shut down instead.
+
+**2. Voice — governance cannot be bought.**
+A ward is a `micro-community` community and votes are **one member, one vote**. That is also the
+only resolver actually implemented: `WeightResolver` is a typed seam
+(`community/src/votes.ts:111-114`), the sole implementation is `oneMemberOneVote` returning `1n`
+(`community/src/votes.ts:122-124`), and the server falls back to it because `deps.weights` is
+optional and unwired (`community/src/server.ts:861`, `:168`). **Tessera must never wire a
+token-weighted resolver for wards.** Buying votes is buying power over people, and here the code
+already agrees.
+
+**3. Safety — protection cannot be bought.**
+No purchasable privacy, no paid ban-immunity, no premium moderation queue. Gate controls,
+blocking, and appeal to ward governance are free to every account including brand-new ones. A
+safety feature behind a paywall is a protection racket with a price list.
+
+**4. Space — land cannot be bought *from the platform*.**
+§4. Parcels are claimed free and traded between players; the platform takes a transaction fee and
+never mints supply for money.
+
+### 7.2 The sharpest edge, argued rather than dodged
+
+Buying Kiln capacity means making more objects, which means having more to sell, which means
+earning more. Is that power?
+
+**No — because income is output, not advantage.** A creator with a bigger workshop has not taken
+anything from another creator; they have made more things, which is the behaviour the world exists
+to produce. Paying for production capacity is how every real creative economy has ever worked, and
+this estate already sells exactly this shape: generation has a genuine marginal cost in USD
+(`studio/src/credits.ts:43` holds spend as `UsdMicros`, the cap is a DB CHECK
+`credit_accounts_within_cap` at `studio/src/migrations.ts:146-147`, and exceeding it is a 402 at
+`studio/src/credits.ts:52-71`). `15-monetisation-model.md` §2 calls work with a marginal cost "the
+easiest revenue to explain and the hardest to resent", and it is right.
+
+But that argument only holds while one condition is true, so the condition is written down as a
+fifth refusal:
+
+**5. The take is the same for everybody.**
+The platform fee and the royalty cap are **identical for every account**, and **no SKU, tier or
+subscription reduces either**. A subscription that cut your marketplace fee would convert money
+directly into structural earning advantage over every creator who did not buy it — which is
+compound, permanent, and exactly the thing §7.1 forbids. The rates are snapshotted onto each
+listing at creation (`market/src/listings.ts:29`, `market/src/migrations.ts:218`), so this is
+checkable per order rather than promised in a document.
+
+And the free tier is what keeps the whole argument honest: **96 seed objects, free to every
+account forever** (§2.6), plus a **free daily firing allowance**. Nobody is ever unable to build.
+
+### 7.3 So what is actually sold
+
+| SKU | Kind | What it grants |
+| --- | --- | --- |
+| Kiln capacity | metered | firings beyond the free daily allowance. Priced against real provider cost |
+| Deed Slots (2 → 12) | entitlement | how many non-Homestead parcels you may hold at once. **Capped at 12 by CHECK, at any price** |
+| Appearance sets | entitlement | avatar overlays, parcel skins, gate styles, beacon colours |
+| Name reservation | entitlement | a held ward or Workshop name |
+| Private Ward | subscription | a ward for a group. **This SKU already exists** — `world.private.small`, 750, 30-day, title-scoped (`billing/src/migrations.ts:405`, `:418`) and no title serves it today |
+| Venue calendar | subscription | bookings, ticketing, recurring events — convenience for someone running a place |
+
+**Refusals, stated once and testable:** no discovery, no votes, no safety, no land from the
+platform, no object-cap increases, no fee or royalty discount, no loot boxes, no gambling, no
+parcel or object as a tradeable chain token that a title mints for money. §11 asserts each one as
+an absence with a test, the way `admin-web` asserts its missing og card.
+
+## 8. The economy: EMBER, and Sparks
+
+### 8.1 One asset, not two — and Sparks is a denomination, not a currency
+
+**Shards do not appear in this title.** They are being removed estate-wide; a Shard was one US cent
+by definition (`contracts/packages/chain/src/index.ts:146` — `SHARDS_PER_USD = 100n`, "100 Shards =
+1 USD, fixed") and its `ChainSpec` says the quiet part out loud at `:112-120`:
+`family: 'evm', // never used on chain`. Shards were a US-dollar unit wearing a chain's clothes.
+
+The ledger asset for Tessera is **`EMBER`**. This costs no schema change: `accounts.asset_code` and
+`postings.asset_code` are plain `text`, not an enum (`ledger/src/migrations.ts:121`, `:220`), the
+balancing invariant is enforced per `asset_code` by trigger (`ledger/src/migrations.ts:302-313`),
+and money is `numeric(78,0)` chosen precisely because "78 digits holds any uint256"
+(`ledger/src/migrations.ts:215`). EMBER has 18 decimals
+(`contracts/packages/chain/src/index.ts:53`); wei is a uint256; it fits with room to spare.
+
+**A Spark is 10⁻⁶ EMBER — one micro-EMBER, exactly 10¹² wei.** And the most important sentence in
+this section:
+
+> **Sparks is a display denomination of EMBER. It is not a second `assetCode`, and it must never
+> become one.**
+
+If Sparks were its own asset code, the ledger's per-asset balancing trigger would happily let
+Sparks and EMBER drift apart, and reconciling them would require a rate — and a rate between an
+internal unit and a chain asset is precisely the mechanism of the estate's oldest defect, the
+`convertCoinToEmber` path that "credit[s] custodial EMBER with no on-chain movement behind it"
+(`ledger/src/migrations.ts:540`, again at `:550`, and `wallet/src/money.ts:41-43`: "a liability
+minted against nothing, with no counter-account and therefore nothing that could ever notice").
+**One asset, one trial balance, one number to reconcile against the chain.** Sparks is what the
+client prints.
+
+The formatters already cope: `formatAmount(smallestUnits, decimals)`
+(`contracts/packages/chain/src/index.ts:187`) and `formatMoney` via `assetDecimals`
+(`contracts/packages/money/src/index.ts:900`, `:86-93`) are decimals-driven, not cents-driven, so
+EMBER formats at 18 places today with no change. What must be rewritten is the Shard-specific
+conversion layer, and one line in it deserves naming because it will bite silently:
+`contracts/packages/money/src/index.ts:239` takes `assetCode: LedgerAssetCode = 'SHARD'` **as a
+default parameter** — a silent fallback that will keep producing SHARD postings long after
+everything visible has been changed.
+
+**The legibility contract.** The ratio exists so that ordinary prices are short integers:
+
+| Thing | Sparks | EMBER |
+| --- | --- | --- |
+| A tip | 5 | 0.000005 |
+| A common object | 400 | 0.0004 |
+| A good object from a known maker | 5,000 | 0.005 |
+| A month on a prime Plot | 40,000 | 0.04 |
+| A Homestead | **free** | — |
+
+EMBER's launch price is unknowable — Hearth's mainnet is not live — so if these turn out illegible,
+**the design reprices the objects and never redenominates the unit.** A currency whose subunit is
+redefined after launch is a currency nobody trusts, and that is a worse failure than a chair
+costing an awkward number.
+
+**And a Spark is the floor, enforced in the schema.** Every in-world price is stored in wei and
+carries `CHECK (price_wei % 1000000000000 = 0)` — no price finer than one Spark. Prices are
+`bigint` in TypeScript and decimal strings on the wire, never a JSON number, following
+`market/src/money.ts:222-227` where `parseAmount` requires `/^\d{1,78}$/` **before** calling
+`BigInt`, which is how that repo makes the `BigInt('') === 0n` hazard unreachable rather than
+merely handled.
+
+### 8.2 Pending and available — two accounts, not two columns
+
+The owner asked for a visible pending-versus-available split. This estate already has the shape,
+and it is architectural rather than cosmetic. `ledger/src/accounts.ts:9`:
+
+> **The available/reserved split is two accounts, not two columns.** Reserving funds is a posting
+> from `available` to `reserved`, which makes a reservation auditable, reversible and impossible to
+> lose track of.
+
+An account is `(subject, asset_code, purpose)` and nothing else (`ledger/src/accounts.ts:4`), and
+the purpose set is closed — `available | reserved | escrow | treasury | fees | payout_due |
+suspense` (`contracts/packages/money/src/index.ts:309`). So Tessera needs no new concept at all.
+But there are **two different things a user calls "pending"**, and conflating them is how you
+recreate the estate's oldest bug:
+
+**Pending-out — money that is yours, clearing.** Sale proceeds sit in
+`user:<id> / EMBER / payout_due` for the listing's dispute window, then release to `available`.
+`micro-market` already does exactly this: the window is snapshotted onto the listing at creation
+(`market/src/migrations.ts:234-238`, `market/src/orders.ts:298`) and the proceeds are posted to
+`payout_due` (`market/src/ledgerclient.ts:205-211`). It is **visible** — it is a real balance in a
+real account — and **structurally unspendable**, because nothing in Tessera ever debits
+`payout_due` except the release, and a spend attempt against it would be an overdraft the ledger's
+`ledger_assert_no_overdraft` trigger refuses (`ledger/src/migrations.ts:441`, `:479`).
+
+**Pending-in — a deposit that is confirming.** This one is **not a ledger balance and must never
+be**. EMBER credits at **60 confirmations** (`contracts/packages/chain/src/index.ts:57`,
+rationalised at `:45-47` as ~15 minutes at Hearth's 15-second block time,
+`hearth/node/src/params.js:90`). Posting a liability before confirmation is `convertCoinToEmber`
+again. So an unconfirmed deposit is displayed **from the indexer**, labelled *"confirming, 34 of
+60"*, and is **in no balance and no total**. The indexer already emits both halves —
+`DEPOSIT_OBSERVED` and `DEPOSIT_CONFIRMED` (`indexer/src/topics.ts:59`) — and `wallet` deliberately
+consumes only the confirmed one (`wallet/src/deposits.ts:422`, whose header calls the event
+"evidence, not an instruction"). Tessera shows the observed one and counts neither it nor its
+absence as money.
+
+So the wallet strip in the client reads three figures, and they mean three different things:
+
+```
+   Available    12,480 Sparks    spendable now
+   Clearing      3,200 Sparks    yours, releasing when the dispute window closes
+   Confirming    5,000 Sparks    on chain, 34/60 — not yours yet, and not in any total
+```
+
+### 8.3 The fifteen minutes, and why gameplay never waits for it
+
+The obvious objection to a chain-backed world is that a 15-minute confirmation cannot sit inside a
+loop where somebody buys a chair. It does not have to, because of where the chain actually is:
+
+**In-world payments never touch the chain.** Buying an object is a double-entry posting between two
+custodial EMBER accounts. Nothing is minted, nothing is broadcast, and it settles in milliseconds —
+and it is nonetheless fully backed, because the EMBER in those accounts got there through a
+confirmed deposit at depth 60. **The fifteen minutes is paid once, at the door, and never again per
+chair.** Deposits and withdrawals are the only chain-speed operations, and those are exactly the
+two places a user already expects a chain to behave like a chain.
+
+**And the world cannot pay out EMBER it does not hold — that is a trigger, not a policy.** Every
+grant Tessera makes debits `engagement:tessera`, which is an **`equity`** account, so the ledger's
+no-overdraft trigger refuses an unfunded grant at the database. `micro-market` proves the pattern
+already works: `market/src/engagement.ts:22-29` names `engagementAccount` from `contracts-money`
+with `equity` type precisely "so the ledger's no-overdraft rule refuses an unfunded grant". This is
+what "chain-backed by construction" actually reduces to in code: **not a promise that reserves
+exist, but a constraint that makes spending non-existent reserves unrepresentable.**
+
+The **pre-funded reserve** is therefore just `engagement:tessera`, topped up ahead of demand by the
+approval-gated `engagement.transfer` action ([21-engagement-treasury.md](21-engagement-treasury.md)
+§6), whose cap is enforced by a constraint trigger in `admin-api` — `engagement_over_cap_refused`,
+`admin-api/src/migrations.ts:585`, raise at `:569`.
+
+### 8.4 What is bought, what is earned, what the platform takes
+
+**Bought from other players, in Sparks:** objects (outright or licensed), parcels, venue bookings,
+commissions. **Bought from the platform:** the six SKUs in §7.3, in EMBER through `micro-billing`.
+**Earned:** object sales, royalties on every resale, venue bookings, and commissions.
+
+**The platform takes 2.5%.** `MARKET_PLATFORM_FEE_BPS` defaults to 250 bps and
+`MARKET_MAX_ROYALTY_BPS` to 1000 bps (`market/src/env.ts:183-184`), boot refuses if they sum to
+≥ 10000 (`market/src/env.ts:193-198`), and the database refuses a listing whose
+`royalty_bps + platform_fee_bps` reaches 10000 — the constraint is named
+`listings_terms_leave_the_seller_something` (`market/src/migrations.ts:266-268`), which is a good
+name.
+
+**The arithmetic cannot leak.** `bpsOf` rounds **down**, deliberately in the platform's disfavour
+(`market/src/money.ts:41-53`); the seller's proceeds are the **remainder**, `price − fee − royalty`
+(`market/src/money.ts:160`), so `fee + royalty + proceeds === price` by construction, asserted on
+every call (`assertPartition`, `market/src/money.ts:195-212`) and again by Postgres
+(`orders_partition`, `market/src/migrations.ts:516`).
+
+### 8.5 How a creator is paid, and why the royalty is real
+
+Settlement is **one balanced ledger entry** covering the payment, the proceeds, the platform fee,
+every royalty share and the item itself (`market/src/orders.ts:324-338`,
+`market/src/ledgerclient.ts:232-258`). Proceeds land in `payout_due` (§8.2) and release to
+`available`, from which the creator can withdraw to their own Hearth wallet.
+
+**The royalty is enforced, not requested** — and this is the direct answer to the reference's
+copybot problem, because it converts theft from a policing exercise into an accounting one:
+
+- It is **snapshotted onto the listing at creation** (`market/src/listings.ts:477-482`,
+  `market/src/migrations.ts:324-330`), so an owner cannot re-cut a sale that is already in flight.
+- It is **paid as credits inside the settlement entry** (`market/src/ledgerclient.ts:250-252`) and
+  audited per order in `order_royalties` (`market/src/migrations.ts:549-554`).
+- Multi-recipient splits use **largest-remainder allocation with an index tie-break** so two
+  replicas compute the same split (`market/src/money.ts:68-113`), and zero-weight recipients never
+  receive dust (`:102`). This matters here specifically: a derivative object splits its royalty
+  between the original author and the remixer, so a remix culture is expressible without either
+  party trusting the other.
+
+**One verified constraint decides an architectural question for us.** The royalty is enforced
+**only on the custodial settlement path** — `market/src/orders.ts:299-345` builds the ledger entry
+inside `if (listing.settlementMode === 'custodial')`, and the `else` branch merely demands an
+`onchainTransactionId`. For an `onchain` listing the royalty is recorded on the order row and
+**never posted**. Therefore: **every Tessera listing is `custodial`, without exception.** That is
+not a preference; it is the only mode in which the royalty exists.
+
+**And `micro-market` needs no change to sell a chair.** `listings.item_urn` is `text not null`
+with **no format constraint at all** (`market/src/migrations.ts:205`), and `asset_kind` already
+includes `game_item` alongside `entitlement` and `membership` (`market/src/migrations.ts:245-247`).
+The one constraint that binds is `listings_active_is_escrowed`
+(`market/src/migrations.ts:289-293`): an active listing must hold an escrow, so a Tessera object
+must be ledger-reservable under an `item_asset_code` before it can go live.
+
+### 8.6 Seeding an empty world — which is not a liquidity problem
+
+[21-engagement-treasury.md](21-engagement-treasury.md) solves cold-start for markets, where the
+problem is a missing counterparty. A world's cold-start problem is different and worse:
+**emptiness**. A market with one listing is boring; a world with one person is sad.
+
+Funding is the same: `engagement:tessera` under `platform:engagement-treasury`, fed by disclosed
+platform mining (doc 21 §3 — the consensus carve-out was rejected because the public copy says "no
+premine" and "the distinction is lost on every reader who matters") and later by the fee recycle,
+which starts at 0 bps and still writes `status='skipped'` rows so the job's silence is visible
+(`billing/src/recycle.ts:14-33`).
+
+**What Tessera spends it on, in order of honesty:**
+
+1. **Commissions.** The platform pays real creators, in EMBER, to build the eleven launch wards —
+   and their parcels are **labelled as commissioned**, publicly, on the parcel itself. This is the
+   strongest cold-start answer available and it involves no pretence at all: it is the platform
+   buying work and saying so.
+2. **The free firing allowance.** Every account's daily Kiln allowance is engagement money, because
+   a firing costs real USD (`studio/src/credits.ts:43`). Subsidising creation is subsidising
+   supply, which is the side of the market that is genuinely missing.
+3. **Listing subsidies and first-listing bounties.** Both grant kinds already exist in market —
+   `listing_fee_subsidy` and `first_listing_bounty` (`market/src/migrations.ts:738`,
+   `market/src/engagement.ts:39`) — labelled `engagement.grant` in buyer-visible history.
+
+**What it must never spend it on, and cannot:** ghost demand. No platform-owned avatars walking
+around to look like a crowd, no house-owned shops, no platform bids. Doc 21 §2 refuses "fake it"
+outright as fraud, and `micro-market` has already made it **unrepresentable by DB constraint** —
+platform-funded bids, offers and escrows cannot be written (`market/src/engagement.ts:11-15`).
+Tessera adds the world-specific version of the same rule: **no synthetic footfall**, because
+footfall is the ranking signal (§6.5) and a platform that fakes footfall is a platform rigging its
+own discovery.
+
+---
+
+*Sections 9 onward — the repositories, the inherited rules applied concretely, and the tests —
+follow.*
