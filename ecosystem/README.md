@@ -82,6 +82,7 @@ operational and financial controls a platform holding customer money owes its cu
 | **20** | [aetherholm](20-aetherholm.md) | Aetherholm, the third Forge Worlds title: a sky-island strategy MMO. **Design authority.** |
 | **21** | [engagement-treasury](21-engagement-treasury.md) | The house seed, what the platform stakes with its own money, and the disclosure a user must be able to see. |
 | **22** | [browser-journeys](22-browser-journeys.md) | The complete browser-level scenario catalogue — 318 scenarios in three tiers across fifteen surfaces — and where the suite lives. Extends **05**; corrects one row of **14** §11. |
+| **23** | [tessera](23-tessera.md) | Tessera, the fourth Forge Worlds title: a browser-native user-made world, and the first surface in the estate where EMBER is **earned**. Isometric and 2D by design, because neither image model emits a mesh. **Design authority**, including the 392-asset manifest and the no-pay-to-win resolution. |
 
 **Assets.** [assets/](assets/) holds the design-system extension: the
 [chart palette](assets/chart-palette.md) (validated, not eyeballed), the
