@@ -109,8 +109,12 @@ row in `SHARD` — measured, not assumed: its `prices` table holds `SHARD` amoun
 disagree with the code, which is the failure the estate's claims checkers exist to catch. The unit
 here changes when billing's does, in the same change.
 
-There is also no EMBER/USD rate to convert *at* — a coin with no mainnet has no price — so the USD
-figure is the durable one and the EMBER amount is a settlement-time question, not a table entry.
+There is also no EMBER/USD rate to convert *at* — the conclusion is unchanged but its reason is
+now a different one. Mainnet went live on 2026-08-05 (chain id 7411), so "a coin with no mainnet
+has no price", which is what stood here, is no longer the argument. What makes the price absent is
+that there is **no market, no listing and no liquidity**: a chain that answers is not a venue that
+quotes. So the USD figure is still the durable one and the EMBER amount is still a settlement-time
+question rather than a table entry.
 
 | Tier | Shards | Stated USD | USD at the 100:1 peg | Features |
 | --- | --- | --- | --- | --- |

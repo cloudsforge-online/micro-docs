@@ -15,6 +15,43 @@ Last verified: 2026-08-01.
 
 ---
 
+## 0. Correction, 2026-08-05: the estate is public
+
+**This document is a ledger, so nothing below is rewritten — but two of its findings are now
+false, and they are cited from other repositories, so the correction belongs at the top rather
+than in the entry it corrects.**
+
+§3.5(1) reads "**Nothing is deployed.** No environment, no gateway routing, no release manifest
+exercised", and the deployment bullet in §2 reads "Repository-complete and deployment-zero is the
+honest summary". Both were true when written. On 2026-08-05 the estate went public:
+
+- **23 mainnet hostnames answer** over the public internet, on a certificate the public already
+  trusts (Google Trust Services, via Cloudflare), served from one home server behind a tunnel.
+  17 of them return 200 — 14 product and marketing surfaces plus 3 operator consoles.
+- **Hearth mainnet is running and mining**, chain id **7411**, JSON-RPC at
+  `https://rpc.cloudsforge.online`. Verified by `eth_chainId` returning `0x1cf3` and
+  `eth_blockNumber` advancing across successive calls.
+
+**What this does not mean, stated here because a ledger is where an overstatement would be
+inherited from:**
+
+- **EMBER has no monetary value.** No market, no listing, no liquidity, no price. That was true
+  before today and is untouched by any of the above.
+- Mainnet is a few hundred blocks old. Reachable is not established.
+- **Two configured hostnames do not work**: `api.cloudsforge.online` answers 502, and
+  `worlds-api.cloudsforge.online` has no DNS record at all.
+- **There is no publicly reachable testnet.** Cloudflare's Universal SSL covers the single-label
+  wildcard `*.cloudsforge.online`, which matches `testnet.cloudsforge.online` but not
+  `hub.testnet.cloudsforge.online`. A two-label wildcard needs Advanced Certificate Manager, which
+  is paid and is not bought, so every testnet subdomain fails the TLS handshake at Cloudflare's
+  edge before reaching the estate.
+- One machine. No redundancy, no failover, and no backup that has ever been restored.
+- Nobody outside the project has used any of it.
+
+§3.5(2), (3) and (4) are not addressed here and are not claimed to have changed.
+
+---
+
 ## 1. The number
 
 Of the repositories this programme creates or changes — the 46 in
