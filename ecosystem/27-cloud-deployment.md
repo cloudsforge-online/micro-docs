@@ -138,9 +138,10 @@ trusted-restart path so a node does not re-verify PoW on blocks it wrote itself.
 Both are `hearth` changes. **Neither cloud can work around this**; an
 auto-restarting instance simply fails to come back.
 
-### 2.2 There are no published images. CI builds and throws them away.
+### 2.2 There were no published images. CI built them and threw them away. Fixed — but not the way this section used to prescribe.
 
-`org/.github/workflows/service-ci.yml` builds each service image and then:
+**The defect, as it stood.** `org/.github/workflows/service-ci.yml` builds each
+service image and then:
 
 ```yaml
 push: false
@@ -148,13 +149,13 @@ load: true
 tags: ${{ inputs.service }}:ci
 ```
 
-Only `hearth/.github/workflows/publish.yml` references `ghcr.io` at all. Across
-68 repositories with a `ci.yml`, **zero service images are published anywhere**.
+Only `hearth/.github/workflows/publish.yml` referenced `ghcr.io` at all. Across
+68 repositories with a `ci.yml`, **zero service images were published anywhere**.
 
-The consumer side is finished and waiting: `deploy/scripts/release-render.py`
+The consumer side was finished and waiting: `deploy/scripts/release-render.py`
 turns a release manifest into an overlay that pins every image and removes
 `build:` with `!reset`, and `org/releases/2026.08.0-example.yaml` already shows the
-intended `ghcr.io/cloudsforge-online/micro-<svc>` tags. There is a format, a
+intended `ghcr.io/cloudsforge-online/micro-<svc>` tags. There was a format, a
 generator (`cfctl release`) and a consumer — and no producer of the artefact they
 all describe.
 
@@ -163,9 +164,74 @@ out ~60 sibling repositories, because the frontends' build contexts reach across
 them by design (`uipkg: ../../ui`, `docker-compose.estate.yml:158-160`, with a
 long note explaining that `@cloudsforge/ui` is a `link:` into a sibling repo). It
 also means carrying that 41 GB build cache on a paid volume and spending instance
-CPU on builds. **Turn on `push: true` to GHCR and deploy by manifest.** The estate
-is public (61 repos), so GHCR storage and Actions minutes are free — which makes
-ECR and ACR line items that do not need to exist.
+CPU on builds. The estate is public (61 repos), so GHCR storage and Actions
+minutes are free — which makes ECR and ACR line items that do not need to exist.
+
+#### The fix this section used to prescribe cannot work. Measured, not argued.
+
+Until now this section said: *turn on `push: true` to GHCR*. Read as an
+instruction to flip `service-ci.yml:1220` and `web-ci.yml:264` and add
+`packages: write` there, **that change breaks every repository in the estate**,
+and it does not fail softly.
+
+A called workflow's `GITHUB_TOKEN` can only be *maintained or reduced, never
+elevated*. All 35 repositories that call `service-ci.yml` or `web-ci.yml` pin
+`permissions: {contents: read, packages: read}` on the calling job
+(`ledger/.github/workflows/ci.yml:41-43` is the canonical copy). A reusable
+workflow declaring `packages: write` therefore fails its callers at **startup**,
+before a single step runs, on pull requests as well as on `main`:
+
+| micro-org run | caller grants | result |
+|---|---|---|
+| [30900277471](https://github.com/cloudsforge-online/micro-org/actions/runs/30900277471) | `packages: read` | **`startup_failure`** — the run never begins |
+| [30900280323](https://github.com/cloudsforge-online/micro-org/actions/runs/30900280323) | `packages: write` | success |
+
+`push: false` in the two gate builds is also **correct and stays**. Those jobs
+exist to `load:` the image into the runner's daemon so they can boot it and read
+`/livez` (`service-ci.yml:1220-1221`) or fetch `/` (`web-ci.yml:264-265`); `load`
+and `push` want different things from buildx. A gate is not a producer.
+
+#### What was built instead
+
+`org/.github/workflows/publish-image.yml` — a separate reusable workflow that
+each repository **opts into with its own `packages: write` grant**, so no
+permission is ever elevated across the call boundary:
+
+```yaml
+  publish:
+    needs: [ci, hygiene]          # only publish what passed
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    uses: cloudsforge-online/micro-org/.github/workflows/publish-image.yml@main
+    with:
+      kind: service               # or: web — selects the sibling build contexts
+    secrets:
+      estate_token: ${{ secrets.ESTATE_READ_TOKEN }}
+    permissions:
+      contents: read
+      packages: write             # <- granted by the CALLER, never asked for by the callee
+```
+
+It pushes three tags and deliberately **not `latest`**
+(`publish-image.yml:295-300`):
+
+| tag | why |
+|---|---|
+| `<version>` | `package.json`'s version — the load-bearing one, because `cfctl release` writes exactly this into the manifest (`org/tools/cfctl.ts:906`). Treated as **immutable**: an already-published version is never moved, and that is a warning rather than a failure, since most commits on `main` are not releases (`publish-image.yml:251-277`). |
+| `sha-<sha>` | always unique, always safe to push, and the only tag that answers "what code is this" for a commit that did not bump the version. |
+| `main` | the moving head of the branch, which is what a compose file without a manifest defaults to. |
+
+The last step re-checks that the package answers an **anonymous** pull
+(`publish-image.yml:315-362`), because the reader is a deploy host with no
+credentials: a push proves the writer's rights and nothing about the reader's.
+A GHCR package inherits the visibility of the repository the
+`org.opencontainers.image.source` label links it to, so on a public repository
+this resolves itself — and the workflow says so loudly when it does not.
+
+Verified end to end on `micro-service-template`,
+[run 30901257906](https://github.com/cloudsforge-online/micro-service-template/actions/runs/30901257906):
+all three tags present and anonymously pullable, which is precisely what
+`cfctl release --verify` (`cfctl.ts:937-975`) and
+`deploy/scripts/release-deploy.sh:99-125` run.
 
 ### 2.3 29 of 48 running services will not restart. Measured, not read.
 
@@ -789,8 +855,15 @@ Named, so nothing is deferred to the person holding the keyboard.
 
 1. `hearth`: stream `blocks.ndjson` rather than `split('\n')`; add a trusted
    restart path that does not re-verify PoW on self-written blocks (§2.1).
-2. `org`: `push: true` to `ghcr.io/cloudsforge-online/*` in
-   `service-ci.yml`'s image job, and the same for `web-ci.yml` (§2.2).
+2. ~~`org`: `push: true` to `ghcr.io/cloudsforge-online/*` in `service-ci.yml`'s
+   image job, and the same for `web-ci.yml`.~~ **Done, and NOT that way — that
+   way fails all 35 callers at startup** (micro-org runs 30900277471 vs
+   30900280323). `org/.github/workflows/publish-image.yml` is a separate
+   reusable workflow each repository opts into with its own `packages: write`
+   grant; `push: false` stays in the two gate builds, which need `load:`. What
+   remains for an implementing agent is only to check every deployable
+   repository carries the `publish` job — `cfctl release --verify <version>`
+   answers that in one command (§2.2).
 3. `deploy`: an `x-service-defaults` anchor with `restart: unless-stopped` on
    every long-running service; a systemd unit per compose project (§2.3).
 4. `deploy`: `POSTGRES_PASSWORD` and its 56 DSN copies parameterised, with the
