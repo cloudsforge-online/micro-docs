@@ -861,13 +861,34 @@ one in both directions.
 
 ## 8. What no scenario can cover, because the functionality does not exist
 
-Forty-eight of the 318 scenarios are marked ⛔. They are specified rather than omitted, because a
+Forty-eight of the 318 scenarios are marked ⛔, **and that number is now too high** — §8.1, the
+largest blocker, has closed, so every scenario blocked only by it is runnable. The marks below have
+not been swept. They are specified rather than omitted, because a
 scenario that exists and cannot run is a gap somebody can close, and an absent scenario is a gap
 nobody can see. Each blocker below is a fact about the estate, not about this catalogue.
 
-### 8.1 Nothing in the estate serves a sign-in page
+### 8.1 ~~Nothing in the estate serves a sign-in page~~ — CLOSED 2026-08-04
 
-**This is the largest blocker, and it blocks most of the ★ set.**
+**This was the largest blocker and it is gone.** The estate serves a sign-in page, a real browser
+signs in through it, and the scenarios that waited on it are runnable.
+
+`micro-hub-web` serves `/account/login`, `/account/register` and `/account/logout` — routed outside
+its own auth gate, since a sign-in page behind a sign-in gate is a redirect loop — with MFA
+staging, origin-refusal handling and the SSO hand-off. `micro-beacon`'s smoke tier signs in as the
+estate administrator through the real gateway with nothing stubbed, and asserts the account handle
+renders afterwards. It is one of the seventeen checks that tier runs, and it passes.
+
+**What is written below is kept rather than deleted**, because the reasoning is still worth
+reading: it is an accurate record of an estate where every product redirected sign-in to an address
+nothing served, and of how that was established. Read it as history. **The ⛔ marks that cite this
+section are stale**, and any scenario blocked only by it should be treated as runnable — the
+catalogue's blocked count is correspondingly overstated.
+
+The second half of this section — the shared UI and `micro-identity` disagreeing on the redemption
+route — is also closed: the callback posts to `/auth/handoff/redeem`, which identity serves.
+
+---
+
 
 - Every SPA's sign-in is `signInRedirect()`, which sends the browser to
   `${accountUrl()}/login?return=…` (`ui/packages/ui/src/index.tsx:175-178`). `accountUrl()`
