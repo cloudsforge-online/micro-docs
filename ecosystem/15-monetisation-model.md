@@ -98,6 +98,20 @@ wallet is the contract owner and the platform's deployer key only pays gas.
 
 **Pricing today**, verbatim from `shared-libs/packages/shared/src/forgemint.ts:150-183`:
 
+**Pricing basis, decided 2026-08-04.** These tiers keep their **stated USD** and change unit: the
+Shard column is historical, converted at the documented 100-Shards-to-the-dollar peg. So `Fixed`
+remains $14.99, `Mintable` $39.99, `Foundry` $89.99, and the amount of EMBER that buys is whatever
+those dollars buy at settlement.
+
+**The numbers below have not moved yet, and this is deliberate.** `micro-billing` still prices every
+row in `SHARD` — measured, not assumed: its `prices` table holds `SHARD` amounts of 250, 400, 500,
+750 and 1000. Rewriting this table to EMBER before the service changes would make the document
+disagree with the code, which is the failure the estate's claims checkers exist to catch. The unit
+here changes when billing's does, in the same change.
+
+There is also no EMBER/USD rate to convert *at* — a coin with no mainnet has no price — so the USD
+figure is the durable one and the EMBER amount is a settlement-time question, not a table entry.
+
 | Tier | Shards | Stated USD | USD at the 100:1 peg | Features |
 | --- | --- | --- | --- | --- |
 | Fixed | 1,500 | $14.99 | $15.00 | Fixed supply, ERC-20, one EVM chain |
