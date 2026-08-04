@@ -100,7 +100,7 @@ wallet is the contract owner and the platform's deployer key only pays gas.
 
 | Tier | Shards | Stated USD | USD at the 100:1 peg | Features |
 | --- | --- | --- | --- | --- |
-| Spark | 1,500 | $14.99 | $15.00 | Fixed supply, ERC-20, one EVM chain |
+| Fixed | 1,500 | $14.99 | $15.00 | Fixed supply, ERC-20, one EVM chain |
 | Forge | 4,000 | $39.99 | $40.00 | Mint, burn, ownable |
 | Foundry | 9,000 | $89.99 | $90.00 | Mint/burn/pausable/capped, EVM or Solana |
 
@@ -512,7 +512,7 @@ Every number here is a proposal with a reason, not a default.
 | Internal transfer | 0 | — | A ledger posting |
 | Coin → Shard conversion | 200 bps | Existing default | Price risk on a position we take |
 | Shard → coin conversion | 200 bps | Existing default | Same, symmetric |
-| Token deploy — Spark | 1,500 Shards | Existing | Fixed-supply ERC-20 |
+| Token deploy — Fixed | 1,500 Shards | Existing | Fixed-supply ERC-20 |
 | Token deploy — Forge | 4,000 Shards | Existing | Mint/burn/ownable |
 | Token deploy — Foundry | 9,000 Shards | Existing | Full features, EVM or SPL |
 | Mainnet gas surcharge | Quoted at order | New, P8 | A $90 tier cannot absorb a $200 gas spike |
