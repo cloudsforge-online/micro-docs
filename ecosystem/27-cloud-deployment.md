@@ -294,6 +294,25 @@ anywhere in the tree**. Graviton is ~19% cheaper than the equivalent Intel
 risk is a native dependency that has no arm64 prebuild; the estate builds clean on
 this arm64 Mac today, which is evidence but not proof for glibc arm64 Linux.
 
+> **BUT THE PUBLISHED IMAGES ARE `amd64` ONLY, AND THIS PAGE IS THE ONLY PLACE THE
+> TWO DECISIONS MEET.** The evidence above is about images built *locally* — Colima
+> on an arm64 Mac naturally builds arm64. The images CI publishes are a different
+> artefact: `org/.github/workflows/publish-image.yml:102-106` defaults `platforms`
+> to `linux/amd64`, reasoning that arm64 "roughly doubles the build for an
+> architecture nothing deploys to yet". Both statements were true when written, on
+> the same day, by different hands.
+>
+> This matters because the cloud path deploys **published** images, and
+> `deploy/scripts/release-deploy.sh:99-124` changes nothing until every image in the
+> manifest pulls. Provision Graviton or Ampere against today's registry and the pull
+> either fails or silently lands an `amd64` image on an `arm64` host.
+>
+> So arm64 is not free money yet — it costs one input. **Set `platforms:
+> linux/amd64,linux/arm64` on the publisher before provisioning any arm64 host**, and
+> expect roughly double the build time, which is the cost the publisher's note was
+> weighing. Verified 2026-08-04: `docker pull ghcr.io/cloudsforge-online/micro-status-web:main`
+> on this arm64 Mac fails with *"no matching manifest for linux/arm64/v8"*.
+
 **`t4g.2xlarge` is the cheaper option and is genuinely defensible.** It is also
 8 vCPU / 32 GiB, costs $215/mo on-demand against $266, and its baseline is 40% of
 8 vCPUs = **3.2 vCPU — well above the measured 1.69-core idle**. The reason I do
