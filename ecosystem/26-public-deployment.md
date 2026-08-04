@@ -209,8 +209,8 @@ Found by grep across all 68 repositories, excluding tests and `dist/`:
 
 | Where | What | Severity |
 |---|---|---|
-| `contracts/packages/chain/src/index.ts:127-128` | `explorerTxUrl` for EMBER: **mainnet and testnet are the same literal string**, `https://explorer.cloudsforge.online/#/tx/`. Every testnet transaction link points at the mainnet explorer, where it will not resolve. | **Live defect.** Not my repo — for `contracts`. |
-| `wallet-extension/src/background/storage.ts:177-186` | Mainnet RPC is `https://rpc.hearth.cloudsforge.online` — a **three-label host that the plan's `rpc.<apex>` does not match**. Testnet is `http://127.0.0.1:8545` with `explorerUrl: null`, so the shipped wallet cannot reach a public testnet at all. | Decide the RPC hostname before the extension ships. |
+| `contracts/packages/chain/src/index.ts:127-128` | `explorerTxUrl` for EMBER: **mainnet and testnet were the same literal string**, `https://explorer.cloudsforge.online/#/tx/`. Every testnet transaction link pointed at the mainnet explorer, where it would not resolve. | **FIXED** 2026-08-04, `contracts` 326de9d — and the compile-time guard that replaced it found a third instance in SOL. |
+| `wallet-extension/src/background/storage.ts:177-186` | Mainnet RPC was `https://rpc.hearth.cloudsforge.online` — a **three-label host that the plan's `rpc.<apex>` does not match**. Testnet was `http://127.0.0.1:8545` with `explorerUrl: null`, so the shipped wallet could not reach a public testnet at all. | **FIXED** 2026-08-04, `wallet-extension` 34912bd — the same dead host was also in `host_permissions`, so MV3 blocked the fetch outright. |
 | `sdk/`, `devportal-web`, `site`, `network-site` | `https://api.cloudsforge.online` in OpenAPI servers and prose. Correct for a published SDK; noted so it is not mistaken for drift. | Fine. |
 | `deploy/gateway/dynamic/policy.yml` | The **literal** `cloudsforge.online` CORS block, beside the templated one. Deliberate — policy.yml argues the two halves must not be required to match. | Fine, and now checked (§4). |
 
@@ -502,8 +502,16 @@ authority.
 - [ ] Seed addresses published on `network.<apex>`, derived not typed.
 - [ ] `rpc.<apex>` answers `eth_chainId` with the right chain, per environment.
 - [ ] **§6 answered.** Do not launch mainnet without an answer.
-- [ ] Fix `contracts/packages/chain/src/index.ts:127-128` — testnet explorer links point at mainnet.
-- [ ] Decide the RPC hostname and reconcile `wallet-extension`, which expects `rpc.hearth.cloudsforge.online`.
+- [x] Fix `contracts/packages/chain/src/index.ts:127-128` — testnet explorer links point at mainnet.
+      Done 2026-08-04 (`contracts` 326de9d). The table is now built by `explorers()`, which makes two
+      equal non-null URLs a compile error rather than a value to be re-checked. That guard found a
+      third instance nobody had reported: SOL had the same defect, and its testnet is now `null`,
+      because Solana explorers select cluster by query string and no link beats a wrong-cluster link.
+- [x] Decide the RPC hostname and reconcile `wallet-extension`, which expects `rpc.hearth.cloudsforge.online`.
+      Done 2026-08-04 (`wallet-extension` 34912bd). The hostname is `rpc.<apex>`; both hosts per network
+      now derive from one `APEX` constant. The dead three-label host was also in `host_permissions` in
+      both manifests, which under MV3 blocked the fetch in-browser — so a fresh install defaulted to a
+      node on the user's own machine.
 
 ### After
 
