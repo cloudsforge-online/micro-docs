@@ -16,6 +16,33 @@ place, and every tile carries a proof of who made it.
 
 ---
 
+> ## A NOTE ADDED AFTER THIS DESIGN WAS EXECUTED: Qwen-Image 2512 has been withdrawn.
+>
+> **This document is the design authority for Tessera and it was written before the run.** It is
+> left in the tense it was written in, because a design document rewritten to match its outcome
+> stops being evidence of what was decided in advance. But it names a second image model
+> throughout, and that model is gone: the owner has withdrawn **Qwen-Image 2512** from the estate,
+> and every `candidates/qwen-image-2512*` tree in all four asset repositories has been deleted
+> along with its manifests, deployment records and registry entries.
+>
+> **So read every Qwen instruction here as history, not as a step to carry out.** In particular:
+>
+> - **§2 and §7's transposition instruction** (*"the Qwen request must send `H×W` to receive
+>   `W×H`"`*) described a workaround for one endpoint's bug. The workaround is deleted with the
+>   endpoint. **The detection is not** — `generate.ts` still measures every delivered non-square
+>   image against what it asked for, for any provider, and `verify.py` still carries the check.
+>   That distinction is deliberate and is argued in [24](24-asset-model-comparison.md) §6.1.
+> - **The file paths under `candidates/qwen-image-2512/`** — including the `DEPLOYMENT.json` this
+>   document cites for cost — **no longer resolve.** What those files recorded has been transcribed
+>   into each repository's `COMPARISON.md` and is labelled there as no longer re-derivable.
+> - **The two-model comparison this document argues for was run, completed, and concluded FLUX 2
+>   Pro.** Tessera was the fair painterly brief §1 asks for, and the challenger lost that one too.
+>   The findings are preserved in [24](24-asset-model-comparison.md) §4 and §5.
+>
+> **§1's constraint is unaffected and is the reason the provider seam was kept.** Neither model
+> emits a mesh; the estate's 3D gap is still open, so the registry is still N-provider and
+> `candidates/` still exists, empty, waiting for whatever is tried next.
+
 ## 1. The constraint, stated first, in the voice 19 used
 
 [19-new-products.md:97](19-new-products.md) says it about creatures; it needs saying again, louder,
@@ -118,9 +145,9 @@ generation is the long pole and an H100 is billing while it waits.
 
 `micro-tessera-assets` follows the layout the other three asset repos already use, verified on
 disk: **FLUX output in `assets/<set>/`, challengers in `candidates/<provider>/`** — declared at
-`brand/providers.json:84` (`"root": "candidates/qwen-image-2512"`) and present as real files under
-`brand/candidates/qwen-image-2512/`, `emberkin-assets/candidates/qwen-image-2512/` and
-`aetherholm-assets/candidates/qwen-image-2512/`.
+`brand/providers.json` and were present as real files under each repository's
+`candidates/qwen-image-2512/`. **They are not any more** — the model was withdrawn and every one of
+those trees was deleted; see the note at the head of this document.
 
 ```
 micro-tessera-assets/
@@ -192,7 +219,8 @@ strategy game that would still function as a spreadsheet, and Tessera's art *is*
 generated entries): FLUX averaged **3.0 provider units** and **1.5–2.1 calls per kept asset** —
 `brand` 54 kept / 26 retries / 162 units, `emberkin` 83 / 46 / 250.5, `aetherholm` 96 / 107 / 289.5.
 So 288 kept ⇒ **~440–600 FLUX calls, ~870 provider units**. Qwen bills by deployment hour, not by
-image: `brand/candidates/qwen-image-2512/DEPLOYMENT.json` records 233 generations in **0.7 hours**
+image: the deployment record — since deleted with the candidate trees, and transcribed into each
+repository's `COMPARISON.md` — recorded 233 generations in **0.7 hours**
 at a mean **10.8 s** each, so 288 ⇒ **~1.0–1.5 deployment-hours**.
 
 > **Live cost defect, recorded rather than inherited:** that same file says
@@ -1337,9 +1365,13 @@ document says so rather than writing a plausible sentence:
   number in the document**, and measuring it should be the first thing phase 1 does — if 640
   sprites in a Plot does not hold 60 fps on a mid laptop, the caps change and several other numbers
   move with them.
-- **Whether the Qwen A100 deployment is still billing.** `brand/candidates/qwen-image-2512/
-  DEPLOYMENT.json` records `teardown.state: "NOT TORN DOWN — STILL BILLING"`. I read the file; I did
-  not check Azure. Somebody should.
+- **Whether the withdrawn deployment is still billing — and this one can no longer be resolved from
+  here.** Its record read `teardown.state: "NOT TORN DOWN — STILL BILLING"` and named the manual
+  Azure portal action required, because none of three ARM routes could delete it. I read the file;
+  I did not check Azure. **That file has since been deleted with the candidate trees** and is
+  transcribed into each repository's `COMPARISON.md`; it was a record of a moment
+  (2026-08-03T08:30:17Z) and never a live reading. If nobody removed the deployment by hand, it is
+  still billing. Somebody should still check.
 - **The true scope of the estate-wide Shard removal.** A recount found **2,457 occurrences across
   340 files in 44 repos** — larger than the 1,541/38 figure circulating — but I did not check that
   every occurrence is in scope, and the 193 in `emberkin*` are a different game's shard item that

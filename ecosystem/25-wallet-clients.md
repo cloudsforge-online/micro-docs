@@ -262,9 +262,16 @@ it badly or grant powers the key was never meant to carry.
 ## 6. The assets
 
 Every platform demands its own art in its own sizes, and store review rejects the wrong ones. The
-set below is generated with **both models** — FLUX 2 Pro as the shipped reference, Qwen-Image 2512
-into `candidates/` — following the rule already in force for `micro-brand`: challengers never
-overwrite the reference.
+set below is generated with **FLUX 2 Pro**, following the rule already in force for `micro-brand`:
+the shipped reference lives at `assets/` and a challenger, if there ever is one again, writes to
+`candidates/` and never overwrites it.
+
+> **This paragraph used to say "generated with both models", naming Qwen-Image 2512 as a second
+> column.** The owner has withdrawn that model from the estate and every candidate tree has been
+> deleted; see [24](24-asset-model-comparison.md). The N-provider machinery is deliberately kept,
+> so nothing here needs redesigning if a second model is ever added — but this set will be one
+> model wide when it is generated, and planning against two would be planning against a challenger
+> that does not exist.
 
 | Group | Contents |
 | --- | --- |
