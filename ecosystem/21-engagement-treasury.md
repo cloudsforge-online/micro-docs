@@ -91,15 +91,36 @@ platform:engagement-treasury            ← mined-EMBER conversions; fee recycle
 
 ## 5. How each service spends it, honestly
 
-- **Foresight — the house seed.** At market approval, the engagement account stakes a configured
-  amount **symmetrically across all outcomes**, at open, never after. Symmetric means the house
+- **Foresight — the house seed.** At market approval, a configured amount is staked
+  **symmetrically across all outcomes**, at open, never after. Symmetric means the house
   expresses no opinion; at-open-only means it can never trade on information; a trigger enforces
   that house stakes carry the market's open timestamp. The market page shows it plainly:
-  *"CloudsForge seeded this pool with X Shards so early odds exist."* The house's proportional
-  winnings return to the engagement account like any bettor's. Worst-case cost per market is the
-  seed itself; per-market and per-day caps are schema-checked. This makes the owner's "bet
-  against the market if no other users exist" real — with the platform as a **disclosed,
-  opinion-free** counterparty, never a hidden one.
+  *"CloudsForge seeded this pool with X EMBER so early odds exist."* The house's proportional
+  winnings return the way any bettor's do. Per-market and per-day caps are schema-checked. This
+  makes the owner's "bet against the market if no other users exist" real — with the platform as a
+  **disclosed, opinion-free** counterparty, never a hidden one.
+
+  Three corrections to what this bullet used to say, each made against the built implementation
+  rather than against intent. The operator procedure and the full derivation are in
+  `deploy/docs/house-seed.md` (repository `micro-deploy`):
+
+  1. **The sentence is served in EMBER, not Shards**, and that is deliberate, not drift. The pool
+     is EMBER wei on a public chain, and converting through an administered price would make the
+     disclosed number move without anybody staking anything. The honest unit is the pool's own.
+     Composed once in `foresight/src/houseseed.ts:241`, rendered verbatim by the client. SHARD is
+     a retired asset (`contracts/packages/chain/src/index.ts:58`), so this bullet's old wording
+     described a live surface naming a retired asset. It never did.
+  2. **The stake does not come from the engagement account, and cannot.** `stake(uint8)` is a
+     value-bearing contract CALL, and custody has no signing shape for one
+     (`custody/src/signing.ts:210-260`). The seed is staked on chain from a published platform
+     wallet, `FORESIGHT_HOUSE_ADDRESS`, whose key lives outside custody. The ledger account is the
+     programme's bookkeeping; it is not the money, and §4's promise that an auditor reconstructs
+     the programme from the ledger alone does **not** presently hold for the house seed.
+  3. **"Worst-case cost per market is the seed itself" was too pessimistic, by half.** If the
+     house stakes `S` per side it commits `2S`, but its payout is bounded strictly below by `S`:
+     the maximum loss on any market is **`S` — the per-outcome amount, not the total staked.**
+     With no other bettors the house recovers everything but the settlement fee, and that fee goes
+     to the platform's own treasury address.
 - **Market — subsidies and bounties, never ghost demand.** The engagement account funds zero-fee
   listing windows and first-N-listing bounties (idempotent grants, labelled `engagement.grant` in
   the buyer-visible history). It never places bids: a bid the platform does not mean is ghost
