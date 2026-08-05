@@ -60,8 +60,11 @@ is satisfied. `nimbus`, `pay` and `vault` answer `/livez` with 200 and `/` with
 404 on both — correct for `servesUi: false`, and not a fault to be reported.
 `p2p.` and `p2p-testnet.` answer 426 at `/p2p`.
 
-**Still broken, and named rather than omitted:** `api.cloudsforge.online` returns
-**502** (issue #35). **Retired rather than broken:** `worlds-api.` has no DNS
+**`api.cloudsforge.online` spent part of 2026-08-05 returning 502 and no longer
+does.** The cause was a `cf-api-catchall` router pointing at `http://127.0.0.1:1`
+— a gateway backend fault rather than a tunnel or DNS one, which is why the
+hostname resolved the whole time. It serves on both networks now, answering `404
+text/plain` on an unmatched path. **Retired rather than broken:** `worlds-api.` has no DNS
 record because the game API was consolidated into `api.` — so the rename this
 document plans in §3 and elsewhere did not happen, and the reverse did. It is
 still a registry row (`ui/packages/ui/src/surfaces.ts:770-783`), which is an

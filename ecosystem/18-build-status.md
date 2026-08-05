@@ -107,8 +107,13 @@ publishes a surface for a hostname the estate no longer serves.
 
 **What has not changed, repeated so §0's honesty is not diluted by better news:**
 
-- `api.cloudsforge.online` still answers **502**. Open defect, issue #35, and until it is fixed
-  nothing external can be built against the public API.
+- ~~`api.cloudsforge.online` still answers **502**.~~ **Fixed later the same day, and this bullet
+  is corrected rather than deleted because it was true when written.** The cause was a
+  `cf-api-catchall` router pointing at `http://127.0.0.1:1` — a gateway backend fault, not a
+  tunnel or DNS one, which is why the host resolved throughout. It now serves on **both**
+  networks: `404 text/plain` on an unmatched path, 200 on a real route. Re-measured on
+  2026-08-05, after the fix, `api.cloudsforge.online/` and `api-testnet.cloudsforge.online/` both
+  answer `404 text/plain`. Issue #35 is closed by that change.
 - `www.cloudsforge.online` does not resolve at all.
 - **EMBER has no monetary value on either network.** Testnet EMBER is worthless *by construction* —
   it is given away, and the testnet may be restarted from genesis. Mainnet EMBER is worthless *so
