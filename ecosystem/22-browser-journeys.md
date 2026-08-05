@@ -1093,3 +1093,156 @@ remainder are specified and blocked, and §8 says on what.
 | every **degradation** assertion | BJ-DSH-02..10, BJ-ACC-14, BJ-MKT-02, BJ-ADM-18, BJ-STA-03, BJ-NET-07, BJ-EMB-10 |
 | every **idempotency** assertion | BJ-MKT-04..06, BJ-CRE-07, BJ-TRD-07, BJ-EMB-02, BJ-AET-07, BJ-ADM-20, BJ-DEV-11, BJ-NET-10, and every H1 in §6.19 |
 | every **irreversible** moment | BJ-DEV-05..07, BJ-DEV-10, BJ-DEV-14, BJ-ADM-06..08, BJ-FADM-07..09, BJ-WAL-18 |
+
+---
+
+## 11. The four the owner found by hand, and the assertions that would have caught them
+
+*Added 2026-08-05. Every claim below was read out of the working tree or measured against the
+live estate at `cloudsforge.online` (release 2026.08.3) on that date, and each carries how.*
+
+On 2026-08-05 the owner used the live product and found four defects by hand. **The browser tier
+was green on all four at the time**, and it is worth being exact about why, because the answer is
+not "the tier is thin". The tier already asserts, per surface, that the document answers 200, that
+the application mounted, that the page is painted, that no error state is on screen, that nothing
+failed on the wire, that there is no console error, and that the surface renders its own words
+(`beacon/src/browser/smoke.ts:526-641`, `checkSurface`). **All seven of those were true of all four
+defects.** A tier can be complete in the assertions it makes and still be blind, if the assertions
+are about the page rather than about the outcome the user came for.
+
+Two mechanical causes run through all four, and both are worth fixing once rather than four times:
+
+1. **The tier waits for the network to go quiet before it looks.** `visit` does
+   `waitUntil: 'domcontentloaded'` and then `waitForLoadState('networkidle')`
+   (`beacon/src/browser/smoke.ts:703-708`), and `signIn` does the same twice before reading the
+   body (`smoke.ts:791`, `:819`). Every assertion is therefore made in the settled state. A defect that
+   lives *between* first paint and settle — which is exactly where §11.2 lives — is invisible to it
+   by construction.
+2. **Nothing asserts that a link goes somewhere that exists.** A menu entry is rendered, the
+   rendering is asserted, and where it points is not.
+
+### 11.1 A registration cannot proceed with mismatched passwords
+
+**What was wrong.** `hub-web`'s registration form had one password field. A mistyped password
+creates the account, signs the user in on the spot, and the credential they believe they chose is
+not the one stored — discovered at the next sign-in, on another machine, with nothing to prove the
+account is theirs.
+
+**The assertion that is true only when it works.** Fill the registration form with two
+*different* passwords, press Create account, and assert that **no `POST /auth/register` reached
+identity**. Not "an error is displayed" — a bundle that posts the mismatch and renders the server's
+answer would satisfy that. The observable is the absence of the request, which this tier can see
+because it intercepts nothing and can read its own `requests` collector (`driver.ts` `attach`).
+
+Then correct the second field, submit again, and assert the account that is created is reachable
+with the password from the **first** field. That second half is what stops the fix from being
+"send whichever field was typed last".
+
+*T1 half already runs*: `hub-web/test/journeys.test.ts`, `BJ-SIGNIN-06`.
+
+### 11.2 The header shows the account without a reload
+
+**What was wrong, and it is the highest-value of the four** because it makes a working sign-in
+look broken and it is on every page. In the owner's words: *"after login, the top right part of the
+page where the account name is shown … said Sign in; when I click it, it refreshed and then
+proceeded to account name."*
+
+Measured on the live estate on 2026-08-05, signed in, on `hub.cloudsforge.online`, sampling the
+`.cf-bar__inner` text every 35ms from `domcontentloaded`: the bar painted at 54ms reading
+`CloudsForge Products Sign in`, and first read `CloudsForge Products ⌘K ES estateadmin` at 130ms.
+**76ms of signed-out chrome on a warm token over a fast link** — and that is the floor, not the
+experience: the identity call is cross-origin to `nimbus.<apex>`, so a browser sends a CORS
+preflight first (measured at 308ms), and an expired access token adds a 401, a refresh and a retry
+before the handle can appear.
+
+**The assertion that is true only when it works.** After signing in, navigate to a protected
+surface and read the account bar **without waiting for the network to go idle** — at
+`domcontentloaded`, or on the first animation frame. Assert that the handle is already there, and
+separately that **no element offering `Sign in` is on the page**, on an origin where
+`localStorage` holds `cf.accessToken` and `cf.refreshToken`.
+
+Three things make this drivable against a live estate with nothing intercepted:
+
+- the session is per-origin `localStorage` and is readable from `page.evaluate`, so the
+  precondition ("this origin holds a session") is checkable rather than assumed;
+- the negative half is the load-bearing one. `session: 'shows-the-account'` on a `SmokeSurface`
+  (`smoke.ts:217-398`) asserts the handle is present *eventually*; the new assertion is that
+  `Sign in` is absent *immediately*, and the two fail on different defects;
+- do not implement it with a fixed sleep. Sample the bar in a loop from navigation until either the
+  handle appears or a budget elapses, and assert on the **first** sample in which the bar has
+  painted at all. A sleep long enough to be stable is a sleep long enough to hide the defect.
+
+**Do not** assert this on an origin that does not hold the session. `cloudsforge.online` and
+`hub.cloudsforge.online` are different origins and `localStorage` does not cross them, so a
+signed-out bar on the apex is correct behaviour and asserting otherwise would produce a failing
+check nobody can fix. See §11.5.
+
+*T1 half already runs*: `hub-web/test/journeys.test.ts`, `BJ-SIGNIN-07`.
+
+### 11.3 An unverified account cannot sign in, and the link signs you in
+
+**What was wrong.** Registration sent no mail and sign-in required no verification. Verified live
+on 2026-08-05: a `POST /auth/register` against `nimbus.cloudsforge.online` was followed
+immediately by a successful `POST /auth/login` returning `"emailVerifiedAt": null`.
+
+**The assertion that is true only when it works.** Two halves, and neither alone is enough:
+
+- register a fresh account, then attempt to sign in with the correct credential, and assert the
+  sign-in is **refused** — and refused for the stated reason, not by a generic failure that a
+  wrong-password bug would also produce;
+- then follow the verification link and assert the browser ends up **signed in** — the account
+  handle renders on a protected surface — rather than merely that a page rendered.
+
+The second half is the one worth insisting on. "The verification page returned 200" is true of a
+page that verifies nothing.
+
+Driving it needs a mailbox the tier can read, which is the one new capability of the four. The
+options, in the order they should be considered: a catch-all SMTP sink the estate already runs; an
+operator route that lists pending verifications without exposing the token (`identity`'s
+`listPendingResets`, `passwordReset.ts:142-168`, is the precedent — it can show that a request
+exists because the token is stored only as a hash); or, failing both, mark the scenario ⛔ with the
+missing fixture named, which is what §8.8 already does for the two fixtures the estate cannot
+produce. **Do not** implement it by reading the token out of identity's database and constructing
+the URL in the test: that asserts the token exists, not that the mail carries a link that works.
+
+### 11.4 The account link resolves to a page that exists
+
+**What was wrong.** The `Account` entry in the shared account menu is a `<button>` whose handler is
+the same `onSignIn` callback as the `Sign in` button. Read out of the deployed bundle on
+2026-08-05, not out of source: in `https://hub.cloudsforge.online/assets/index-CbjtoRSR.js` the
+menu item is `{type:"button",...,role:"menuitem",onClick:()=>{d(!1),c==null||c()}}` where `c` is
+the identical callback invoked by the signed-out `Sign in` button a few bytes earlier. Source:
+`ui/packages/ui/src/index.tsx:827-844`. So pressing `Account` re-runs `signInRedirect()`, which
+sends the browser to `${accountUrl()}/login?return=<here>`, whose already-signed-in effect hands
+the session straight back and returns it to where it started — the owner's *"it goes to
+cloudsforge.online, no account page"*.
+
+**The assertion that is true only when it works.** Open the account menu on a signed-in surface and
+assert every entry that is a destination is an `<a>` with an `href`, then **follow it** and assert
+the response is 200 and the page that renders is the account page — identified by its own words,
+not by "something rendered". A `<button>` in that menu is a finding in itself: a destination that
+cannot be middle-clicked, copied, or opened in a new tab is not a link, and it is what let this
+defect exist.
+
+Generalise it rather than special-casing this menu. The tier already visits sixteen surfaces; a
+check that **every `href` rendered in the account menu and the company footer resolves** would have
+caught this one, and catches the next. The footer is derived from `SURFACES`
+(`ui/packages/ui/src/index.tsx:1012-1089`), so it renders a link for every registry row with
+`servesUi` — and a registry row is a claim about the estate that nothing currently tests.
+
+### 11.5 What this section deliberately does not ask for
+
+- **A check that the apex serves a signed-in bar.** It must not. `localStorage` is per-origin and
+  the estate has no cookies at all, so a session established on `hub.<apex>` is genuinely not
+  present on `<apex>`. The mechanism that is *supposed* to cross that boundary is the SSO hand-off,
+  and on 2026-08-05 it was refusing every origin — `POST /auth/handoff` answered 403 `forbidden`
+  for `https://cloudsforge.online`, `https://hub.cloudsforge.online` and
+  `https://market.cloudsforge.online` alike, which is the signature of an empty
+  `IDENTITY_HANDOFF_ORIGINS`. That variable is set in
+  `deploy/compose/docker-compose.estate.yml:593-611` and the empty case is a deliberate fail-closed
+  default (`identity/src/handoff.ts:55-60`), so this is a deployment fact and not a code defect —
+  but while it holds, **BJ-ACC-04 and BJ-XS-01 cannot pass**, and any check written against
+  cross-surface sign-in will be red for a reason no frontend change can fix.
+- **A timing threshold.** §11.2 asserts an ordering — the handle is there before the network
+  settles — and not a number of milliseconds. A threshold turns a correctness check into a
+  flake on a slow runner, and the estate would learn to re-run it.
