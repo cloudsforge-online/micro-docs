@@ -616,6 +616,16 @@ certificates**, since `*.cloudsforge.online` does **not** cover
 detail that is discovered at go-live. Origin CA has the same two-certificate
 requirement but no renewal machinery to fail.
 
+> **Update, 2026-08-05.** It *was* discovered at go-live, and the resolution was
+> to change the hostnames rather than the certificates. The environment is now a
+> **suffix on the first label** — `hub-testnet.cloudsforge.online`, not
+> `hub.testnet.cloudsforge.online` — so both environments sit under the single
+> `*.cloudsforge.online` wildcard and the **two-certificate requirement is
+> gone**, for ACME and Origin CA alike. See
+> [26-public-deployment §0](26-public-deployment.md) and
+> `ui/packages/ui/src/surfaces.ts:995-1010`. The Origin CA recommendation above
+> is unaffected on its own merits; only the certificate *count* changes.
+
 **What is lost:** an Origin CA certificate is only trusted by Cloudflare, so the
 origin cannot be reached directly by a browser. That is already true and already
 intended.

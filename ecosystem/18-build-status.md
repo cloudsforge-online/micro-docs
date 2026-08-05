@@ -52,6 +52,73 @@ inherited from:**
 
 ---
 
+## 0.1. Correction to the correction, later on 2026-08-05: the testnet is public
+
+**§0 was measured earlier the same day and two of its bullets did not survive it.** They are left
+above rather than edited, because §0 is itself cited from other repositories, and a bullet that
+quietly changes meaning is worse than one that is superseded in writing.
+
+**The testnet is publicly reachable.** §0 said it was not, and gave the certificate as the reason.
+The reason was right and the conclusion was overtaken: rather than buy Advanced Certificate
+Manager, **the hostname scheme was changed so that every testnet hostname is a single label.**
+
+| | Mainnet | Testnet |
+|---|---|---|
+| A surface | `<surface>.cloudsforge.online` | `<surface>-testnet.cloudsforge.online` |
+| The front page | `cloudsforge.online` | `testnet.cloudsforge.online` |
+| JSON-RPC | `https://rpc.cloudsforge.online` | `https://rpc-testnet.cloudsforge.online` |
+| P2P | `wss://p2p.cloudsforge.online/p2p` | `wss://p2p-testnet.cloudsforge.online/p2p` |
+| Chain ID | **7411** (`0x1cf3`) | **7412** (`0x1cf4`) |
+
+The environment is a **suffix on the first label**, not a second label. `ENV_LABELS` and
+`splitEnvLabel()` carry it in the registry (`ui/packages/ui/src/surfaces.ts:1030-1078`), and the
+comment above them states the change and its cause directly
+(`ui/packages/ui/src/surfaces.ts:995-1010`). The split is on the **last** hyphen, so that
+`worlds-api-testnet` reads as `worlds-api` on `testnet` rather than as `worlds` on an environment
+called `api-testnet` (`ui/packages/ui/src/surfaces.ts:1042-1046`).
+
+**`X.testnet.cloudsforge.online` is dead in every form.** Any document still showing it — including
+§0 above, §3 and §8 of [26-public-deployment](26-public-deployment.md), and
+[27-cloud-deployment](27-cloud-deployment.md) — is describing a scheme that was never reachable.
+
+**Measured over the public internet on 2026-08-05**, after §0 was written:
+
+- **All 16 UI surfaces return 200 on each network**, plus the apex on each: mainnet
+  `cloudsforge.online` and testnet `testnet.cloudsforge.online`. The 16 are `admin`, `aetherholm`,
+  `beacon`, `create`, `developers`, `emberkin`, `explorer`, `foresight`, `hub`, `lantern`,
+  `market`, `network`, `status`, `tessera`, `trade` and `worlds`.
+- **Both chains answer with their own identity.** `eth_chainId` over JSON-RPC POST returned
+  `0x1cf3` from `rpc.` and `0x1cf4` from `rpc-testnet.` — the EIP-155 replay domains are distinct
+  on the wire, which is the thing `node/src/params.js:37-38` exists to guarantee. Mainnet
+  `eth_blockNumber` was `0x477`.
+- `nimbus`, `pay` and `vault` return **200 on `/livez` and 404 at `/`** on both networks. That is
+  correct rather than a fault: they are `servesUi: false`
+  (`ui/packages/ui/src/surfaces.ts:728-925`) and are not pages. Neither they, nor `account`, `api`
+  or `worlds-api`, may be linked from a nav or a footer.
+- `p2p.` and `p2p-testnet.` return **426** at `/p2p`, which is the WebSocket upgrade response.
+  Only that path is routed.
+
+**The `worlds-api` bullet in §0 is misleading, and is corrected here.** It has no DNS record, which
+is true, but §0 lists it beside a 502 as though both were faults. The game API was consolidated
+into `api.`, so **`worlds-api.` is retired, not broken** — it should be dropped from documents as a
+live endpoint rather than reported as down. It does, however, **still exist as a registry row**
+(`ui/packages/ui/src/surfaces.ts:770-783`), which is a genuine inconsistency: the registry
+publishes a surface for a hostname the estate no longer serves.
+
+**What has not changed, repeated so §0's honesty is not diluted by better news:**
+
+- `api.cloudsforge.online` still answers **502**. Open defect, issue #35, and until it is fixed
+  nothing external can be built against the public API.
+- `www.cloudsforge.online` does not resolve at all.
+- **EMBER has no monetary value on either network.** Testnet EMBER is worthless *by construction* —
+  it is given away, and the testnet may be restarted from genesis. Mainnet EMBER is worthless *so
+  far*: no market, no listing, no price. The faucet is a route on the Network site rather than a
+  host of its own (`ui/packages/ui/src/surfaces.ts:545-561`), so **the testnet faucet is
+  `network-testnet.cloudsforge.online/faucet`**, and nothing gives away mainnet EMBER.
+- Still one machine, still no restored backup, still nobody outside the project using any of it.
+
+---
+
 ## 1. The number
 
 Of the repositories this programme creates or changes — the 46 in

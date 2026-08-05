@@ -1,7 +1,12 @@
 # 26 — The first public deployment
 
-**Status:** a plan and a set of artefacts. **Nothing here has been deployed.**
+**Status when written:** a plan and a set of artefacts, **none of it deployed**.
 Written 2026-08-04 against the estate running on the author's laptop.
+
+**Status on 2026-08-05: deployed, and both environments are public.** The plan
+below is left as it was written — see the correction immediately following for
+the two places where reality took a different route, one of which changes every
+testnet hostname in this document.
 
 The target is an **HP ProLiant MicroServer Gen10**, running **two environments**:
 mainnet at `cloudsforge.online` and testnet at `testnet.cloudsforge.online`,
@@ -9,6 +14,64 @@ behind **Cloudflare Tunnel**, with **no mining on the box**.
 
 Everything in §1–§4 is built and checked in `micro-deploy`. §5 is the part a
 tunnel cannot solve. §6 is unresolved and belongs to the owner. §7 is the gate.
+
+---
+
+## 0. Correction, 2026-08-05 — the testnet is a hostname SUFFIX, not a second label
+
+**Read this before §3 or §8.** This document assumes testnet surfaces live at
+`<surface>.testnet.cloudsforge.online`. **They do not, and they never did.** That
+form is dead in every occurrence below.
+
+| | Mainnet | Testnet |
+|---|---|---|
+| A surface | `<surface>.cloudsforge.online` | `<surface>-testnet.cloudsforge.online` |
+| The front page | `cloudsforge.online` | `testnet.cloudsforge.online` |
+| JSON-RPC | `https://rpc.cloudsforge.online` | `https://rpc-testnet.cloudsforge.online` |
+| P2P | `wss://p2p.cloudsforge.online/p2p` | `wss://p2p-testnet.cloudsforge.online/p2p` |
+| Chain ID | **7411** (`0x1cf3`) | **7412** (`0x1cf4`) |
+
+**Why the change, and it is this document's own §3 that predicted it.** §3 argued
+the two-label form needed no code change, and it was right about the code. It was
+the *certificate* that killed it: Cloudflare's Universal SSL covers a
+single-label wildcard, so `*.cloudsforge.online` matches
+`testnet.cloudsforge.online` but not `hub.testnet.cloudsforge.online`, and a
+two-label wildcard needs Advanced Certificate Manager, which is paid. Rather than
+buy it, the environment was moved into the **first label, as a suffix**. The
+registry carries it: `ENV_LABELS` and `splitEnvLabel()`
+(`ui/packages/ui/src/surfaces.ts:1030-1078`), with the reasoning and the
+before/after stated in the comment above them
+(`ui/packages/ui/src/surfaces.ts:995-1010`).
+
+**The split is on the LAST hyphen, and `worlds-api` is why**:
+`worlds-api-testnet` must read as the surface `worlds-api` on `testnet`, not as
+`worlds` on an environment called `api-testnet`
+(`ui/packages/ui/src/surfaces.ts:1042-1046`).
+
+**Consequently, in this document:** §3's worked example (`hub.testnet...` → apex
+`testnet...`) describes a shape that was configured and unreachable; §7's
+"Browse `testnet.cloudsforge.online`" is done; and §8's "the testnet apex has
+never been served" is no longer true. Each is annotated in place.
+
+**Measured over the public internet, 2026-08-05.** All 16 UI surfaces return 200
+on each network, plus each apex. `eth_chainId` returned `0x1cf3` from `rpc.` and
+`0x1cf4` from `rpc-testnet.`, so §7's "chain IDs confirmed distinct on the wire"
+is satisfied. `nimbus`, `pay` and `vault` answer `/livez` with 200 and `/` with
+404 on both — correct for `servesUi: false`, and not a fault to be reported.
+`p2p.` and `p2p-testnet.` answer 426 at `/p2p`.
+
+**Still broken, and named rather than omitted:** `api.cloudsforge.online` returns
+**502** (issue #35). **Retired rather than broken:** `worlds-api.` has no DNS
+record because the game API was consolidated into `api.` — so the rename this
+document plans in §3 and elsewhere did not happen, and the reverse did. It is
+still a registry row (`ui/packages/ui/src/surfaces.ts:770-783`), which is an
+inconsistency worth closing.
+
+**Neither network's EMBER has monetary value.** Testnet EMBER is worthless by
+construction and comes from the faucet, which is a route on the Network site
+rather than a host (`ui/packages/ui/src/surfaces.ts:545-561`) — so the testnet
+faucet is **`network-testnet.cloudsforge.online/faucet`**. Nothing gives away
+mainnet EMBER.
 
 ---
 
@@ -193,6 +256,14 @@ Run against the real module:
 - `testnet.cloudsforge.online` → `testnet` is **not** → apex unchanged ✓
 
 So one build serves both environments and no rebuild is needed per environment.
+
+> **Superseded, 2026-08-05 (§0).** The *conclusion* held and the *addresses did
+> not*. `hub.testnet.cloudsforge.online` was never reachable — Universal SSL does
+> not cover a two-label host — so the environment became a **suffix on the first
+> label**: `hub-testnet.cloudsforge.online`, apex `cloudsforge.online`. One build
+> still serves both, by the same argument; the derivation now splits the first
+> label on its last hyphen against `ENV_LABELS` rather than stripping a label
+> against `KNOWN_SUBS` alone (`ui/packages/ui/src/surfaces.ts:1030-1078`).
 
 **The one way it could stop being true, which is now a check.** If any surface
 ever takes `subdomain: 'testnet'`, `KNOWN_SUBS` gains `testnet`, and the *bare
@@ -478,8 +549,14 @@ authority.
 - [ ] `docker compose config` renders both projects; ports disjoint (CI asserts).
 - [ ] Both up simultaneously, **each with its own Postgres**, on the real box.
 - [ ] `custody-keys` volumes confirmed distinct between projects.
-- [ ] Browse `testnet.cloudsforge.online` in a real browser and confirm every
-      sibling link stays on testnet. **This has never been done** (§8).
+- [x] Browse `testnet.cloudsforge.online` and confirm every sibling link stays on
+      testnet. The apex and all 16 testnet UI surfaces returned 200 on
+      2026-08-05, under the **single-label** scheme of §0
+      (`<surface>-testnet.cloudsforge.online`). The link-derivation half — that a
+      sibling link from a testnet page never resolves to mainnet — is enforced by
+      `splitEnvLabel()`/`envLabel()` (`ui/packages/ui/src/surfaces.ts:1059-1078`)
+      and has not been re-walked click-by-click in a browser since the scheme
+      changed.
 
 ### Cloudflare
 
@@ -497,10 +574,15 @@ authority.
 ### Chain
 
 - [ ] Mainnet genesis created deliberately, witnessed, backed up **before** any block.
-- [ ] Chain IDs confirmed distinct on the wire: 7411 / 7412.
+- [x] Chain IDs confirmed distinct on the wire: 7411 / 7412. Done 2026-08-05 —
+      `eth_chainId` returned `0x1cf3` from `https://rpc.cloudsforge.online` and
+      `0x1cf4` from `https://rpc-testnet.cloudsforge.online`, both over the
+      public internet.
 - [ ] ≥2 seeds, different providers, both reachable on 8646 from outside.
 - [ ] Seed addresses published on `network.<apex>`, derived not typed.
-- [ ] `rpc.<apex>` answers `eth_chainId` with the right chain, per environment.
+- [x] `rpc.<apex>` answers `eth_chainId` with the right chain, per environment.
+      Done 2026-08-05. Note the hostname per §0: testnet's RPC is
+      `rpc-testnet.cloudsforge.online`, not `rpc.testnet.cloudsforge.online`.
 - [ ] **§6 answered.** Do not launch mainnet without an answer.
 - [x] Fix `contracts/packages/chain/src/index.ts:127-128` — testnet explorer links point at mainnet.
       Done 2026-08-04 (`contracts` 326de9d). The table is now built by `explorers()`, which makes two
@@ -544,6 +626,12 @@ and asserts the catch-all rule, and **CI runs it** — but it has not run here, 
 code change was verified by *executing the real derivation* against the real
 registry module for both the bare apex and a subdomain — not by loading a page at
 `testnet.cloudsforge.online`, which does not exist.
+
+> **No longer true, 2026-08-05 (§0).** `testnet.cloudsforge.online` was fetched
+> over the public internet and returned 200, as did all 16 testnet UI surfaces
+> under their **single-label** names (`<surface>-testnet.cloudsforge.online`).
+> The two-label form this paragraph was written about is the one that does not
+> exist.
 
 **Neither compose project has been started.** Both were rendered with `docker
 compose config` and the ports proved disjoint; nothing was brought up. The live
