@@ -14,8 +14,8 @@ did: the repositories it touches are named in §8, and every rule in 01–17 app
 | --- | --- |
 | **Foresight** | A parimutuel market with one bettor is a refund machine: the lone winner splits a pool containing only their own stake. Nobody's first bet can ever be interesting. |
 | **Market** | Zero listings begets zero buyers begets zero listings. A first seller pays full fees to list into a void. |
-| **Worlds titles** | `seasons.reward_budget_shards` already exists (`worlds/src/migrations.ts:331`) and is required positive — but nothing anywhere says who funds it. A season with an unfunded budget cannot pay a single reward. |
-| **Trade** | ~~Backtests charge fees and slippage by design. A new user's first honest experiment costs money before it teaches anything.~~ **False — struck 2026-08-03.** `trade/src/fees.ts:9` says the opposite: "Trade is free until it makes money. Backtests, the strategy catalogue and paper trading never cost anything." The only charge is a share of a **live** bot's gains against a high-water mark. Trade has no cold-start money problem, because there is no cold-start charge. |
+| **Worlds titles** | `seasons.reward_budget_shards` already exists (`worlds/src/migrations.ts`) and is required positive — but nothing anywhere says who funds it. A season with an unfunded budget cannot pay a single reward. |
+| **Trade** | ~~Backtests charge fees and slippage by design. A new user's first honest experiment costs money before it teaches anything.~~ **False — struck 2026-08-03.** `trade/src/fees.ts` says the opposite: "Trade is free until it makes money. Backtests, the strategy catalogue and paper trading never cost anything." The only charge is a share of a **live** bot's gains against a high-water mark. Trade has no cold-start money problem, because there is no cold-start charge. |
 | **Aetherholm / Emberkin** | Season budgets, starter cosmetics, early-cohort incentives — same shape as Worlds. |
 
 The common structure: **fees can only fund engagement after volume exists, and volume is what the
@@ -107,12 +107,12 @@ platform:engagement-treasury            ← mined-EMBER conversions; fee recycle
   1. **The sentence is served in EMBER, not Shards**, and that is deliberate, not drift. The pool
      is EMBER wei on a public chain, and converting through an administered price would make the
      disclosed number move without anybody staking anything. The honest unit is the pool's own.
-     Composed once in `foresight/src/houseseed.ts:241`, rendered verbatim by the client. SHARD is
-     a retired asset (`contracts/packages/chain/src/index.ts:58`), so this bullet's old wording
+     Composed once in `foresight/src/houseseed.ts`, rendered verbatim by the client. SHARD is
+     a retired asset (`contracts/packages/chain/src/index.ts`), so this bullet's old wording
      described a live surface naming a retired asset. It never did.
   2. **The stake does not come from the engagement account, and cannot.** `stake(uint8)` is a
      value-bearing contract CALL, and custody has no signing shape for one
-     (`custody/src/signing.ts:210-260`). The seed is staked on chain from a published platform
+     (`custody/src/signing.ts`). The seed is staked on chain from a published platform
      wallet, `FORESIGHT_HOUSE_ADDRESS`, whose key lives outside custody. The ledger account is the
      programme's bookkeeping; it is not the money, and §4's promise that an auditor reconstructs
      the programme from the ledger alone does **not** presently hold for the house seed.
@@ -157,8 +157,7 @@ panel is a view, never the mechanism.
 1. A house stake after market open is **unrepresentable** (trigger, fire-tested).
 2. House seeding is symmetric by construction — a lopsided seed refuses at the schema.
 3. A transfer above a policy cap is refused **by the database**, even for a caller holding a
-   connection — `engagement_over_cap_refused`, `admin-api/src/migrations.ts:585` (raise at
-   `:569`). This item said "by CHECK" until 2026-08-03 and that was not achievable: a CHECK
+   connection — `engagement_over_cap_refused`, `admin-api/src/migrations.ts` (raise). This item said "by CHECK" until 2026-08-03 and that was not achievable: a CHECK
    constraint cannot reference another table, and the cap lives in `engagement_policies`. It is a
    constraint **trigger**, which is the same strength by a different mechanism — but the doc
    should not name a mechanism it did not get.

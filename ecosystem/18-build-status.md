@@ -71,11 +71,11 @@ Manager, **the hostname scheme was changed so that every testnet hostname is a s
 | Chain ID | **7411** (`0x1cf3`) | **7412** (`0x1cf4`) |
 
 The environment is a **suffix on the first label**, not a second label. `ENV_LABELS` and
-`splitEnvLabel()` carry it in the registry (`ui/packages/ui/src/surfaces.ts:1030-1078`), and the
+`splitEnvLabel()` carry it in the registry (`ui/packages/ui/src/surfaces.ts`), and the
 comment above them states the change and its cause directly
-(`ui/packages/ui/src/surfaces.ts:995-1010`). The split is on the **last** hyphen, so that
+(`ui/packages/ui/src/surfaces.ts`). The split is on the **last** hyphen, so that
 `worlds-api-testnet` reads as `worlds-api` on `testnet` rather than as `worlds` on an environment
-called `api-testnet` (`ui/packages/ui/src/surfaces.ts:1042-1046`).
+called `api-testnet` (`ui/packages/ui/src/surfaces.ts`).
 
 **`X.testnet.cloudsforge.online` is dead in every form.** Any document still showing it — including
 §0 above, §3 and §8 of [26-public-deployment](26-public-deployment.md), and
@@ -89,11 +89,11 @@ called `api-testnet` (`ui/packages/ui/src/surfaces.ts:1042-1046`).
   `market`, `network`, `status`, `tessera`, `trade` and `worlds`.
 - **Both chains answer with their own identity.** `eth_chainId` over JSON-RPC POST returned
   `0x1cf3` from `rpc.` and `0x1cf4` from `rpc-testnet.` — the EIP-155 replay domains are distinct
-  on the wire, which is the thing `node/src/params.js:37-38` exists to guarantee. Mainnet
+  on the wire, which is the thing `node/src/params.js` exists to guarantee. Mainnet
   `eth_blockNumber` was `0x477`.
 - `nimbus`, `pay` and `vault` return **200 on `/livez` and 404 at `/`** on both networks. That is
   correct rather than a fault: they are `servesUi: false`
-  (`ui/packages/ui/src/surfaces.ts:728-925`) and are not pages. Neither they, nor `account`, `api`
+  (`ui/packages/ui/src/surfaces.ts`) and are not pages. Neither they, nor `account`, `api`
   or `worlds-api`, may be linked from a nav or a footer.
 - `p2p.` and `p2p-testnet.` return **426** at `/p2p`, which is the WebSocket upgrade response.
   Only that path is routed.
@@ -102,7 +102,7 @@ called `api-testnet` (`ui/packages/ui/src/surfaces.ts:1042-1046`).
 is true, but §0 lists it beside a 502 as though both were faults. The game API was consolidated
 into `api.`, so **`worlds-api.` is retired, not broken** — it should be dropped from documents as a
 live endpoint rather than reported as down. It does, however, **still exist as a registry row**
-(`ui/packages/ui/src/surfaces.ts:770-783`), which is a genuine inconsistency: the registry
+(`ui/packages/ui/src/surfaces.ts`), which is a genuine inconsistency: the registry
 publishes a surface for a hostname the estate no longer serves.
 
 **What has not changed, repeated so §0's honesty is not diluted by better news:**
@@ -118,7 +118,7 @@ publishes a surface for a hostname the estate no longer serves.
 - **EMBER has no monetary value on either network.** Testnet EMBER is worthless *by construction* —
   it is given away, and the testnet may be restarted from genesis. Mainnet EMBER is worthless *so
   far*: no market, no listing, no price. The faucet is a route on the Network site rather than a
-  host of its own (`ui/packages/ui/src/surfaces.ts:545-561`), so **the testnet faucet is
+  host of its own (`ui/packages/ui/src/surfaces.ts`), so **the testnet faucet is
   `network-testnet.cloudsforge.online/faucet`**, and nothing gives away mainnet EMBER.
 - Still one machine, still no restored backup, still nobody outside the project using any of it.
 
@@ -235,7 +235,7 @@ Actual run counts are equal or slightly higher, because a few suites generate ca
 | `micro-emberkin-web` | 430 | The game client. **It deletes the battle engine, the RNG and the localStorage save path it inherited** — a client that can resolve a battle can lie about one, so battles resolve server-side and a test plus a CI step fail if any of it returns. `three` is lazy: the dex, party and wardrobe download no renderer. |
 | `micro-foresight-admin-web` | 241 | The operator console, its own bundle by design. Irreversible actions are gated by consequence-in-sentences, then a required rationale, then typing a phrase naming the market AND the outcome — never "Are you sure?". It asserts the ABSENCE of three routes it might have invented, including a close endpoint (the contract closes itself). |
 | `micro-status-web` | 204 | The public status page, and **green-on-unknown is structurally unreachable**: one rule — an incomplete answer may report a problem, never health — driven through every one of eight failure outcomes. Its redaction allowlist is restated on the reading side and tested by bolting internal fields onto every level of a document and searching the *rendered HTML*. The uptime strip encodes each day three times, because the estate's reserved status hues are ΔE 4.6 apart under protanopia. |
-| `micro-foresight-web` | 357 | The public prediction market. **It recomputes the question hash in the browser** from the canonical bytes the service serves — `foresight/src/server.ts:420-423` puts that document on the wire precisely so nobody has to take the platform's word for what they staked on. Odds are the pool ratio in bigint, always rendered with the pools that produce them; the stake projection adds the stake to the pool it is paid from, showing dilution rather than the ~33% overstatement the naive formula gives. `claim` reads the contract through the reader's own wallet — chain outranks mirror and the two are never blended, so the page keeps the button live even when it cannot confirm the amount. |
+| `micro-foresight-web` | 357 | The public prediction market. **It recomputes the question hash in the browser** from the canonical bytes the service serves — `foresight/src/server.ts` puts that document on the wire precisely so nobody has to take the platform's word for what they staked on. Odds are the pool ratio in bigint, always rendered with the pools that produce them; the stake projection adds the stake to the pool it is paid from, showing dilution rather than the ~33% overstatement the naive formula gives. `claim` reads the contract through the reader's own wallet — chain outranks mirror and the two are never blended, so the page keeps the button live even when it cannot confirm the amount. |
 
 Cutting it found two defects in `micro-web-template`, both fixed there and both worth recording
 because the template is the source of the ten frontends still to come: the error envelope is
@@ -373,8 +373,8 @@ actual route table while writing its own client — and never by a test.
 
 The second is worth stating precisely, because it was first reported to me as the gate being
 *bypassed* — a 404 swallowed into `review` + `degraded`. Checking it against the source showed the
-opposite: `peerDecided` is true for **any** 4xx (`runtime/packages/http/src/index.ts:49-51`), so the
-404 landed on the `deny` branch and `market/src/server.ts:678` turns a deny into 403. The
+opposite: `peerDecided` is true for **any** 4xx (`runtime/packages/http/src/index.ts`), so the
+404 landed on the `deny` branch and `market/src/server.ts` turns a deny into 403. The
 marketplace was not unmoderated — **it was closed. Every listing creation returned 403.** The two
 failures need opposite fixes, so guessing between them would have fixed neither.
 
@@ -431,10 +431,10 @@ was re-run. That is why the pass cost 37 calls rather than ~150.
 Found while porting `hearth/tools/faucet`, and recorded rather than fixed, because
 `stack/` is frozen and the successor supersedes it.
 
-`stack/repos/hearth/tools/faucet/src/env.js:94` defaults `chainId` to **7411**. The exact-pinned
+`stack/repos/hearth/tools/faucet/src/env.js` defaults `chainId` to **7411**. The exact-pinned
 `contracts-chain` package puts EMBER at `{mainnet: 7411, testnet: 7412}`
-(`contracts/packages/chain/src/index.ts:57`). So the faucet's shipped default is **mainnet**, and
-its boot check (`src/index.js:71-75`) compares the node against that *configured* value — it
+(`contracts/packages/chain/src/index.ts`). So the faucet's shipped default is **mainnet**, and
+its boot check (`src/index.js`) compares the node against that *configured* value — it
 verifies agreement, not identity — so a mainnet node passes cleanly. The configuration did not
 even match the network it runs against: the local testnet node answers `0x1cf4`, 7412.
 
@@ -464,9 +464,9 @@ blocker in its own right and neither is visible from any repository's tests.
    `/v1/…`; `ledger`, `foresight`, `pricing`, `activity` and `identity` do not. The public API is
    specified as URL-versioned, so either the gateway rewrites — undefined, per (2) — or half the
    public surface ships unversioned.
-4. **A machine credential has no whoami.** `identity/src/server.ts:540` refuses a service token on
+4. **A machine credential has no whoami.** `identity/src/server.ts` refuses a service token on
    `GET /auth/me`, so a devplatform API key will have no way to ask what it is.
-5. **Nothing in `ledger` is third-party reachable** (`ledger/src/server.ts:575` refuses any
+5. **Nothing in `ledger` is third-party reachable** (`ledger/src/server.ts` refuses any
    non-service principal). That is correct — but it means the eleventh test of "one platform", one
    financial source of truth, has no public surface at all.
 
@@ -509,7 +509,7 @@ outliving their cause.
 
 ### 3.3f A defect in the frozen game, pinned rather than repaired
 
-`ninety-days-after/services/game/src/engine/events.ts:130` computes
+`ninety-days-after/services/game/src/engine/events.ts` computes
 `severity = 1 + ((h >> 8) % baseSeverity)`. `hash()` returns `h >>> 0` — unsigned — and the caller
 then uses `>>`, an **arithmetic** shift, so the value is negative for roughly half of all seeds and
 JavaScript's `%` keeps the sign.
@@ -537,9 +537,9 @@ against anything else, and the finding below is the reason that mattered.
 **A fresh deployment cannot issue its first service token, so no service can ever authenticate to
 another.**
 
-- `POST /service-tokens` requires the `admin` role (`identity/src/server.ts:1266`, via
-  `authenticateAdmin` at `:545`).
-- `users.roles` is `text[] not null default '{}'` (`identity/src/migrations.ts:119`) — every user
+- `POST /service-tokens` requires the `admin` role (`identity/src/server.ts`, via
+  `authenticateAdmin`).
+- `users.roles` is `text[] not null default '{}'` (`identity/src/migrations.ts`) — every user
   is created with none.
 - **No route in identity grants a role.** All twenty of its POST/PUT/PATCH routes were enumerated;
   none assigns one.
@@ -566,7 +566,7 @@ already holds the role.
 So the action is a first-class catalogue entry **with no executor**: `POST /v1/approvals` returns
 **501**, naming the route identity would need (`PUT /internal/users/:id/roles` behind a service
 token holding `identity:admin` — not `authenticateAdmin`, which refuses service tokens at
-`identity/src/server.ts:540`). A queue that accepts work it cannot do leaves a row at `approved`
+`identity/src/server.ts`). A queue that accepts work it cannot do leaves a row at `approved`
 for ever, which reads as two operators having authorised something that never happened. **The first
 admin remains a documented `UPDATE`**, as `slice-verify.sh` performs and asserts.
 
@@ -585,8 +585,8 @@ Found by `micro-devplatform`, which had to choose between them and could not.
 
 | Package | Line | Semantics |
 | --- | --- | --- |
-| `contracts/packages/auth` | `src/index.ts:209` | `granted.includes(required)` — **exact match only** |
-| `runtime/packages/auth` | `src/index.ts:178` | honours **one wildcard level**: `foo:*` grants `foo:bar` |
+| `contracts/packages/auth` | `src/index.ts` | `granted.includes(required)` — **exact match only** |
+| `runtime/packages/auth` | `src/index.ts` | honours **one wildcard level**: `foo:*` grants `foo:bar` |
 
 So `devplatform:*` is refused by one and accepted by the other, and **a service's effective
 privilege depends on which package it imported**. Both are shipped, both are CI-green, and neither
@@ -604,7 +604,7 @@ reading, chosen because a credential service should not be the place the estate 
 wildcard semantics.
 
 Three smaller findings from the same build, all recorded rather than fixed: `devplatform.*` is not
-a registered event topic (`contracts/packages/events/src/index.ts:222`), so the
+a registered event topic (`contracts/packages/events/src/index.ts`), so the
 `devplatform.key.revoked` mechanism named by 11:363 cannot be built through `makeEvent`;
 `@cloudsforge/contracts-devplatform` is still uncut, so the scope vocabulary lives in the service;
 and there is no OAuth token endpoint, because signing one needs identity's key and that half
@@ -617,7 +617,7 @@ belongs to another repository.
 404'd, always.
 
 **A correction to this section's first version, which I got wrong and repeated confidently.** It
-said the indexer "serves no `/v1` paths at all". It does: `indexer/src/server.ts:134` is
+said the indexer "serves no `/v1` paths at all". It does: `indexer/src/server.ts` is
 `PREFIXES = ['/v1', '']` and every route is mounted under both spellings. The 404s were caused by
 the missing `/tokens` route and the missing `/escrow` sub-resource — not by the prefix. The
 diagnosis was right in substance and wrong in the detail I was most emphatic about, and the agent
@@ -625,7 +625,7 @@ adding the capabilities caught it by reading the file rather than the finding. L
 than silently amended: this ledger's whole value is that a claim in it can be checked, and one that
 was wrong should say so.
 
-The escrow branch turned that into `{confirmed: false}`, and `market/src/server.ts:761` turns that
+The escrow branch turned that into `{confirmed: false}`, and `market/src/server.ts` turns that
 into *"the on-chain escrow is not confirmed yet"*. So **every on-chain escrow activation failed
 with a diagnosis that was false**: a seller retries for ever, and an operator investigates the chain
 rather than the integration. The facts branch returned `null`, rendering "no indicators" on every
@@ -643,7 +643,7 @@ of this shape in the estate and the third in this repository — and `micro-comm
 of the same kind while building against the same neighbours: `policy` has no `community.*` action
 and no `community:` subject arm, so the obvious spend request would 400 and, fail-closed, **no
 community could ever spend its treasury**; and `micro-indexer` has no balance route at all, so
-`07-dependency-map.md:139`'s hard dependency cannot be satisfied.
+`07-dependency-map.md`'s hard dependency cannot be satisfied.
 
 **This heading used to read "The seventh imagined surface", and the count has been taken out of
 it.** A running total in a heading is a fact stored in the worst possible place: it is the part of
@@ -670,8 +670,8 @@ behaviour, which is why they can be added to a shipped service.
 | Capability | Wanted by | Consequence today |
 | --- | --- | --- |
 | Token facts for an item URN | `market` (`indexerclient.ts`) | Every listing renders "no indicators", permanently |
-| Transaction confirmation for an escrow | `market` (`server.ts:757`) | **Every on-chain escrow activation fails** with a false diagnosis |
-| Address token balances at a block | `community` (gating job) | `07-dependency-map.md:139` names this a **hard** dependency; the re-evaluation job cannot run |
+| Transaction confirmation for an escrow | `market` (`server.ts`) | **Every on-chain escrow activation fails** with a false diagnosis |
+| Address token balances at a block | `community` (gating job) | `07-dependency-map.md` names this a **hard** dependency; the re-evaluation job cannot run |
 
 The second is the one that matters most: it is the only defect found in this programme that made a
 shipped service lie about money rather than merely fail.
@@ -725,10 +725,10 @@ documents the guard" shape, arrived at from the reader's side rather than the ch
 
 ### 3.3l Two documents specify the analytics key differently
 
-`03-repository-responsibilities.md:204` — "**`analytics` must never receive a `user_id`**, an email,
+`03-repository-responsibilities.md` — "**`analytics` must never receive a `user_id`**, an email,
 a handle or an exact balance."
 
-`10-migration-strategy.md:509-510` — the key is `HMAC(user_id, analytics_pepper)`, and the document
+`10-migration-strategy.md` — the key is `HMAC(user_id, analytics_pepper)`, and the document
 itself notes analytics "never receives a `user_id` … and therefore cannot compute the key itself,
 so if the event does not carry it" the key must come from elsewhere.
 
@@ -759,7 +759,7 @@ the *status* route's shape with a resource bolted on: `transaction()` asked for
 `/v1/chains/:chain/:network/tokens/:address`.
 
 **What was true.** `micro-indexer`'s convention is the RESOURCE first, then `:chain/:network`, then
-the key (`indexer/src/server.ts:153-163`). Neither path has ever existed in either spelling. Every
+the key (`indexer/src/server.ts`). Neither path has ever existed in either spelling. Every
 call 404'd; the 404 became `null`; and `null` rendered as *"the indexer has not yet indexed this
 contract"* on **every ForgeMint project page, permanently and silently** — while
 [04-domain-model](04-domain-model.md) §5.3 requires those pages to show supply and authorities
@@ -788,9 +788,9 @@ counted as coverage.
 
 **And the capability landed rather than the workaround.** The transaction path was corrected in
 `mint`, and `micro-indexer` gained `GET /tokens/:chain/:network/:address`
-(`indexer/src/server.ts:159`) — one `eth_call` per field at the indexer's own stored canonical head,
+(`indexer/src/server.ts`) — one `eth_call` per field at the indexer's own stored canonical head,
 and **only after fetching the node's block at that height and comparing its hash to the one this
-service walked** (`indexer/src/tokenstate.ts:207-215`). If they disagree the node is not on the
+service walked** (`indexer/src/tokenstate.ts`). If they disagree the node is not on the
 chain this service indexed and **no observation is returned at all**: `head_diverged`, which is an
 honest "ask me again", not a number from somebody else's fork.
 
@@ -812,28 +812,28 @@ comment said so.
 
 **What was true.** The route called `variantFor(features)`, which validates the FEATURE SET and
 never reads the cap. The cap rule lived in `constructorArgs`
-(`mint/src/catalogue.ts:138-148`), first reached from `dataFor` inside the **deploy job**
-(`mint/src/families.ts:336-348`) — after `POST /v1/tokens/:id/pay` had already debited the
+(`mint/src/catalogue.ts`), first reached from `dataFor` inside the **deploy job**
+(`mint/src/families.ts`) — after `POST /v1/tokens/:id/pay` had already debited the
 customer's Shards. So an order for the capped variant with no cap, or a cap on a variant whose
 contract takes none, was accepted **201**, paid for, and then unbuildable.
 
 **And it did not fail cleanly.** The `ChainError` from `constructorArgs` matches none of
-`driveDeploy`'s four classified failures (`mint/src/deploy.ts:118-169`), so the lease was released
+`driveDeploy`'s four classified failures (`mint/src/deploy.ts`), so the lease was released
 and the error rethrown; the row stayed `deploying`, `deploying` is in `CLAIMABLE`
-(`mint/src/tokens.ts:68-73`), and `token.sweep` put it straight back on the queue on the next tick.
+(`mint/src/tokens.ts`), and `token.sweep` put it straight back on the queue on the next tick.
 Not a terminal `failed` with a reason a customer can read — **a permanent loop with the money
-gone**, `deploy_attempts` climbing without a ceiling (`mint/src/tokens.ts:386`), and no state any
+gone**, `deploy_attempts` climbing without a ceiling (`mint/src/tokens.ts`), and no state any
 human is ever shown.
 
 **Measured, not reasoned about.** Mutating the order route back to `variantFor(features)` and
 running mint's HTTP suite against a real database gives **201** for a foundry order with no cap and
 **201** for a cap on an uncapped variant — both payable. The third case, a cap below the supply, is
-a **500**: `constraint tokens_cap_covers_supply` (`mint/src/migrations.ts:176`) catches it at the
+a **500**: `constraint tokens_cap_covers_supply` (`mint/src/migrations.ts`) catches it at the
 insert. So two of three were reachable, and the constraint that saved the third is a coincidence of
 what a CHECK can see, not a design.
 
 **The fix reaches for the existing rule rather than restating it.** `assertBuildable`
-(`mint/src/catalogue.ts:179`) calls the deploy path's own `variantFor` and `constructorArgs` against
+(`mint/src/catalogue.ts`) calls the deploy path's own `variantFor` and `constructorArgs` against
 the request and discards the encoded arguments; the throw is the product. It answers **400
 `unbuildable_order`** with the offending `field` — deliberately distinguishable from the generic
 `bad_request`, because "your order is invalid" and "`cap` is the word that made this impossible" are
@@ -868,7 +868,7 @@ Found by the two entries above, and only because they moved a service's line num
 `micro-sdk`'s `ROUTES` is the estate's one record of the public surface, and its value is that every
 entry carries `verifiedAt` — the exact `path:line` in the owning service where the route is
 registered. It is declared `as const`, so **every field became a literal TYPE**, including that one:
-`ROUTES.mint.pay.verifiedAt` was the type `'mint/src/server.ts:454'`.
+`ROUTES.mint.pay.verifiedAt` was the type `'mint/src/server.ts'`.
 
 `micro-org/tools/compat.ts` judged any changed scalar text breaking. So when micro-mint's routes
 moved twenty-four lines and the eight citations were corrected to match, the estate's additive-only
@@ -950,7 +950,7 @@ into the same subscription at deploy time.
 
 What was believed: `contracts/packages/auth` is "the closed set of service scopes", identity
 validates every service-token grant against it and fail-fasts on an unknown name
-(`identity/src/env.ts:141`), so a granted scope is a real capability. What was true: the
+(`identity/src/env.ts`), so a granted scope is a real capability. What was true: the
 registry held 14 scopes while the estate's services gated on 57. Every one of `beacon`,
 `trade`, `market`, `mint`, `settlement`, `studio`, `analytics`, `admin-api`,
 `devplatform`, `community`, `emberkin`, `nda`, `faucet`, `lantern` and `notify` had
@@ -965,11 +965,11 @@ plane.
 How it was found: the pre-slice-growth question "can any token hold `aetherholm:provision`?" —
 asked before wiring the title bridge, answered no, and then asked of every other scope a gate
 demands. Three successive audit sweeps each had a different blind spot: the first read constants
-and missed inline literals (`community/src/server.ts:1056` hardcodes `'community:write'` one
+and missed inline literals (`community/src/server.ts` hardcodes `'community:write'` one
 file away from its own `WRITE_SCOPE`); the second read `requireScope` calls and missed wrapper
 third arguments (`ledger`, `beacon`, `indexer` and nine others gate through a local
 `authorise`/`authenticate` whose scope is a parameter); the third missed the computed family
-(`custody/src/gates.ts:177` returns `` `custody:sign:${purpose}` ``). Three sweeps, three
+(`custody/src/gates.ts` returns `` `custody:sign:${purpose}` ``). Three sweeps, three
 different misses, is proof the audit must be a checker, not a grep session.
 
 What now prevents it: a step in micro-org's `service-ci.yml` (org `26caed1`) **derives** the

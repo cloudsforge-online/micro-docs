@@ -72,8 +72,8 @@ Loki, Lantern and the `audit_events` tables.
 
 The reason is a workflow that already works: a user quotes an id from an error screen and an
 operator pastes it into one search box. Lantern already parses `reqId` from three log shapes
-(`infra/lantern/src/parse.js:78,102,178`) and accepts it on browser error reports
-(`infra/lantern/src/server.js:123`). A `traceparent` is 55 hex characters and nobody reads one
+(`infra/lantern/src/parse.js,102,178`) and accepts it on browser error reports
+(`infra/lantern/src/server.js`). A `traceparent` is 55 hex characters and nobody reads one
 aloud. `cf.request_id` is what humans quote, `trace_id` is what machines join on, and every
 record carries both.
 
@@ -116,11 +116,11 @@ UUIDs, hex addresses, hashes, timestamps, emails, IPs, URLs, source positions an
 collapse to placeholders — hashes it with the service, error type and first non-`node_modules`
 stack frame, and groups occurrences into an *issue*: "this failure, 1,240 times, first seen
 09:12" rather than 1,240 rows. It deliberately refuses to fingerprint Fastify's own
-`request completed` / `incoming request` lines (`fingerprint.js:53`) so one fault is not filed
+`request completed` / `incoming request` lines (`fingerprint.js`) so one fault is not filed
 twice. Loki will return the 1,240 rows and never tell you there are four distinct problems.
 Error grouping is the product; log search is the commodity.
 
-It also owns browser errors — `POST /ingest/client` (`infra/lantern/src/server.js:89`) is
+It also owns browser errors — `POST /ingest/client` (`infra/lantern/src/server.js`) is
 already the only push path in — and gains RUM basics: page load, first contentful paint, failed
 fetches, unhandled rejections, each tagged with the `trace_id` of the request that caused them.
 Today a front-end failure and its backend cause are two unrelated records in two systems.
@@ -130,7 +130,7 @@ Today a front-end failure and its backend cause are two unrelated records in two
 | Today | Target |
 | --- | --- |
 | Pull collection following the host Docker socket (`infra/lantern/src/collector.js`, `docker.js`) | **OTLP log push from the collector.** The socket collector is demoted to a dev fallback behind `LANTERN_DOCKER_COLLECTOR`, off outside `dev` |
-| Lantern is the only place logs exist | **Loki holds the raw stream; Lantern holds the triage view** — which is what makes Lantern's 7-day event retention acceptable (`LANTERN_RETENTION_DAYS=7`, issues 90 days — `env.js:26-27`) |
+| Lantern is the only place logs exist | **Loki holds the raw stream; Lantern holds the triage view** — which is what makes Lantern's 7-day event retention acceptable (`LANTERN_RETENTION_DAYS=7`, issues 90 days — `env.js`) |
 | Issues have no owner, no state beyond seen/resolved | Assignee, status (`new → acknowledged → resolved → regressed`), a linked runbook, and a link to the Tempo trace of the first occurrence |
 | Browser errors carry `requestId` only | Browser errors carry `traceparent`, so the browser record and the server trace are one story |
 
@@ -158,7 +158,7 @@ today → ~45 at the end of P0 → the exit criteria in
 The harness's three rules are load-bearing and must not be relaxed: an assertion failure is
 `fail` (the product is broken) while any other throw is `error` (Beacon is broken); a journey
 without credentials is `skip` and **a skip is never green** — the metric emits 0.5 for skip and
-never 1 (`infra/beacon/src/metrics.js:145`); teardown runs on every exit path.
+never 1 (`infra/beacon/src/metrics.js`); teardown runs on every exit path.
 
 **2 — SLO evaluation.** Beacon gains an `slos` table and a Prometheus query client. Each SLO is
 `{ service, sli_query, objective, window, budget_policy }`, evaluated every 5 minutes, exposed
@@ -206,7 +206,7 @@ suite is a ticket that blocks the next Hearth release.
 Beacon already applies the principle: its `/metrics` reads live state from memory and never
 touches Postgres, because "a metrics endpoint that queries the database gives anyone who can
 reach it a way to put load on the database by scraping in a loop, and the one thing a monitor
-must never be is the reason for the outage" (`infra/beacon/src/metrics.js:8-12`).
+must never be is the reason for the outage" (`infra/beacon/src/metrics.js`).
 
 ---
 
@@ -312,7 +312,7 @@ split. Every panel is also the data behind a customer-visible chart in the devel
 ## 6. The public status page
 
 `status.cloudsforge.online`, served by `status-web` from Beacon's `redactStatus` projection
-(`infra/beacon/src/server.js:247`), pre-auth, cached at the edge, and hosted so that it does not
+(`infra/beacon/src/server.js`), pre-auth, cached at the edge, and hosted so that it does not
 share a failure domain with the platform it reports on. A platform holding customer money owes
 one.
 
@@ -340,7 +340,7 @@ verbatim and `incidents[].subject`, which are internal target names such as `pay
 `hearth.seed`. The spine requires product-group labels, so `status-web` consumes a **new**
 `/api/status/public` projection that maps each target to a product group and emits the group's
 rolled-up state with target names removed entirely. Until that lands, `BEACON_PUBLIC_STATUS`
-stays `false` (its current default, `infra/beacon/src/env.js:92`).
+stays `false` (its current default, `infra/beacon/src/env.js`).
 
 ### Incident updates: who writes them, and when
 
@@ -488,7 +488,7 @@ that instance.
 
 The estate today has exactly one alerting mechanism — `BEACON_WEBHOOK_URL`, fired on incident
 open and close only, best-effort, no retry, minimum severity `major`
-(`infra/beacon/src/notify.js`, `env.js:242-243`). It is kept as the chat-channel receiver, not
+(`infra/beacon/src/notify.js`, `env.js`). It is kept as the chat-channel receiver, not
 as the paging path: paging needs acknowledgement and escalation, and a fire-and-forget POST has
 neither.
 
@@ -506,7 +506,7 @@ because an unactionable page teaches the on-call to ignore pages.
 - Maintenance windows silence by label, declared in advance, and appear on the public page.
 - Hysteresis is applied at the source, as Beacon already does: an incident is a state transition
   that survived `BEACON_FAIL_THRESHOLD=3`, not a failed check. A `pending` target publishes its
-  raw reading and leaves hysteresis to the rule's `for:` (`metrics.js:104-108`) — do not
+  raw reading and leaves hysteresis to the rule's `for:` (`metrics.js`) — do not
   double-apply it.
 
 ---

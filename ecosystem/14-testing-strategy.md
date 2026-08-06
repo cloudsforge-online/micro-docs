@@ -21,7 +21,7 @@ Counts below are from executing each suite on 30 July 2026, not from a manifest.
 | --- | --- | --- | --- | --- | --- |
 | `platform` | `node --test` + tsx | 11 | **77** (nimbus 56, admin 13, site 8) | Yes, three named filters | **29 of nimbus's 56 skip when `NIMBUS_TEST_DATABASE_URL` is unset** — all of `tokens.test.ts` (14), `keys.test.ts` (8), `pay.test.ts` (6), `forgotTiming.test.ts` (1). CI supplies a Postgres; a laptop does not, and `pnpm test` is green either way. No route-integration test for any handler in `src/routes/{admin,auth,pay,portal,vault}.ts` |
 | `forge-pay` | `node --test` | 9 | **102** | **No.** `ci.yml` has `Typecheck`, `Docker image` and `Secret hygiene` jobs and no test job | 102 passing tests that no pipeline has ever run |
-| `forge-keyvault` | `node --test` | 4 | **103** (18 suites) | Yes | `signing.test.ts` imports `signEvm`, `signSolana`, `signXrp` — **not `signBitcoin`**. The word "bitcoin" appears zero times in it. The PSBT path (`signing.ts:509–571`), which validates `witnessUtxo`, refuses non-`SIGHASH_ALL`, and refuses any output not paying the pinned treasury for a `deposit`-purpose key, is entirely uncovered. `/sign` has no end-to-end test |
+| `forge-keyvault` | `node --test` | 4 | **103** (18 suites) | Yes | `signing.test.ts` imports `signEvm`, `signSolana`, `signXrp` — **not `signBitcoin`**. The word "bitcoin" appears zero times in it. The PSBT path (`signing.ts–571`), which validates `witnessUtxo`, refuses non-`SIGHASH_ALL`, and refuses any output not paying the pinned treasury for a `deposit`-purpose key, is entirely uncovered. `/sign` has no end-to-end test |
 | `forge-mint` | `tsx --test` | 4 | **37** | Yes | No DB, no deployment lifecycle E2E, no contract-execution test |
 | `crucible` | `node --test` | **1** | **16** | Yes, but the script names exactly `src/fees.test.ts` | `engine/backtest.ts` (179), `engine/indicators.ts` (185), `engine/metrics.ts` (127), `engine/strategies.ts` (264) — **755 lines, zero tests.** The one product whose core claim is numerical correctness tests only its billing |
 | `ninety-days-after` | `node --test` | 6 | **39** (30 server, 9 client) | Yes | The tick engine (`src/engine/{resolve,tick,bots,events,progression,trade}.ts`) is untested, and no test touches a database |
@@ -125,7 +125,7 @@ previously issued idempotency keys.
 | **P1 · Journal balance** | For every entry and every `asset_code`, Σ debits = Σ credits, exactly | The deferred constraint trigger being wrong, or a code path bypassing it |
 | **P2 · Trial balance** | After any sequence, Σ debits − Σ credits across the whole journal is exactly 0 | The invariant the Money Integrity dashboard alerts on |
 | **P3 · No negative liability** | No account of type `liability` ends negative unless `overdraft_allowed` is set, which is only `clearing` and `suspense` | A user spending money they do not have through an unusual path |
-| **P4 · Idempotency key never lost** | Replaying any issued key returns the stored response byte-for-byte, and creates no new posting. A different body under the same key is a 409 | The shape `withIdempotency` (`forge-pay/services/pay/src/store.ts:153`) already gets right, held for the ledger |
+| **P4 · Idempotency key never lost** | Replaying any issued key returns the stored response byte-for-byte, and creates no new posting. A different body under the same key is a 409 | The shape `withIdempotency` (`forge-pay/services/pay/src/store.ts`) already gets right, held for the ledger |
 | **P5 · Projection equals replay** | The `balances` projection equals a fold of the journal from the beginning, for every account | A projection updated by a code path that forgot to |
 | **P6 · Reversal restores** | Entry then its reversal returns every touched account to its prior balance | An asymmetric reversal |
 | **P7 · Reservation conservation** | `available + reserved + escrow` per subject and asset is invariant under reserve/release/settle | The double-sell that escrow reservations exist to prevent |
@@ -151,8 +151,8 @@ class being tested.
 
 | Race | Lease key | The test | Passes when |
 | --- | --- | --- | --- |
-| **Chain-keyed withdrawal** | `chain:network` | Two `settlement` replicas, four pending withdrawals on one chain, released simultaneously | Exactly one outbound transaction per `(chain, network, from_address)` is in flight at any instant; no two signatures share a nonce; every withdrawal eventually settles exactly once. Today `hasUnsettledOutbound()` (`forge-pay/services/pay/src/store.ts:1162`) is an unlocked read that both workers pass, and the outcome is a permanently lost payment |
-| **Settlement double-billing** | `bot_id:period` | Two `trade` replicas running the sweep while a third process issues `POST /bots/:id/actions {stop}` | Exactly one `fee_settlement` row per `(bot_id, period)`. Today the id is `randomUUID()` (`crucible/services/crucible/src/store.ts:452`), producing two different Pay idempotency keys, and `fee_settlements` has no unique constraint |
+| **Chain-keyed withdrawal** | `chain:network` | Two `settlement` replicas, four pending withdrawals on one chain, released simultaneously | Exactly one outbound transaction per `(chain, network, from_address)` is in flight at any instant; no two signatures share a nonce; every withdrawal eventually settles exactly once. Today `hasUnsettledOutbound()` (`forge-pay/services/pay/src/store.ts`) is an unlocked read that both workers pass, and the outcome is a permanently lost payment |
+| **Settlement double-billing** | `bot_id:period` | Two `trade` replicas running the sweep while a third process issues `POST /bots/:id/actions {stop}` | Exactly one `fee_settlement` row per `(bot_id, period)`. Today the id is `randomUUID()` (`crucible/services/crucible/src/store.ts`), producing two different Pay idempotency keys, and `fee_settlements` has no unique constraint |
 | **World tick double-XP** | `world_id` | Two `nda` replicas ticking one world across a day boundary | `daysSurvived` advances by exactly 1 and XP by exactly the single-tick amount |
 | **Homestead tile collision** | none — fixed by predicate | Twenty concurrent joins against a map with one free tile | Exactly one player is placed; nineteen receive "no tile". The fix is `WHERE owner_id IS NULL` on the `UPDATE`; the existing test `"a tile taken between the read and the write costs the loser the next tile, not the winner theirs"` is the single-process half and the two-replica test is the other |
 | **Price oracle divergence** | `global` | Two `pricing` replicas, an admin `PUT` against one | Both serve the new rate within one refresh interval. Today the oracle is an in-memory `Map` and the `PUT` updates one replica |
@@ -253,7 +253,7 @@ journeys** across eight files (2,018 lines) — 19 defined directly and 5 throug
 > **Those figures are the LEGACY Beacon's, and they reproduce exactly** (`stack/infra/beacon/`:
 > eight journey files, 2,018 lines, 3 `chain` + 2 `crucible` + 3 `game` + 3 `identity` + 1 `mint`
 > + 4 `pay` + 2 `platform` + 6 `web` = 24). **`micro-beacon` ships six**, and says why it declines
-> to declare the other three of the critical nine (`beacon/src/estate.ts:5-22`). Read the paragraph
+> to declare the other three of the critical nine (`beacon/src/estate.ts`). Read the paragraph
 > above as history, not as the state of the estate being built.
 
 **How a journey is written.** `defineJourney({ name, title, description, group, intervalSec,
@@ -400,13 +400,13 @@ What is worth adding, and nothing beyond it:
 | **Interaction** | Forms that move money — send, convert, listing creation, key export. Assert the confirmation step cannot be bypassed and the destination shown is the destination submitted | Testing Library |
 | **Accessibility** | `axe-core` on every route and every modal, failing on any serious or critical violation. Keyboard-only traversal of the send flow and the export ceremony. Every chart has its table view, which is both the accessibility fallback and the export path | `@axe-core/playwright` |
 | **Visual regression** | The design system only — `@cloudsforge/ui` primitives, tokens in light and dark, the chart layer against [assets/chart-palette.md](assets/chart-palette.md). Snapshots live in `cloudsforge-ui`, not in nine applications | Playwright screenshots |
-| **Bundle boot** | **Not covered. This row used to say "already covered", and it was wrong.** The thing it named is real but frozen: `surfaceJourney` asserts the body rendered more than 40 characters and collects console errors and failed requests — because a bundle that 404s leaves the network perfectly idle and `domcontentloaded` fires anyway — and it lives in the **legacy** repository (`stack/infra/beacon/src/journeys/web.js:19`, on `playwright-core`). `micro-beacon` declares six journeys and **none of them opens a browser** (`beacon/src/estate.ts:360-367`); it has no browser dependency at all. Specified as `BJ-<KEY>-404` and the per-surface smoke set in [22-browser-journeys.md](22-browser-journeys.md) | Beacon — **to be built** |
+| **Bundle boot** | **Not covered. This row used to say "already covered", and it was wrong.** The thing it named is real but frozen: `surfaceJourney` asserts the body rendered more than 40 characters and collects console errors and failed requests — because a bundle that 404s leaves the network perfectly idle and `domcontentloaded` fires anyway — and it lives in the **legacy** repository (`stack/infra/beacon/src/journeys/web.js`, on `playwright-core`). `micro-beacon` declares six journeys and **none of them opens a browser** (`beacon/src/estate.ts`); it has no browser dependency at all. Specified as `BJ-<KEY>-404` and the per-surface smoke set in [22-browser-journeys.md](22-browser-journeys.md) | Beacon — **to be built** |
 
 **Every tool in the right-hand column above is an intention.** Vitest, Testing Library and
 `@axe-core/playwright` are named here and installed nowhere: no `*-web/package.json` lists any of
 the three, and there is no Playwright, Puppeteer or Cypress anywhere in the estate. The frontends
 run `node --import tsx --test test/*.test.ts` over their pure layer, deliberately and with the
-reasoning stated (`hub-web/test/browser-stubs.ts:1-9`). The scenario catalogue that this table is
+reasoning stated (`hub-web/test/browser-stubs.ts`). The scenario catalogue that this table is
 the summary of is [22-browser-journeys.md](22-browser-journeys.md).
 
 **What is not tested at the frontend:** business rules. The game client withheld four SKUs from

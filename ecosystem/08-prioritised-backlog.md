@@ -458,7 +458,7 @@ session takes ownership of for its duration.
 - **Acceptance criteria**
   - `wallet` owns no balance column of any kind.
   - `settlement` claims outbound work under a lease keyed `chain:network`, so two replicas cannot sign against one nonce.
-  - `pricing` stores quotes in a `price_quotes` table, replacing the in-memory `Map` at `forge-pay/services/pay/src/pricing.ts:60` and `:253`, so an admin `PUT` is globally visible.
+  - `pricing` stores quotes in a `price_quotes` table, replacing the in-memory `Map` at `forge-pay/services/pay/src/pricing.ts` and, so an admin `PUT` is globally visible.
   - `billing` entitlements carry `scope`, `expires_at`, `revoked_at` and `quantity`, and expose a service-readable API — today entitlements are Bearer-only and no service can ask what a user owns.
   - `/internal/charge`, `/credit`, `/trade` and `/wallet/:userId` are gone; `PAY_SERVICE_TOKEN` exists nowhere.
 - **Test requirements** — Two-replica concurrency test per service. A grep-based CI check asserting no service holds a connection string other than its own.
@@ -472,7 +472,7 @@ session takes ownership of for its duration.
 - **Repositories affected** — `forge-keyvault` (retired); new `cloudsforge-custody`
 - **Dependencies** — EPC-07, ENA-27
 - **Acceptance criteria**
-  - `POST /admin/keys/:address/reveal` (`forge-keyvault/services/forge-keyvault/src/routes/admin.ts:123`) returns 404, and no other route returns key material (TST-09).
+  - `POST /admin/keys/:address/reveal` (`forge-keyvault/services/forge-keyvault/src/routes/admin.ts`) returns 404, and no other route returns key material (TST-09).
   - New addresses derive at `m/44'/<coin>'/<account>'/0/<index>` from a per-`(user, family)` BIP-39 seed; existing `flat_random` keys are untouched and every response states its scheme.
   - A successful `/sign` writes a `signing_audit` row — today it records nothing.
   - `row.userId` is compared against the authenticated caller on every user-scoped route.
@@ -1179,7 +1179,7 @@ User-visible functionality. Every feature names the surface it appears on and th
 #### FEA-33 · Private worlds, actually provisioned
 
 - **Description** — `worlds` and `nda` consume `billing.entitlement.granted` and provision a private world with the purchased season length and player cap.
-- **User or operator value** — Closes the worst-looking defect in the estate: 1,800–2,500 Shards debited for a world that `grep -r private_world` proves no code creates (`forge-pay/services/pay/src/routes/monetization.ts:100`).
+- **User or operator value** — Closes the worst-looking defect in the estate: 1,800–2,500 Shards debited for a world that `grep -r private_world` proves no code creates (`forge-pay/services/pay/src/routes/monetization.ts`).
 - **Repositories affected** — `cloudsforge-worlds`, `cloudsforge-nda`, `cloudsforge-billing`
 - **Dependencies** — EPC-16, EPC-19, ENA-05
 - **Acceptance criteria**
@@ -1346,7 +1346,7 @@ than features because each is a correctness change to the money path, not a new 
 
 #### ENA-01 · Deterministic settlement id and a unique index on `fee_settlements`
 
-- **Description** — Derive the settlement id from `(bot_id, period)` instead of `randomUUID()` (`crucible/services/crucible/src/store.ts:452`), and add a unique index on `fee_settlements (bot_id, period)` in `crucible/services/crucible/src/migrate.ts`.
+- **Description** — Derive the settlement id from `(bot_id, period)` instead of `randomUUID()` (`crucible/services/crucible/src/store.ts`), and add a unique index on `fee_settlements (bot_id, period)` in `crucible/services/crucible/src/migrate.ts`.
 - **User or operator value** — Traders stop being double-billed performance fees. Pay correctly honours two different idempotency keys today, so the defect is Crucible's alone.
 - **Repositories affected** — `crucible`
 - **Dependencies** — EPC-01
@@ -1360,7 +1360,7 @@ than features because each is a correctness change to the money path, not a new 
 
 #### ENA-02 · Bot stop takes the same lease as the settlement sweep
 
-- **Description** — `POST /bots/:id/actions {stop}` (`crucible/services/crucible/src/routes/bots.ts:304`) claims the same lease as `settlementSweep` (`crucible/services/crucible/src/runner.ts:513`), closing the race between the hourly sweep and a user-initiated stop.
+- **Description** — `POST /bots/:id/actions {stop}` (`crucible/services/crucible/src/routes/bots.ts`) claims the same lease as `settlementSweep` (`crucible/services/crucible/src/runner.ts`), closing the race between the hourly sweep and a user-initiated stop.
 - **User or operator value** — The same double-billing defect reached by a second path is closed.
 - **Repositories affected** — `crucible`
 - **Dependencies** — ENA-01
@@ -1373,7 +1373,7 @@ than features because each is a correctness change to the money path, not a new 
 
 #### ENA-03 · Mandatory idempotency key on `POST /spend`
 
-- **Description** — Require `Idempotency-Key` on `POST /spend`, the one money route that still accepts a missing key (`spendShards`, `forge-pay/services/pay/src/store.ts:573`, using `withIdempotency` at `:153`).
+- **Description** — Require `Idempotency-Key` on `POST /spend`, the one money route that still accepts a missing key (`spendShards`, `forge-pay/services/pay/src/store.ts`, using `withIdempotency`).
 - **User or operator value** — A retried spend stops debiting twice.
 - **Repositories affected** — `forge-pay`, `shared-libs`
 - **Dependencies** — EPC-01
@@ -1401,7 +1401,7 @@ than features because each is a correctness change to the money path, not a new 
 
 #### ENA-05 · `private_world` purchase provisions or refuses the sale
 
-- **Description** — `POST /private-worlds/rent` (`forge-pay/services/pay/src/routes/monetization.ts:100`) must either provision a world or refuse the sale. **The scope here is refuse or refund, not provision** — provisioning is FEA-33 in P10.
+- **Description** — `POST /private-worlds/rent` (`forge-pay/services/pay/src/routes/monetization.ts`) must either provision a world or refuse the sale. **The scope here is refuse or refund, not provision** — provisioning is FEA-33 in P10.
 - **User or operator value** — Users stop being debited 1,800–2,500 Shards for a world that no code creates; Pay's own log line currently admits the failure.
 - **Repositories affected** — `forge-pay`, `ninety-days-after`, `shared-libs`
 - **Dependencies** — EPC-01
@@ -1429,7 +1429,7 @@ than features because each is a correctness change to the money path, not a new 
 
 #### ENA-07 · `assignHomestead` conditional tile claim
 
-- **Description** — Guarantee that the homestead claim in `ninety-days-after/services/game/src/world/generate.ts:89-108` cannot place two players on one tile, by asserting the conditional `WHERE owner_id IS NULL` on the update and covering it with a concurrency test.
+- **Description** — Guarantee that the homestead claim in `ninety-days-after/services/game/src/world/generate.ts` cannot place two players on one tile, by asserting the conditional `WHERE owner_id IS NULL` on the update and covering it with a concurrency test.
 - **User or operator value** — Two concurrent joins cannot land on one tile, which currently corrupts a world's ownership map.
 - **Repositories affected** — `ninety-days-after`
 - **Dependencies** — EPC-01
@@ -1443,7 +1443,7 @@ than features because each is a correctness change to the money path, not a new 
 
 #### ENA-08 · Nimbus proxies get timeouts and request-id forwarding
 
-- **Description** — Replace bare `fetch` in `platform/services/nimbus/src/routes/vault.ts:61` and `platform/services/nimbus/src/routes/pay.ts:73` with `fetchJson` carrying a deadline, and forward `x-request-id`.
+- **Description** — Replace bare `fetch` in `platform/services/nimbus/src/routes/vault.ts` and `platform/services/nimbus/src/routes/pay.ts` with `fetchJson` carrying a deadline, and forward `x-request-id`.
 - **User or operator value** — A hung keyvault stops pinning the SSO service indefinitely, which today takes down sign-in for every product.
 - **Repositories affected** — `platform`
 - **Dependencies** — EPC-01
@@ -1457,7 +1457,7 @@ than features because each is a correctness change to the money path, not a new 
 
 #### ENA-09 · Solana `onBroadcast` and a non-EVM settle path
 
-- **Description** — Add `onBroadcast` to the Solana deploy path and extend the `/status` settle path beyond `chain.family === 'evm'` in `forge-mint/services/forge-mint/src/routes/tokens.ts` (around `:321` and `:407`).
+- **Description** — Add `onBroadcast` to the Solana deploy path and extend the `/status` settle path beyond `chain.family === 'evm'` in `forge-mint/services/forge-mint/src/routes/tokens.ts` (around and).
 - **User or operator value** — A Solana token cannot be minted twice, paying gas and rent both times. Solana is suspended today, which masks but does not fix it.
 - **Repositories affected** — `forge-mint`
 - **Dependencies** — EPC-01
@@ -1485,7 +1485,7 @@ than features because each is a correctness change to the money path, not a new 
 
 #### ENA-11 · XRP network binding in derivation and signing
 
-- **Description** — Bind XRP keys to a network in `forge-keyvault/services/forge-keyvault/src/chains.ts:141`, where `XrplWallet.generate()` produces the same seed and address for testnet and mainnet, and enforce the binding in the signing path.
+- **Description** — Bind XRP keys to a network in `forge-keyvault/services/forge-keyvault/src/chains.ts`, where `XrplWallet.generate()` produces the same seed and address for testnet and mainnet, and enforce the binding in the signing path.
 - **User or operator value** — Closes a cross-network signature replay: a signed Payment is currently submittable on either network.
 - **Repositories affected** — `forge-keyvault`
 - **Dependencies** — EPC-01
@@ -3373,7 +3373,7 @@ consistent backlog.
 §3.2 records a lost update: "`UPDATE tiles SET owner_id` with no `WHERE owner_id IS NULL`", and
 [06-ecosystem-workflow.md](06-ecosystem-workflow.md) Phase 1 item 7 is "`assignHomestead` gets
 `WHERE owner_id IS NULL`". Current source at
-`ninety-days-after/services/game/src/world/generate.ts:101-107` performs the update inside
+`ninety-days-after/services/game/src/world/generate.ts` performs the update inside
 `claimFirstFree` with `.where(and(eq(tiles.id, candidate.id), isNull(tiles.ownerId)))` and
 returns the claimed row, which is the conditional claim the fix describes. Either the audit
 predates commit `4b4c537`/`ee0250e`, or the defect lives on a different path — the surrounding

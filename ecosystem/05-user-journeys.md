@@ -120,7 +120,7 @@ page is retired in P6.
 
 **What the user sees.** A wallet list with label, chain, network badge, primary flag and
 lifecycle state. `mainnet` and `testnet` are separate rows and never inferred — the XRP
-testnet/mainnet address collision in `forge-keyvault/src/chains.ts:141` is exactly what that
+testnet/mainnet address collision in `forge-keyvault/src/chains.ts` is exactly what that
 rule prevents.
 
 **Failures.** Custody down (single replica, permanently — AD-18): `wallet` returns 503, the row
@@ -142,7 +142,7 @@ a degraded Wallet group, not an outage.
 | 2 | user | Sends from an exchange or their own node | — |
 | 3 | `indexer` | EVM/Ember/Solana/Bitcoin/XRP worker ingests the block | Writes `block`, `transaction`, `address_activity` with a **real** `tx_hash` |
 | 4 | `indexer` | ⇢ `indexer.address.activity` | `first_seen_at` set; `confirmations` counts up |
-| 5 | `wallet` | Consumes it, checks depth against `contracts-chain` | EMBER 60, ETH 12, BTC 1, SOL 1, XRP 1 (`shared-libs/packages/shared/src/deposits.ts:102-146`) |
+| 5 | `wallet` | Consumes it, checks depth against `contracts-chain` | EMBER 60, ETH 12, BTC 1, SOL 1, XRP 1 (`shared-libs/packages/shared/src/deposits.ts`) |
 | 6 | `wallet → ledger` | `POST /entries` `kind=deposit_credited`, idempotency key `(address, tx_hash)` | Debit `custody:<chain>:<network>` asset, credit `user:<id>` liability |
 | 7 | `settlement` | Leased `chain.sweep`, key `chain:network` | Sweeps to the pinned treasury; `custody`'s purpose gate permits exactly one shape to exactly one destination (`forge-keyvault/src/signing.ts`) |
 
@@ -215,7 +215,7 @@ Two concrete uses, both of which turn an asset into something the ledger can see
   `worlds` consumes it and writes an `inventory_item` with `bound=false` for cosmetics and
   `bound=true` for anything conferring power. This event is what finally provisions the private
   world that Pay has been selling and nothing has ever built
-  (`forge-pay/routes/monetization.ts:100-138`; `grep -r private_world ninety-days-after` returns
+  (`forge-pay/routes/monetization.ts`; `grep -r private_world ninety-days-after` returns
   zero).
 - **Forge Trade.** Capital allocated to a bot becomes a **ledger reservation** — a posting from
   the user's `available` account to `reserved` — rather than a convention held in the bot row.
@@ -313,7 +313,7 @@ self-custodied; the user may retire it entirely. The export appears in the user'
 log, in the activity feed and in the operator audit trail.
 
 **What this replaces.** `POST /admin/keys/:address/reveal`
-(`forge-keyvault/src/routes/admin.ts:123`), which returns **any** private key in plaintext to
+(`forge-keyvault/src/routes/admin.ts`), which returns **any** private key in plaintext to
 **any** admin JWT with one audit row as the entire mitigation. It is deleted in P5, and the
 break-glass runbook — two operators, a signed incident record, a hardware-token challenge each,
 an alert to every admin — ships and is rehearsed in the same release.
@@ -417,7 +417,7 @@ before anything depends on it. **P11.**
    line.
 
 Today the equivalent is `POST /admin/withdrawals/:id/abandon`
-(`forge-pay/src/routes/admin.ts:730`) reachable only by curl through Nimbus's proxy — there is no
+(`forge-pay/src/routes/admin.ts`) reachable only by curl through Nimbus's proxy — there is no
 UI for it. **P7.**
 
 ## Journey 14 — Responding to a reconciliation drift alert
@@ -566,7 +566,7 @@ can be run**, not by an assertion in a document. Each row names the Beacon journ
 | 11 | A third party can build on all of it | Journey 12: a third party builds a working integration against the sandbox using only public documentation | `dev.sandbox-integration` (new, P11) | P11 |
 
 **How the journey set grows.** *(Dated. The count below is the **legacy** Beacon's and it
-reproduces exactly; `micro-beacon` ships six, and states at `beacon/src/estate.ts:5-22` why it
+reproduces exactly; `micro-beacon` ships six, and states at `beacon/src/estate.ts` why it
 declines to declare the rest. The browser-level successor to the six `web.*` page checks is
 specified in [22-browser-journeys.md](22-browser-journeys.md).)* 24 journeys exist today in
 `infra/beacon/src/journeys/` —

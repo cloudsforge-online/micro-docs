@@ -230,8 +230,7 @@ it is true rather than aspirational.
 
 So the wallet gets Foresight as a **first-class surface, not a webview**:
 
-- **Read positions straight from the chain.** `stakeOf(address)` (`:352`), `payoutOf(address)`
-  (`:405`), `oddsBps(uint8)` (`:362`), `total()`, `distributable()` and `claimableFrom()` are all
+- **Read positions straight from the chain.** `stakeOf(address)`, `payoutOf(address)`, `oddsBps(uint8)`, `total()`, `distributable()` and `claimableFrom()` are all
   public views. The wallet needs no CloudsForge API to tell a user what they hold or what it is
   worth.
 - **Stake and claim locally signed.** One payable call, one claim call, both from the user's key.

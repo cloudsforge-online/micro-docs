@@ -54,7 +54,7 @@ wrong because they did not read it.
   tables — verified by grep across all nine repos. Every cross-service read is HTTP. This is
   the single most expensive property to retrofit and it is already true.
 - **Real idempotency in the money path.** `withIdempotency`
-  (`forge-pay/services/pay/src/store.ts:153`) stores a request hash and the response body,
+  (`forge-pay/services/pay/src/store.ts`) stores a request hash and the response body,
   claims the key in the same transaction as the work, and replays stored JSON on a duplicate.
   A different body under the same key is a 409. This is better than most production payment
   code and its shape should be copied, not replaced.
@@ -87,9 +87,9 @@ money.
 > returned no matches anywhere in the estate. **That is no longer true**, and the plan inherited
 > the claim without re-checking it. Nimbus now uses `pg_advisory_xact_lock` in two places:
 >
-> - `platform/services/nimbus/src/tokens.ts:230,324` — serialising refresh-token family
+> - `platform/services/nimbus/src/tokens.ts,324` — serialising refresh-token family
 >   operations, which is what makes reuse detection correct under concurrency.
-> - `platform/services/nimbus/src/db/migrate.ts:188-194` — a migration lock, with a source
+> - `platform/services/nimbus/src/db/migrate.ts` — a migration lock, with a source
 >   comment explaining the choice of the transaction-scoped form over the session form because
 >   it is released automatically.
 >
@@ -99,7 +99,7 @@ money.
 
 **Nine** `setInterval` timers do real work across three services, each guarded only by a
 module-local boolean — a variable that is by construction invisible to a second process. (The
-earlier count of eight predates `forge-pay/src/opswatch.ts:207`.)
+earlier count of eight predates `forge-pay/src/opswatch.ts`.)
 
 | Service | Timer | What two replicas do |
 | --- | --- | --- |
@@ -112,7 +112,7 @@ earlier count of eight predates `forge-pay/src/opswatch.ts:207`.)
 | crucible | settlement sweep | **Double-billing** — `randomUUID()` settlement ids produce two different Pay idempotency keys |
 | game | world tick | **Double XP and double `daysSurvived`** |
 
-`hasUnsettledOutbound()` (`pay/src/store.ts:1162`) is an unlocked read, so two workers both
+`hasUnsettledOutbound()` (`pay/src/store.ts`) is an unlocked read, so two workers both
 pass it. `markWithdrawalSigned` protects a single row; it does not protect the chain's nonce.
 
 ### 3.2 Money-losing defects live at one replica
@@ -132,16 +132,16 @@ pass it. `markWithdrawalSigned` protects a single row; it does not protect the c
 
 | # | Defect | Status | Evidence in current source |
 | --- | --- | --- | --- |
-| 1 | **Crucible double-bills performance fees.** Settlement id is `randomUUID()`, so the Pay idempotency key differs per attempt and Pay correctly honours both. Races between the hourly sweep and `POST /bots/:id/actions {stop}`. | **LIVE** | `crucible/services/crucible/src/store.ts:452` still `randomUUID()`; no unique index on `fee_settlements (bot_id, period)` anywhere in `db/migrate.ts` |
-| 2 | **`POST /spend` accepts a missing idempotency key** — the one money route that does. | **LIVE** | `forge-pay/services/pay/src/routes/wallet.ts:42` — `idempotencyKey: z.string().min(8).max(200).optional()` |
+| 1 | **Crucible double-bills performance fees.** Settlement id is `randomUUID()`, so the Pay idempotency key differs per attempt and Pay correctly honours both. Races between the hourly sweep and `POST /bots/:id/actions {stop}`. | **LIVE** | `crucible/services/crucible/src/store.ts` still `randomUUID()`; no unique index on `fee_settlements (bot_id, period)` anywhere in `db/migrate.ts` |
+| 2 | **`POST /spend` accepts a missing idempotency key** — the one money route that does. | **LIVE** | `forge-pay/services/pay/src/routes/wallet.ts` — `idempotencyKey: z.string().min(8).max(200).optional()` |
 | 3 | **No idempotency key on any game shop purchase.** All four are called directly from the browser with none, and `rentPrivateWorld` is `ownOnce: false`, so a retry double-charges. | **LIVE** | zero matches for `idempotency` in `ninety-days-after/apps/game/src/pages/Shop.tsx` |
-| 4 | **A purchased private world is never built.** Pay debits 1,800–2,500 Shards and writes the entitlement; nothing reads it. | **LIVE** | zero matches for `private_world` in `ninety-days-after/services/game/src/`; Pay still writes it at `forge-pay/.../routes/monetization.ts:109` |
-| 5 | **Nimbus's two admin proxies have no request timeout.** A hung custody service pins the identity service indefinitely — a denial of service on authentication for the whole estate. | **LIVE** | bare `fetch` at `platform/services/nimbus/src/routes/vault.ts:68` and `routes/pay.ts:105`; zero timeout references in `vault.ts` |
+| 4 | **A purchased private world is never built.** Pay debits 1,800–2,500 Shards and writes the entitlement; nothing reads it. | **LIVE** | zero matches for `private_world` in `ninety-days-after/services/game/src/`; Pay still writes it at `forge-pay/.../routes/monetization.ts` |
+| 5 | **Nimbus's two admin proxies have no request timeout.** A hung custody service pins the identity service indefinitely — a denial of service on authentication for the whole estate. | **LIVE** | bare `fetch` at `platform/services/nimbus/src/routes/vault.ts` and `routes/pay.ts`; zero timeout references in `vault.ts` |
 | 6 | **Every container receives every secret.** | **LIVE** | `env_file` appears 10× in `docker-compose.yml` |
-| 7 | **ForgeMint can mint a Solana token twice**, paying gas and rent both times. Masked, not fixed, by Solana being suspended. | **LIVE** | `deploySplToken` at `forge-mint/.../routes/tokens.ts:638` is called without the `onBroadcast` callback the EVM branch uses at `:633` |
-| 8 | **`convertCoinToEmber` credits custodial EMBER with no on-chain movement and no reserve check**, and nothing reconciles custodial balances against custody holdings. | **LIVE** | `forge-pay/services/pay/src/store.ts:2511` |
-| 9 | ~~`assignHomestead` lost update~~ | **FIXED** by the audit track | `ninety-days-after/.../world/generate.ts:101-107` claims conditionally via `isNull(tiles.ownerId)` and checks the returned row count. Still missing a **concurrency test**, so the guard can regress silently |
-| 10 | ~~Ember signatures valid across networks~~ | **FIXED** by the audit track | `forge-keyvault/.../src/chains.ts:36-43` now resolves per-network EIP-155 chain ids (7411 mainnet, 7412 testnet); `bitcoinNetwork()` is checked against the WIF |
+| 7 | **ForgeMint can mint a Solana token twice**, paying gas and rent both times. Masked, not fixed, by Solana being suspended. | **LIVE** | `deploySplToken` at `forge-mint/.../routes/tokens.ts` is called without the `onBroadcast` callback the EVM branch uses |
+| 8 | **`convertCoinToEmber` credits custodial EMBER with no on-chain movement and no reserve check**, and nothing reconciles custodial balances against custody holdings. | **LIVE** | `forge-pay/services/pay/src/store.ts` |
+| 9 | ~~`assignHomestead` lost update~~ | **FIXED** by the audit track | `ninety-days-after/.../world/generate.ts` claims conditionally via `isNull(tiles.ownerId)` and checks the returned row count. Still missing a **concurrency test**, so the guard can regress silently |
+| 10 | ~~Ember signatures valid across networks~~ | **FIXED** by the audit track | `forge-keyvault/.../src/chains.ts` now resolves per-network EIP-155 chain ids (7411 mainnet, 7412 testnet); `bitcoinNetwork()` is checked against the WIF |
 
 ### 3.3 There is no ledger
 
@@ -182,13 +182,13 @@ compare against a high-water mark. Consequences:
 | `env_file: .env` on eight services hands each container **all 64 variables** | `docker-compose.yml` | The game container holds `KEYVAULT_MASTER_SECRET`. Blast radius of any compromise is total. |
 | One shared `PAY_SERVICE_TOKEN` grants read/debit/credit/liquidate on **every** user | `pay/src/routes/internal.ts` | No per-caller identity; Pay's audit cannot say which service charged. |
 | One shared `KEYVAULT_SERVICE_TOKEN` grants the whole custody peer surface | `forge-keyvault/src/auth.ts` | Any of three containers holding it can mint a treasury, sweep every deposit to it, then drain it. Documented as a residual risk in source. |
-| `POST /admin/keys/:address/reveal` returns **any** private key in plaintext to any admin JWT | `forge-keyvault/src/routes/admin.ts:123` | Total-exfiltration primitive. Mitigation is one audit row. No approval, no rate limit, no scoping. |
+| `POST /admin/keys/:address/reveal` returns **any** private key in plaintext to any admin JWT | `forge-keyvault/src/routes/admin.ts` | Total-exfiltration primitive. Mitigation is one audit row. No approval, no rate limit, no scoping. |
 | ForgeKeyvault runs as **root** with `/var/run/docker.sock` mounted read-write | `Dockerfile:29-48` | Any RCE is host takeover and full custody loss. Deliberate and documented. |
 | `KEYVAULT_MASTER_SECRET` **cannot be rotated** | `crypto.ts` — `CURRENT_VERSION = 1`, no v2 branch, no re-encryption pass | A compromise is unrecoverable without regenerating every address. |
 | No MFA anywhere | `platform/services/nimbus` | No TOTP, no WebAuthn, no recovery codes. |
 | No session or device records | Nimbus | No "sign out everywhere", no device list, no new-device alert. |
-| Nimbus's two admin proxies use bare `fetch` with no timeout | `routes/vault.ts:61`, `routes/pay.ts:73` | A hung keyvault pins the SSO service indefinitely. |
-| XRP has no network binding | `forge-keyvault/src/chains.ts:141` | Same seed and address on testnet and mainnet; a signed Payment is submittable on either. |
+| Nimbus's two admin proxies use bare `fetch` with no timeout | `routes/vault.ts`, `routes/pay.ts` | A hung keyvault pins the SSO service indefinitely. |
+| XRP has no network binding | `forge-keyvault/src/chains.ts` | Same seed and address on testnet and mainnet; a signed Payment is submittable on either. |
 | Flat bridge network, plaintext HTTP, no segmentation | `docker-compose.yml` | Anything on the bridge reaches `forge-keyvault:4005` and `pay:4003/internal`. |
 | No rate limiting in pay, keyvault or forge-mint | — | Including unauthenticated public routes. |
 
@@ -207,12 +207,12 @@ internet with one guessed token as the only protection.
   ship a hand-rolled `STEPS[]` of `CREATE TABLE IF NOT EXISTS` executed before `listen()`, with
   no version table, no down path and `process.exit(1)` on failure — verified: **0 of 6** have a
   `schema_migrations` table. *Corrected:* Nimbus **does** take an advisory lock
-  (`db/migrate.ts:194`), so it alone survives two replicas booting together. The other five race
+  (`db/migrate.ts`), so it alone survives two replicas booting together. The other five race
   on `pg_class`, one raises 23505 and crash-loops. Even for Nimbus, the absence of a version
   table means there is no way to know what schema a database is at, review a change, or roll one
   back.
-- ~~**Nimbus has a split-brain signing key.**~~ **Fixed.** `keys.ts:212,255,345` now order by
-  `(created_at, kid)` everywhere, and a source comment at `keys.ts:19-20` records that the
+- ~~**Nimbus has a split-brain signing key.**~~ **Fixed.** `keys.ts,255,345` now order by
+  `(created_at, kid)` everywhere, and a source comment at `keys.ts` records that the
   active-key lookup and the JWKS publication "used to be the same one". The rotation state
   machine and the deterministic ordering both landed in the audit track.
 - **Zero events, zero outbox, zero queue, zero circuit breakers.** Consistency between services
@@ -266,8 +266,8 @@ Ordered by how bad it looks if a customer finds it.
    claims were removed from `MINT_OFFERS` in `shared-libs` commit `620230c`; no `liquidity`
    match remains in the estate.
 5. **`tokens` in the game are a dead currency in both directions** — worse than recorded
-   elsewhere. Nothing awards them (`resolve.ts:79`), nothing spends them, and yet an achievement
-   gates on `tokens >= 100` (`resolve.ts:711`), so that achievement is unreachable by
+   elsewhere. Nothing awards them (`resolve.ts`), nothing spends them, and yet an achievement
+   gates on `tokens >= 100` (`resolve.ts`), so that achievement is unreachable by
    construction.
 6. **The published USD prices contradict the 100 Shards = 1 USD peg.** Private worlds at
    1,800 / 2,500 Shards declare $14.99 / $19.99 where the peg gives $18 / $25; the season pass
@@ -429,10 +429,10 @@ Recorded because these documents were used as inputs by earlier plans and are wr
   from the request Host, and that there is no signing-key rotation. All four claims are false
   in current source.
 - `forge-pay/MAP.md` — "33 handlers"; there are 35. Schema comment says treasury purpose is
-  `'deployer' today`; `treasury.ts:63` uses `'treasury'`.
+  `'deployer' today`; `treasury.ts` uses `'treasury'`.
 - `forge-keyvault/MAP.md` — inline line numbers stale by ~90 lines.
 - `hearth/MAP.md` §4.6, §10 — claims `jsonrpc/server.js` "is never constructed"; it is mounted
-  at `node/src/evmnode.js:232`. Test count says 27; there are 31 suites.
+  at `node/src/evmnode.js`. Test count says 27; there are 31 suites.
 - `stack/BLOCKCHAIN.md` §1 — describes Hearth as "a pure key-to-address UTXO chain". Hearth is
   now an account-model EVM chain with `0x` addresses and secp256k1. The document's entire
   premise (add output predicates, not a VM) is obsolete: the VM already exists and passes

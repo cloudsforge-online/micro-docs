@@ -100,7 +100,7 @@ expensive.
 ```js
 const lines = fs.readFileSync(this.file, 'utf8').split('\n').filter(Boolean);
 ```
-— `hearth/node/src/chain/blockchain.js:179`
+— `hearth/node/src/chain/blockchain.js`
 
 Node's `MAX_STRING_LENGTH` is **536,870,888 bytes** (verified locally on
 v24.14.0). At the measured 1,530 bytes/block that ceiling is reached at
@@ -109,20 +109,20 @@ node throws `ERR_STRING_TOO_LONG` on start. The data is intact; this code cannot
 read it.
 
 It compounds. State lives in a `MemoryDB` that is a bare `Map` with `get`, `put`,
-`has` and `size` and **no `delete`** (`hearth/node/src/state/trie.js:93-99`), one
-instance shared by the whole chain (`blockchain.js:148`). Nothing is ever pruned,
+`has` and `size` and **no `delete`** (`hearth/node/src/state/trie.js`), one
+instance shared by the whole chain (`blockchain.js`). Nothing is ever pruned,
 and the file says so and says why: *"nothing is ever pruned; spec §9 puts pruning
-out of scope for v1"* (`blockchain.js:36-38`). Every block object and its receipts
+out of scope for v1"* (`blockchain.js`). Every block object and its receipts
 are also retained in `this.store`, including orphaned forks. V8's `Map` ceiling is
 16,777,216 entries, and no `NODE_OPTIONS` sets `--max-old-space-size`, so the
 default ~4 GB heap binds first.
 
 And boot re-verifies proof-of-work on every block: `load()` → `_ingest(b, false)`
-→ `_validate` → `HDR.verifyPow(hdr)` at `blockchain.js:400`. **There is no
+→ `_validate` → `HDR.verifyPow(hdr)` at `blockchain.js`. **There is no
 trusted-checkpoint, snapshot, or skip-validation path anywhere in the tree.** At
 the repo's own measured 6.57 ms per Homefire evaluation at shipped mainnet
-parameters (`hearth/docs/pow-parameters.md:48`; `POW_SCRATCH_KIB: 64`,
-`POW_WALK_STEPS: 256` at `node/src/params.js:164-165`), a one-year chain is
+parameters (`hearth/docs/pow-parameters.md`; `POW_SCRATCH_KIB: 64`,
+`POW_WALK_STEPS: 256` at `node/src/params.js`), a one-year chain is
 **~3.8 hours of PoW alone** to boot, before JSON parsing and state re-execution.
 Testnet uses 1 KiB / 8 steps, ~100× cheaper, which is why nobody has noticed.
 
@@ -161,7 +161,7 @@ all describe.
 
 **On cloud this stops being a nicety.** Building on the instance means checking
 out ~60 sibling repositories, because the frontends' build contexts reach across
-them by design (`uipkg: ../../ui`, `docker-compose.estate.yml:158-160`, with a
+them by design (`uipkg: ../../ui`, `docker-compose.estate.yml`, with a
 long note explaining that `@cloudsforge/ui` is a `link:` into a sibling repo). It
 also means carrying that 41 GB build cache on a paid volume and spending instance
 CPU on builds. The estate is public (61 repos), so GHCR storage and Actions
@@ -170,14 +170,14 @@ minutes are free — which makes ECR and ACR line items that do not need to exis
 #### The fix this section used to prescribe cannot work. Measured, not argued.
 
 Until now this section said: *turn on `push: true` to GHCR*. Read as an
-instruction to flip `service-ci.yml:1220` and `web-ci.yml:264` and add
+instruction to flip `service-ci.yml` and `web-ci.yml` and add
 `packages: write` there, **that change breaks every repository in the estate**,
 and it does not fail softly.
 
 A called workflow's `GITHUB_TOKEN` can only be *maintained or reduced, never
 elevated*. All 35 repositories that call `service-ci.yml` or `web-ci.yml` pin
 `permissions: {contents: read, packages: read}` on the calling job
-(`ledger/.github/workflows/ci.yml:41-43` is the canonical copy). A reusable
+(`ledger/.github/workflows/ci.yml` is the canonical copy). A reusable
 workflow declaring `packages: write` therefore fails its callers at **startup**,
 before a single step runs, on pull requests as well as on `main`:
 
@@ -188,7 +188,7 @@ before a single step runs, on pull requests as well as on `main`:
 
 `push: false` in the two gate builds is also **correct and stays**. Those jobs
 exist to `load:` the image into the runner's daemon so they can boot it and read
-`/livez` (`service-ci.yml:1220-1221`) or fetch `/` (`web-ci.yml:264-265`); `load`
+`/livez` (`service-ci.yml`) or fetch `/` (`web-ci.yml`); `load`
 and `push` want different things from buildx. A gate is not a producer.
 
 #### What was built instead
@@ -212,16 +212,16 @@ permission is ever elevated across the call boundary:
 ```
 
 It pushes three tags and deliberately **not `latest`**
-(`publish-image.yml:295-300`):
+(`publish-image.yml`):
 
 | tag | why |
 |---|---|
-| `<version>` | `package.json`'s version — the load-bearing one, because `cfctl release` writes exactly this into the manifest (`org/tools/cfctl.ts:906`). Treated as **immutable**: an already-published version is never moved, and that is a warning rather than a failure, since most commits on `main` are not releases (`publish-image.yml:251-277`). |
+| `<version>` | `package.json`'s version — the load-bearing one, because `cfctl release` writes exactly this into the manifest (`org/tools/cfctl.ts`). Treated as **immutable**: an already-published version is never moved, and that is a warning rather than a failure, since most commits on `main` are not releases (`publish-image.yml`). |
 | `sha-<sha>` | always unique, always safe to push, and the only tag that answers "what code is this" for a commit that did not bump the version. |
 | `main` | the moving head of the branch, which is what a compose file without a manifest defaults to. |
 
 The last step re-checks that the package answers an **anonymous** pull
-(`publish-image.yml:315-362`), because the reader is a deploy host with no
+(`publish-image.yml`), because the reader is a deploy host with no
 credentials: a push proves the writer's rights and nothing about the reader's.
 A GHCR package inherits the visibility of the repository the
 `org.opencontainers.image.source` label links it to, so on a public repository
@@ -230,8 +230,8 @@ this resolves itself — and the workflow says so loudly when it does not.
 Verified end to end on `micro-service-template`,
 [run 30901257906](https://github.com/cloudsforge-online/micro-service-template/actions/runs/30901257906):
 all three tags present and anonymously pullable, which is precisely what
-`cfctl release --verify` (`cfctl.ts:937-975`) and
-`deploy/scripts/release-deploy.sh:99-125` run.
+`cfctl release --verify` (`cfctl.ts`) and
+`deploy/scripts/release-deploy.sh` run.
 
 ### 2.3 29 of 48 running services will not restart. Measured, not read.
 
@@ -243,9 +243,9 @@ $ for c in $(docker ps --filter label=com.docker.compose.project=cloudsforge-est
 ```
 
 The compose file has exactly five `restart:` lines. `x-web-defaults` sets
-`unless-stopped` (`docker-compose.estate.yml:162`) so the 19 frontends and
+`unless-stopped` (`docker-compose.estate.yml`) so the 19 frontends and
 Postgres are covered; `x-migrate-defaults` sets `"no"`
-(`docker-compose.estate.yml:139-141`) which is correct for a one-shot. **The
+(`docker-compose.estate.yml`) which is correct for a one-shot. **The
 backend services set nothing and therefore default to `no`.** A crashed `ledger`,
 `identity` or `custody` stays down until a human runs `docker compose up`.
 
@@ -264,7 +264,7 @@ unless-stopped` to begin with.
 ### 2.4 (Corollary) The database password is a literal, 57 times.
 
 `POSTGRES_PASSWORD: estate-only-not-a-real-password`
-(`docker-compose.estate.yml:217`) and the same string in 56 DSNs. It is not
+(`docker-compose.estate.yml`) and the same string in 56 DSNs. It is not
 parameterised by anything. It is honestly named and correct for a laptop; it
 cannot leave one. See §5 and §7.
 
@@ -297,13 +297,13 @@ this arm64 Mac today, which is evidence but not proof for glibc arm64 Linux.
 > **BUT THE PUBLISHED IMAGES ARE `amd64` ONLY, AND THIS PAGE IS THE ONLY PLACE THE
 > TWO DECISIONS MEET.** The evidence above is about images built *locally* — Colima
 > on an arm64 Mac naturally builds arm64. The images CI publishes are a different
-> artefact: `org/.github/workflows/publish-image.yml:102-106` defaults `platforms`
+> artefact: `org/.github/workflows/publish-image.yml` defaults `platforms`
 > to `linux/amd64`, reasoning that arm64 "roughly doubles the build for an
 > architecture nothing deploys to yet". Both statements were true when written, on
 > the same day, by different hands.
 >
 > This matters because the cloud path deploys **published** images, and
-> `deploy/scripts/release-deploy.sh:99-124` changes nothing until every image in the
+> `deploy/scripts/release-deploy.sh` changes nothing until every image in the
 > manifest pulls. Provision Graviton or Ampere against today's registry and the pull
 > either fails or silently lands an `amd64` image on an `arm64` host.
 >
@@ -456,33 +456,31 @@ chain's.
 
 **The migrator pattern survives, unchanged.** This was the thing most likely to
 block managed Postgres and it does not. 28 one-shot migrator containers
-(`x-migrate-defaults`, `docker-compose.estate.yml:139-141`) run
+(`x-migrate-defaults`, `docker-compose.estate.yml`) run
 `node --import tsx src/migrator.ts`, and the service gates on
 `condition: service_completed_successfully`. The runner
 (`runtime/packages/db/src/index.ts`) takes a **session-scoped
-`pg_advisory_lock`** on an FNV-1a hash of the service name (`:100-109`, taken at
-`:162`), records applied versions in a `schema_migrations` table (`:72-79`),
-checksums migrations so an edited-after-applied one throws rather than runs
-(`:171-181`), and wraps DDL and the ledger insert in one transaction (`:213-222`).
+`pg_advisory_lock`** on an FNV-1a hash of the service name (, taken), records applied versions in a `schema_migrations` table,
+checksums migrations so an edited-after-applied one throws rather than runs, and wraps DDL and the ledger insert in one transaction.
 **Every one of those is an ordinary client operation.** No superuser, no
 filesystem, no `ALTER SYSTEM`. The migrators would run against RDS as they are,
 given a DSN.
 
 **The deferred constraint triggers survive.** There are **11**, of which 9 are
 `INITIALLY DEFERRED`, and they carry the estate's most important invariants —
-`journal_entries_balanced` and `postings_balanced` (`ledger/src/migrations.ts:324-336`)
+`journal_entries_balanced` and `postings_balanced` (`ledger/src/migrations.ts`)
 enforce Σdebits = Σcredits at COMMIT, and `users_roles_need_a_grant`
-(`identity/src/migrations.ts:704-707`) makes a bare `update users set roles=…`
+(`identity/src/migrations.ts`) makes a bare `update users set roles=…`
 from psql fail. All are plain `plpgsql` functions created by the table owner,
 which RDS and Azure Flexible Server both permit.
 
 **The GiST exclusion constraints survive.** Three of them —
-`engagement_windows_no_overlap` (`market/src/migrations.ts:698-700`),
-`tessera_parcels_do_not_overlap` (`tessera/src/migrations.ts:362-368`) and
-`tessera_no_overlapping_bookings` (`tessera/src/migrations.ts:1671-1672`). Two
+`engagement_windows_no_overlap` (`market/src/migrations.ts`),
+`tessera_parcels_do_not_overlap` (`tessera/src/migrations.ts`) and
+`tessera_no_overlapping_bookings` (`tessera/src/migrations.ts`). Two
 need `btree_gist` for the `uuid with =` operand, and `btree_gist` is the **only**
-extension this entire estate creates (`market/src/migrations.ts:695`,
-`tessera/src/migrations.ts:151`). It is allow-listed on both RDS and Azure
+extension this entire estate creates (`market/src/migrations.ts`,
+`tessera/src/migrations.ts`). It is allow-listed on both RDS and Azure
 Flexible Server. `gen_random_uuid()` is used at 162 sites and needs no extension
 on PG13+.
 
@@ -494,7 +492,7 @@ on PG13+.
    a managed instance. The 28 databases must be provisioned by Terraform or by a
    bootstrap role holding `CREATEDB`. Note `admin_api` with an underscore
    (`initdb.sql:56-58`); a hyphen is a syntax error unquoted.
-2. **`deploy/scripts/verify-chain-backing.sh:107`** shells
+2. **`deploy/scripts/verify-chain-backing.sh`** shells
    `docker exec … psql -c "create database $db"`. It needs a DSN instead of a
    container name.
 
@@ -503,7 +501,7 @@ on PG13+.
 Because the list above is the *good* news — managed Postgres is compatible — and
 compatibility was never the question. The question is $227–260/month against 371
 MB of data on an instance that already has 32 GiB of RAM and is being paid for
-regardless. `max_connections=400` (`docker-compose.estate.yml:216-221`) is sized
+regardless. `max_connections=400` (`docker-compose.estate.yml`) is sized
 for 28 services × pool-of-10 and carries over either way.
 
 **The condition under which this flips**, stated so it is a decision and not a
@@ -520,8 +518,7 @@ plus 28 DSN changes — genuinely reversible, which is why deferring it is safe.
 
 ### 6.1 `custody-keys` — the one that ends the platform
 
-Declared at `docker-compose.estate.yml:3132`, mounted by `custody-keys-init`
-(`:1048`) and `custody` (`:1100`). The comment block at `:3090-3131` states the
+Declared at `docker-compose.estate.yml`, mounted by `custody-keys-init` and `custody`. The comment block states the
 consequence: `docker compose down -v` makes every `custody_keys` row
 **permanently unspendable**. This is not a database that can be restored from a
 dump — the keys *are* the assets.
@@ -543,19 +540,19 @@ A Hearth node's entire durable state is **three files** in its data directory
 |---|---|
 | `blocks.ndjson` | **No** — from peers only, and only while a peer with full history is alive |
 | `genesis.json` | No — it *is* the chain's identity |
-| `coinbase-key.json` | **No** — mode 0600, `evmnode.js:50,68-83`. Lose it, lose the mining rewards |
+| `coinbase-key.json` | **No** — mode 0600, `evmnode.js,68-83`. Lose it, lose the mining rewards |
 
 **Everything else a node holds is rebuilt on boot** — accounts, storage, receipts,
 the tries, the tx index — because `load()` replays and re-validates every block
-from genesis (`blockchain.js:175-193`). So a chain backup is `cp` of three files,
+from genesis (`blockchain.js`). So a chain backup is `cp` of three files,
 totalling 5.6 MB today and growing 8.8 MB/day.
 
 **But "resync from the network" is not a recovery story here, and the reason is
 structural.** Sync is full block download only: `hello` → `getblocks` with an
 exponentially-spaced locator → `blocks`, ≤200 blocks and ≤3 MiB per frame
-(`p2p.js:266-292`; `P2P_MAX_BLOCKS`, `params.js:254`). **There is no fast sync, no
+(`p2p.js`; `P2P_MAX_BLOCKS`, `params.js`). **There is no fast sync, no
 snap sync, no state download, and no snapshot import command** — the CLI offers
-`trace, watch, wallet, call, send, deploy, devnet` (`node/bin/hearth.js:37-44`)
+`trace, watch, wallet, call, send, deploy, devnet` (`node/bin/hearth.js`)
 and nothing else. Recovering from the network means re-downloading and
 **re-executing** every block. And if every node holding the history dies at once,
 the chain is gone.
@@ -623,7 +620,7 @@ requirement but no renewal machinery to fail.
 > `*.cloudsforge.online` wildcard and the **two-certificate requirement is
 > gone**, for ACME and Origin CA alike. See
 > [26-public-deployment §0](26-public-deployment.md) and
-> `ui/packages/ui/src/surfaces.ts:995-1010`. The Origin CA recommendation above
+> `ui/packages/ui/src/surfaces.ts`. The Origin CA recommendation above
 > is unaffected on its own merits; only the certificate *count* changes.
 
 **What is lost:** an Origin CA certificate is only trusted by Cloudflare, so the
@@ -650,7 +647,7 @@ or an AMI, and it must not be typed by hand on the instance.
   render-to-tmpfs pattern. Effectively free at this volume.
 
 **The blocker: `POSTGRES_PASSWORD: estate-only-not-a-real-password`
-(`docker-compose.estate.yml:217`) appears 57 times in that file and is
+(`docker-compose.estate.yml`) appears 57 times in that file and is
 parameterised by nothing.** Before any cloud deployment it must become a variable
 sourced from the same store — and 26 §3's precedent is exactly how: make it a
 variable *with its current value as the default*, and prove `docker compose config`
@@ -690,7 +687,7 @@ be written as a deny-by-default allowlist:
 | Port | From | Why |
 |---|---|---|
 | 443 | `0.0.0.0/0` | the gateway, both environments (SNI-routed by Traefik) |
-| 80 | `0.0.0.0/0` | redirect to 443 only (`--entrypoints.web.http.redirections`, `docker-compose.gateway.yml:115-117`) |
+| 80 | `0.0.0.0/0` | redirect to 443 only (`--entrypoints.web.http.redirections`, `docker-compose.gateway.yml`) |
 | **8646 / 8746** | `0.0.0.0/0` | Hearth **raw-TCP** P2P, mainnet / testnet — §9 |
 | (8648 / 8748) | **loopback only** | Hearth **WebSocket** P2P — reached through Traefik on 443, never bound publicly |
 | 22 | operator only, or **none** (SSM Session Manager / Azure Bastion) | |
@@ -725,13 +722,13 @@ smaller.
 chain's P2P layer. **It is not.** Hearth's remote mining protocol is two HTTP
 endpoints on the **REST port 8645**:
 
-- `GET /mining/template?pub=<65-byte uncompressed key>` — `evmnode.js:389-393` →
-  `Templates.issue`, `chain/miner.js:134`
+- `GET /mining/template?pub=<65-byte uncompressed key>` — `evmnode.js` →
+  `Templates.issue`, `chain/miner.js`
 - `POST /mining/submit` with `{templateId, nonce, powDigest, powSig}` —
-  `evmnode.js:404-410` → `chain/miner.js:179`; 409 means stale work, pull again
+  `evmnode.js` → `chain/miner.js`; 409 means stale work, pull again
 
 The REST handler sets `access-control-allow-origin: '*'`
-(`evmnode.js:391`), which is the node telling you this surface is meant to be
+(`evmnode.js`), which is the node telling you this surface is meant to be
 public.
 
 **Three consequences.**
@@ -759,7 +756,7 @@ public.
 wins. 26 §5 describes P2P as raw TCP only, and that was true when 26 was written.
 As of `hearth` **6d590d4** — *"feat(p2p): carry gossip over WebSocket, so a
 tunnelled node can be reached at all"* — there are **two transports and one
-protocol**, and `p2p.js:9-11` states the reason in the file itself:
+protocol**, and `p2p.js` states the reason in the file itself:
 
 > *A Cloudflare Tunnel carries HTTP and WebSocket and cannot carry raw TCP, so a
 > node published from a home server with no static IP can be reached on
@@ -767,16 +764,16 @@ protocol**, and `p2p.js:9-11` states the reason in the file itself:
 
 | | TCP | WebSocket |
 |---|---|---|
-| Server | `net.createServer`, `p2p.js:90`, `listen` `:92` | `WS.createServer`, `:106`, `listen` `:123` |
-| Dial | `net.connect(this._tcpTarget(peer))`, `:136` | `WS.connect(url)`, `:167` |
-| Port | **8646** (`params.js:307`) | **8648** (`params.js:328`) |
-| Path | — | `/p2p` (`params.js:329`) |
-| Flag / env | `--p2p` / `HEARTH_P2P` | `--p2p-ws` / `HEARTH_P2P_WS` (`hearthd.js:64`) |
+| Server | `net.createServer`, `p2p.js`, `listen` | `WS.createServer`, `listen` |
+| Dial | `net.connect(this._tcpTarget(peer))` | `WS.connect(url)` |
+| Port | **8646** (`params.js`) | **8648** (`params.js`) |
+| Path | — | `/p2p` (`params.js`) |
+| Flag / env | `--p2p` / `HEARTH_P2P` | `--p2p-ws` / `HEARTH_P2P_WS` (`hearthd.js`) |
 
 `this.peers` is *"sockets and WebSocket connections, indistinguishably"*
 (`p2p.js:~77`), and `--peer` takes either form — `host:port` for TCP or a
-`ws://`/`wss://` URL (`hearthd.js:32,52`), dispatched by
-`isWsUrl(peer) ? this._dialWs(…) : net.connect(…)` at `:136`.
+`ws://`/`wss://` URL (`hearthd.js,52`), dispatched by
+`isWsUrl(peer) ? this._dialWs(…) : net.connect(…)`.
 
 **This is better for the cloud design than raw TCP alone, and it is the argument
 for the cloud host existing at all.** Expose **both**: raw TCP on 8646 for peers
@@ -787,12 +784,12 @@ node, which is simultaneously reachable on a raw port by anyone else. Neither
 deployment has to choose a transport, and 26's home plan does not need revising.
 
 **The part with no workaround, and it did not change: there is no peer
-discovery.** Peers come from `--peer` (`node/bin/hearthd.js:32`) or the
-`HEARTH_PEERS` environment variable (`:67`, comma-separated), dialled at start,
-with one 3-second reconnect loop shared by both transports (`p2p.js:137-147`).
+discovery.** Peers come from `--peer` (`node/bin/hearthd.js`) or the
+`HEARTH_PEERS` environment variable (, comma-separated), dialled at start,
+with one 3-second reconnect loop shared by both transports (`p2p.js`).
 **No message type carries a peer address** — the protocol is still exactly
 `hello | getblocks | getblock | blocks | block | tx`
-(`p2p.js:503,545,573,581,600,612`). Every node must be *told* its peers by
+(`p2p.js,545,573,581,600,612`). Every node must be *told* its peers by
 configuration, and a node whose configured peers are all down cannot find the
 network by any other means.
 

@@ -20,12 +20,12 @@ the first section rather than an appendix for that reason.
 
 | Claim | Verdict | Where |
 | --- | --- | --- |
-| `AssetCode` is `EMBER \| BTC \| ETH \| SOL \| XRP` plus retired `SHARD` | **True** | `contracts/packages/chain/src/index.ts:49` |
-| Five `ChainFamily` values, each with `confirmations` and `reorgAlarmDepth` | **True** — the type is at `:24`, the per-asset values in `CHAINS` at `:191` | `contracts/packages/chain/src/index.ts:24`, `:163-177`, `:191` |
-| The ledger is multi-asset | **True** — the account key is `(subject, asset_code, purpose)`, unique | `ledger/src/migrations.ts:136-143` |
-| Custody provisions per-user deposit addresses, schemes `flat_random` and `hd_bip44` | **True** | `custody/src/server.ts:111-113`, `custody/src/keys.ts:170` |
-| "Custody's schemes are secp256k1-shaped; Solana is ed25519" | **False.** Custody derives ed25519 under SLIP-0010, hand-written and checked against the published vectors, and Solana's hardened-only path `m/44'/501'/i'/0'` is already the one Solana wallets use | `custody/src/hd.ts:59-62`, `:75-79`, `:111-147`, `:171-179` |
-| "Only EMBER is indexed" | **Misleading in both directions.** The *estate compose leaves `INDEXER_CHAINS` unset, so the indexer follows no chain at all* — that is a deployment fact, not a capability one. In code, three of five families are built: EVM (serving both `eth` and `ember`), Bitcoin and Solana. Only XRP is a stub | `deploy/compose/docker-compose.estate.yml:977`, `indexer/src/index.ts:130-137`, `indexer/src/worker.ts:100-126` |
+| `AssetCode` is `EMBER \| BTC \| ETH \| SOL \| XRP` plus retired `SHARD` | **True** | `contracts/packages/chain/src/index.ts` |
+| Five `ChainFamily` values, each with `confirmations` and `reorgAlarmDepth` | **True** — the type is, the per-asset values in `CHAINS` | `contracts/packages/chain/src/index.ts` |
+| The ledger is multi-asset | **True** — the account key is `(subject, asset_code, purpose)`, unique | `ledger/src/migrations.ts` |
+| Custody provisions per-user deposit addresses, schemes `flat_random` and `hd_bip44` | **True** | `custody/src/server.ts`, `custody/src/keys.ts` |
+| "Custody's schemes are secp256k1-shaped; Solana is ed25519" | **False.** Custody derives ed25519 under SLIP-0010, hand-written and checked against the published vectors, and Solana's hardened-only path `m/44'/501'/i'/0'` is already the one Solana wallets use | `custody/src/hd.ts` |
+| "Only EMBER is indexed" | **Misleading in both directions.** The *estate compose leaves `INDEXER_CHAINS` unset, so the indexer follows no chain at all* — that is a deployment fact, not a capability one. In code, three of five families are built: EVM (serving both `eth` and `ember`), Bitcoin and Solana. Only XRP is a stub | `deploy/compose/docker-compose.estate.yml`, `indexer/src/index.ts`, `indexer/src/worker.ts` |
 | "The chain integrations do not exist" | **False.** Deposit indexing, reorg repair, per-family signing policies, UTXO coin selection, withdrawal and sweep planning all exist for EVM, Bitcoin and Solana | `indexer/src/{evm,bitcoin,solana}.ts`, `custody/src/signing.ts`, `settlement/src/{evm,bitcoin,solana}.ts` |
 
 Two further things exist that the brief did not mention and that change the shape of this design
@@ -33,12 +33,12 @@ completely:
 
 1. **The indexer already extracts token movements on both token-bearing families.** ERC-20
    `Transfer` logs are decoded with the ERC-721 case correctly excluded
-   (`indexer/src/evm.ts:177-178`, `:320-334`), SPL balances are diffed per owner from
-   `postTokenBalances` (`indexer/src/solana.ts:291-315`), and both are stored as
+   (`indexer/src/evm.ts`), SPL balances are diffed per owner from
+   `postTokenBalances` (`indexer/src/solana.ts`), and both are stored as
    `asset_kind = 'token'` with the contract or mint address in `token_address`, under a database
-   constraint that the two agree (`indexer/src/migrations.ts:267-270`).
+   constraint that the two agree (`indexer/src/migrations.ts`).
 2. **A coin↔coin conversion already exists, priced, double-entry and idempotent.**
-   `wallet/src/money.ts:258` converts between any two chain assets at a scaled-integer rate from
+   `wallet/src/money.ts` converts between any two chain assets at a scaled-integer rate from
    `micro-pricing`, rounding down always, refusing a conversion that would round to zero
    ("taking the input and crediting nothing is not a rounding error, it is a confiscation").
 
@@ -55,7 +55,7 @@ if (payload.assetKind !== 'native') {
   return { kind: 'ignored', reason: 'token_deposit_unsupported' }
 }
 ```
-— `wallet/src/deposits.ts:541-546`
+— `wallet/src/deposits.ts`
 
 Its comment is right about why: the amount is denominated in a token whose decimals the service
 does not know, and crediting it as the native asset "would be off by a factor of 10¹² for a
@@ -94,8 +94,8 @@ forever; they are refused until someone can point at demand.
 
 **What "Bitcoin-family" does and does not buy.** DOGE and LTC use Bitcoin's transaction and script
 structure, so `settlement/src/bitcoin.ts`'s coin selection, its vsize arithmetic
-(`settlement/src/bitcoin.ts:141`) and custody's PSBT output pin
-(`custody/src/signing.ts:722-741`) generalise. What does **not** generalise is the transport: the
+(`settlement/src/bitcoin.ts`) and custody's PSBT output pin
+(`custody/src/signing.ts`) generalise. What does **not** generalise is the transport: the
 indexer's Bitcoin worker reads Esplora, and the Esplora ecosystem is thin-to-absent for Dogecoin.
 The address encodings differ (different version bytes, different bech32 HRPs, Dogecoin has no
 widely-used segwit), the dust thresholds differ, and Dogecoin's fee policy is a different animal
@@ -104,7 +104,7 @@ plan assume otherwise.
 
 **The four EVM networks are not four families but they are not free either.** The model is
 currently a bijection: `CHAINS` is a `Record<AssetCode, ChainSpec>` and each spec carries one
-`family`, one `confirmations`, one `chainId` pair (`contracts/packages/chain/src/index.ts:191`).
+`family`, one `confirmations`, one `chainId` pair (`contracts/packages/chain/src/index.ts`).
 BSC is EVM-compatible, but it is a different chain id, a different block time, a different
 confirmation depth and a different explorer. Adding it means either a second asset code with its
 own spec (fine, that is what BNB is) or a notion of *network within family* that the type does not
@@ -121,7 +121,7 @@ do it with, and the choice is not obvious, so here is the argument.
 The three candidates were ETH, BTC and USDT-ERC20.
 
 **ETH is the cheapest and proves the least.** It runs on the same worker as EMBER —
-`indexer/src/index.ts:130-137` constructs `EvmWorker` for both, and `FAMILY_NOTES.ember` says
+`indexer/src/index.ts` constructs `EvmWorker` for both, and `FAMILY_NOTES.ember` says
 Hearth is "served by the EVM worker" with a different chain id and depth. An ETH round trip
 therefore demonstrates that the EMBER code path works with different constants in it. That is
 worth something and it is not worth a milestone.
@@ -133,9 +133,9 @@ problem — five new things at once, on a path nobody has yet walked once.
 
 **BTC proves the generalisation itself.** It is a different family in every dimension that matters:
 UTXO rather than accounts, so an address's balance is not a number the chain will tell you; no
-chain id, so the network binding is carried by the WIF (`custody/src/chains.ts:120-125`); a sweep
+chain id, so the network binding is carried by the WIF (`custody/src/chains.ts`); a sweep
 whose fee is proportional to input count; a reorg repair that cannot re-read a balance and must
-walk to a common ancestor (`indexer/src/worker.ts:105-112`); replace-by-fee, which has no EVM
+walk to a common ancestor (`indexer/src/worker.ts`); replace-by-fee, which has no EVM
 analogue at all. Every component for it is written. **And it is the coin the owner named first**,
 which for an adoption feature is not a trivial consideration.
 
@@ -145,14 +145,14 @@ laid on top of it.
 
 Two things must be settled inside that milestone rather than after it.
 
-**BTC's confirmation depth is 3** (`contracts/packages/chain/src/index.ts:224`). EMBER is 60, ETH
+**BTC's confirmation depth is 3** (`contracts/packages/chain/src/index.ts`). EMBER is 60, ETH
 is 12, SOL is 32, XRP is 1. Three is roughly thirty minutes and is below what most custodians use
 for Bitcoin; it is also, notably, far below the caution the same file applies to the platform's own
 chain. This is not a bug — it is a value nobody has revisited — but crediting a large deposit at
 three confirmations is a decision, and it should be made deliberately, ideally as a
 value-dependent depth rather than one constant. **Flagged for the owner (§9).**
 
-**Sweeping is planned and never signed, on every chain.** `settlement/src/jobs.ts:69-70`: the
+**Sweeping is planned and never signed, on every chain.** `settlement/src/jobs.ts`: the
 `chain.sweep` job "writes `planned` rows and never signs". Whether the outbound job then carries a
 planned sweep all the way to broadcast is the last untested link in the loop above, and the
 milestone is not complete until a satoshi has actually moved from a user's deposit address into the
@@ -170,7 +170,7 @@ means restating money.
 widens automatically, the ledger accepts it, `chainSpec('USDT')` answers.
 
 **Why it is wrong.** `AssetCode` is one-to-one with `ChainSpec`
-(`contracts/packages/chain/src/index.ts:191`), and a `ChainSpec` has exactly one family, one
+(`contracts/packages/chain/src/index.ts`), and a `ChainSpec` has exactly one family, one
 confirmation depth, one decimals and one explorer. USDT has none of those as a single value: it is a
 contract at `0xdAC17…` on Ethereum with 6 decimals, a different contract on Tron with 6, a
 different contract on BSC with **18**, and a different mint on Solana. A single `USDT` asset code
@@ -178,15 +178,14 @@ forces a decimals, and the wrong decimals on a stablecoin is a balance wrong by 
 silently asserts that a USDT balance is one thing, when a deposit on Tron cannot be withdrawn on
 Ethereum without a bridge the platform is not and must never become.
 
-**The shape that already exists and is right.** `contracts/packages/money/src/index.ts:56` and
-`:66`:
+**The shape that already exists and is right.** `contracts/packages/money/src/index.ts` and:
 
 ```ts
 export type TokenAssetCode = `TOKEN:${string}`
 export type LedgerAssetCode = AssetCode | 'USD' | TokenAssetCode
 ```
 
-and `assetDecimals(assetCode, tokenDecimals?)` at `:86` already refuses to answer for a `TOKEN:`
+and `assetDecimals(assetCode, tokenDecimals?)` already refuses to answer for a `TOKEN:`
 without being told the decimals, because "decimals are chosen at deploy time". The ledger is
 therefore *already* able to hold a stablecoin balance correctly. Nothing in the money contract needs
 to change.
@@ -211,7 +210,7 @@ to change.
    place. `decimals()` is an `eth_call` the indexer can already make — `tokenstate.ts` exists for
    exactly this class of read, and it does the head-hash check before trusting the answer.
 
-`wallet/src/deposits.ts:541-546` then becomes: token deposits of registered assets are credited to
+`wallet/src/deposits.ts` then becomes: token deposits of registered assets are credited to
 the `TOKEN:` account at the *native chain's* confirmation depth, and everything else is still
 ignored with a reason.
 
@@ -222,9 +221,9 @@ ignored with a reason.
 ### 5.1 XRP: an account does not exist until it is funded
 
 An XRP account carries a **base reserve**. Until it is met the account does not exist on the ledger
-and cannot receive. The estate already knows this — `indexer/src/worker.ts:120-125` names it as one
+and cannot receive. The estate already knows this — `indexer/src/worker.ts` names it as one
 of XRP's two traps — but custody's HD derivation nonetheless mints a *distinct classic address per
-user* (`custody/src/hd.ts:198-206`, coin type 144). Every one of those is an account the platform
+user* (`custody/src/hd.ts`, coin type 144). Every one of those is an account the platform
 must fund out of its own money before a user can deposit into it, and the reserve is locked for as
 long as the account exists.
 
@@ -232,7 +231,7 @@ long as the account exists.
 different from every other chain here: N users share one address and are distinguished by an integer
 in the payment. That is not a configuration change to the deposit model, it is a second deposit
 model, and it collides with a schema that assumes otherwise —
-`wallet/src/migrations.ts:313` indexes deposit assignments on `(chain, network, address_key)` and
+`wallet/src/migrations.ts` indexes deposit assignments on `(chain, network, address_key)` and
 the credit path resolves an incoming movement to a user by address alone
 (`wallet/src/deposits.ts`, the assignment lookup). A tag-based XRP would need the assignment key to
 be `(chain, network, address_key, tag)` and the indexer's XRP worker would have to carry
@@ -244,7 +243,7 @@ rather than discovered when XRP is switched on.
 
 Note also what the HD scheme already fixes: XRP has no network byte, so a flat-random family seed
 produces one address valid on both networks — the live defect at 00-current-state §3.5. Custody
-refuses `flat_random` for XRP outright (`custody/src/keys.ts:175-186`) and derives the network into
+refuses `flat_random` for XRP outright (`custody/src/keys.ts`) and derives the network into
 the BIP-44 coin type instead. Do not undo that when the tag model arrives.
 
 ### 5.2 An ERC-20 deposit arrives at an address holding no ETH — and custody cannot sign the sweep anyway
@@ -256,14 +255,14 @@ than the first.
 `m/44'/60'/0'/0/i` holds zero ETH. A USDT transfer to it succeeds — the sender pays the gas — and
 now the platform holds a token balance at an address that cannot pay for a transaction. Sweeping it
 requires pushing gas in first. That part is fine: the treasury's EVM shape is `'transfer'`
-(`custody/src/gates.ts:38-42`), whose destination the caller names, so a gas top-up from treasury to
+(`custody/src/gates.ts`), whose destination the caller names, so a gas top-up from treasury to
 a deposit address is already a signable operation.
 
 **The second half, which is specific to this codebase and is not fine.** The sweep out of the
 deposit address is EVM shape `'sweep'`, and `assertSweep` pins `tx.to` to the treasury address
-character for character (`custody/src/signing.ts:302-323`) and then delegates everything else to
+character for character (`custody/src/signing.ts`) and then delegates everything else to
 `assertTransfer`, which requires **empty calldata**: `` `data` must be empty on a value transfer ``
-(`custody/src/signing.ts:251-252`, reached via `:327`).
+(`custody/src/signing.ts`, reached via).
 
 An ERC-20 sweep is `transfer(address,uint256)` calldata sent **to the token contract**. Its `to` is
 not the treasury, and its `data` is not empty. **Custody cannot sign an ERC-20 sweep under any
@@ -277,7 +276,7 @@ service's own registry names, and pins the **recipient argument inside the calld
 treasury the vault chose. The pin moves from the `to` field into the ABI decode; everything else
 about the discipline is unchanged. The Solana equivalent is the same shape of problem —
 `SolanaPolicy`'s `sweep` admits exactly one native System `Transfer`
-(`custody/src/signing.ts:379-382`), so an SPL token sweep is likewise unsignable today, and an SPL
+(`custody/src/signing.ts`), so an SPL token sweep is likewise unsignable today, and an SPL
 deposit additionally needs an Associated Token Account that must be rent-funded before the deposit
 can even arrive.
 
@@ -291,22 +290,22 @@ money arrives and then cannot leave; with SPL the money cannot arrive.
 
 Custody's Solana instruction allowlist admits `createAccount` only under the `mint` shape and only
 for an account of exactly SPL-mint size assigned to the token program
-(`custody/src/signing.ts:549-555`). Creating an ATA is a different instruction to a different
+(`custody/src/signing.ts`). Creating an ATA is a different instruction to a different
 program, and it is not signable today.
 
 ### 5.4 UTXO sweeping, and dust that is economically unspendable
 
 A per-user Bitcoin address that receives many small deposits produces many small UTXOs, and a sweep
 consuming them pays a fee proportional to input count: `vsizeOf` charges 41 vbytes plus 27 witness
-bytes per input (`settlement/src/bitcoin.ts:141-143`). Below roughly 68 vbytes × fee rate, an input
+bytes per input (`settlement/src/bitcoin.ts`). Below roughly 68 vbytes × fee rate, an input
 costs more to spend than it is worth, and the platform is holding a balance it cannot move.
 
 The coin selection already handles the *output* side correctly — change below the dust threshold is
 given to the miner rather than created, with the reasoning written down
-(`settlement/src/bitcoin.ts:246-290`). What is not handled is the *accumulation* side: a minimum
+(`settlement/src/bitcoin.ts`). What is not handled is the *accumulation* side: a minimum
 deposit below which a Bitcoin deposit will be credited but can never be swept economically. That
 minimum is a policy number, it belongs in `micro-policy` beside the withdrawal floors that already
-exist per asset (`policy/src/actions.ts:61-64`, where "an asset absent from this table is refused
+exist per asset (`policy/src/actions.ts`, where "an asset absent from this table is refused
 rather than defaulted"), and it must be shown to the user at the deposit screen rather than
 discovered in a reconciliation report.
 
@@ -314,11 +313,11 @@ discovered in a reconciliation report.
 
 The concern that EMBER's 60 would be reused everywhere does not apply: the depths are per-asset and
 were chosen individually — EMBER 60, ETH 12, BTC 3, SOL 32, XRP 1
-(`contracts/packages/chain/src/index.ts:197`, `:214`, `:224`, `:233`, `:248`) — and every consumer
+(`contracts/packages/chain/src/index.ts`) — and every consumer
 reads them rather than restating them, which the indexer's header
-(`indexer/src/chains.ts:4-10`) and the wallet's re-check
+(`indexer/src/chains.ts`) and the wallet's re-check
 (`wallet/src/deposits.ts`, `isConfirmed` on the credit path) both enforce. Solana additionally
-requires **finality and depth together, never either alone** (`indexer/src/worker.ts:113-119`),
+requires **finality and depth together, never either alone** (`indexer/src/worker.ts`),
 which is the correct treatment of a chain whose finality is not a depth.
 
 Three things this design must not break:
@@ -368,13 +367,13 @@ thinner pools.
 of staking, quoted, and never before.**
 
 - A user who deposits BTC holds BTC. The ledger's account key is `(subject, asset_code, purpose)`
-  and is unique (`ledger/src/migrations.ts:136-143`), so per-asset balances are what the ledger
+  and is unique (`ledger/src/migrations.ts`), so per-asset balances are what the ledger
   already is. **Nobody is ever forced to convert in order to hold.** That is the owner's
   requirement and it is met exactly.
 - A market's pool is EMBER, because the contract's unit is `msg.value` and the contract is the
   custodian. This is not a preference; it is the only thing the deployed contract can be.
 - The stake screen quotes the conversion explicitly — *0.0100 BTC → 4,132 EMBER at $X, rate
-  recorded* — and the conversion machinery it needs already exists: `wallet/src/money.ts:258`,
+  recorded* — and the conversion machinery it needs already exists: `wallet/src/money.ts`,
   priced by `micro-pricing`, double-entry, rounding down, idempotent on a key that deliberately
   **excludes the rate** so that a retry is not a second trade at a moved market.
 - **Precedent, not invention.** `micro-billing` was migrated to exactly this shape today: the
@@ -398,7 +397,7 @@ So the rule is:
 > both units and the rate. Everything after it — the position, the odds, the projected payout, the
 > settled payout — is EMBER and only EMBER. Converting a payout back to BTC is a **second, separate,
 > explicitly quoted action** the user takes if they want it, at the conversion spread that already
-> exists as R7 (`15-monetisation-model.md:85`).
+> exists as R7 (`15-monetisation-model.md`).
 
 Said plainly at the stake screen, in these words rather than in a footnote: *staking converts your
 BTC to EMBER. Your winnings are paid in EMBER. You are no longer exposed to BTC on this stake.* A
@@ -408,9 +407,8 @@ is not quietly running a currency desk.
 
 ### 6.4 The unresolved problem underneath, which is not technical
 
-**EMBER's rate is administered.** `pricing/src/rates.ts:55` — `ADMINISTERED_ASSETS = ['EMBER']`,
-because Hearth has no exchange listing, and the market-priced set is derived as everything else
-(`:57-58`) so the two can never overlap. `16-risks-and-open-decisions.md:242` states the consequence
+**EMBER's rate is administered.** `pricing/src/rates.ts` — `ADMINISTERED_ASSETS = ['EMBER']`,
+because Hearth has no exchange listing, and the market-priced set is derived as everything else so the two can never overlap. `16-risks-and-open-decisions.md` states the consequence
 without softening it: *"EMBER has no market price during the plan, so nothing EMBER-denominated is
 real money."*
 
@@ -431,7 +429,7 @@ this design and it goes to the owner (§9) with two named alternatives:
 
 ### 6.5 The gap nobody has noticed: a custodial user cannot stake at all
 
-`custody/src/gates.ts:35`:
+`custody/src/gates.ts`:
 
 ```ts
 const SIGNABLE_PURPOSES: ReadonlySet<string> = new Set(['deployer', 'treasury', 'deposit'])
@@ -439,7 +437,7 @@ const SIGNABLE_PURPOSES: ReadonlySet<string> = new Set(['deployer', 'treasury', 
 
 `user` is not in it. Foresight's staking route is a **stake intent** — it returns the `to`, `data`
 and `value` a wallet needs and "not one wei passes through here"
-(`foresight/src/server.ts:576-636`) — which is exactly right for the self-custody wallet described
+(`foresight/src/server.ts`) — which is exactly right for the self-custody wallet described
 in [25](25-wallet-clients.md) §5.1, and which a custodial balance cannot use, because there is no
 key the platform will sign that stake with.
 
@@ -456,7 +454,7 @@ Three ways out, with a recommendation:
    (1)'s problem in a different place.
 3. **Stake from a platform address and mirror per-user shares in the ledger.** *Recommended.* This
    is what "custodial" already means everywhere else in the estate, the pattern already exists for
-   the house seed (`21-engagement-treasury.md` §5, and `foresight/src/server.ts:519` already serves
+   the house seed (`21-engagement-treasury.md` §5, and `foresight/src/server.ts` already serves
    a house-stake disclosure), and it is the only option that lets a user with BTC actually bet.
 
 Option 3 carries an obligation that must be written into the design rather than bolted on: the
@@ -477,10 +475,10 @@ adds three exposures that are new in kind, not in degree.**
 
 **The register today.** SDR-12: no KYC/AML, "not currently required at this scale", revisited when
 "a jurisdiction, a threshold, or a fiat on-ramp says otherwise"
-(`12-security-decisions.md:683`). R-51: custodial holdings create regulatory exposure, high
+(`12-security-decisions.md`). R-51: custodial holdings create regulatory exposure, high
 likelihood and high impact, unresolved by the plan
-(`16-risks-and-open-decisions.md:99`). §2.5: no fiat, permanently — the invoice and provider stack
-was deleted rather than deferred (`:159-167`).
+(`16-risks-and-open-decisions.md`). §2.5: no fiat, permanently — the invoice and provider stack
+was deleted rather than deferred.
 
 Nothing here proposes touching fiat, and §2.5 stays intact. What changes is everything else:
 
@@ -493,7 +491,7 @@ Nothing here proposes touching fiat, and §2.5 stays intact. What changes is eve
    address can be frozen by a third party, at which point the ledger shows an asset the platform
    cannot move while still owing the user the liability. The mitigating machinery exists —
    `asset_freezes` is a real table and exceeding reconciliation tolerance freezes withdrawals for
-   that asset (`ledger/src/migrations.ts:573-580`) — but the *scenario* is not one the estate has
+   that asset (`ledger/src/migrations.ts`) — but the *scenario* is not one the estate has
    named, and the correct response to it is a business decision, not an automated one.
 3. **Deposits from sanctioned addresses arrive whether or not anyone is screening.** With EMBER
    only, the platform's counterparties are its own users. With BTC and USDT the platform accepts
@@ -503,7 +501,7 @@ Nothing here proposes touching fiat, and §2.5 stays intact. What changes is eve
 Concretely, and as the minimum this document asks for: a per-asset enable switch that an operator
 turns on deliberately (the token registry of §4 is already this shape), the withdrawal floors and
 velocity limits that `micro-policy` already applies per asset
-(`policy/src/actions.ts:61-64`), and the wallet-confusion rule from
+(`policy/src/actions.ts`), and the wallet-confusion rule from
 [25](25-wallet-clients.md) §1.1 restated per asset: **custodial and self-custody balances of the
 same coin are never summed, never adjacent without labels, and never share a colour.**
 
@@ -517,9 +515,9 @@ proved by an actual movement of money rather than by a test.
 | Phase | What lands | Why here |
 | --- | --- | --- |
 | **1** | **BTC end to end.** Indexer following `btc`, deposit address, credit, conversion, stake, settle, withdraw, sweep, reconcile. Custodial staking (§6.5) resolved and built | §3. The pipeline is proved on the family least like EMBER, using components that all already exist |
-| **2** | **The token path, on USDT-ERC20.** Token registry, `TOKEN:` credit path replacing `wallet/src/deposits.ts:541-546`, `token_sweep` custody shape, gas top-up for deposit addresses, decimals verified on-chain | The largest single on-ramp, laid on a pipeline known to work |
+| **2** | **The token path, on USDT-ERC20.** Token registry, `TOKEN:` credit path replacing `wallet/src/deposits.ts`, `token_sweep` custody shape, gas top-up for deposit addresses, decimals verified on-chain | The largest single on-ramp, laid on a pipeline known to work |
 | **3** | **USDC-ERC20 and ETH.** Registry entries and RPC wiring; no new code paths | Free, once phase 2 exists. Ship them together |
-| **4** | **SOL and USDC-SPL.** ATA rent funding, ATA creation shape in custody, SPL sweep shape | The indexer half already exists (`indexer/src/solana.ts:291-315`); the custody half does not |
+| **4** | **SOL and USDC-SPL.** ATA rent funding, ATA creation shape in custody, SPL sweep shape | The indexer half already exists (`indexer/src/solana.ts`); the custody half does not |
 | **5** | **BNB and BSC-resident USDT/USDC.** `BNB` asset code with its own spec, second EVM network | One new spec, one new RPC, zero new families — but see §2 on the bijection |
 | **6** | **XRP.** Indexer worker, settlement adapter, and the destination-tag deposit model with its schema change | The only family with a stub. Do it once, properly, with tags rather than reserved accounts |
 | **7** | **USDT-TRC20 and TRX.** A sixth family from nothing | The single largest real-world stablecoin rail, and the most expensive item here. Justified by measured demand from phases 2–3, not before |
@@ -561,13 +559,13 @@ Stated rather than asserted, because this directory has repeatedly carried claim
 once:
 
 - **No RPC endpoint for any external chain is configured anywhere in the estate.** The compose
-  leaves `INDEXER_CHAINS` unset deliberately (`deploy/compose/docker-compose.estate.yml:977`). So
+  leaves `INDEXER_CHAINS` unset deliberately (`deploy/compose/docker-compose.estate.yml`). So
   every statement here that a family is "built" means *the code exists and its tests pass*, not
   that it has ever followed a real chain. **The Bitcoin, Solana and EVM workers have, as far as
   this document can establish, never indexed a mainnet block.** Phase 1 exists to find out what
   that costs.
 - **Whether a planned sweep is carried to broadcast has not been observed**, only read
-  (`settlement/src/jobs.ts:69-70`, `settlement/src/outbound.ts:300-306`).
+  (`settlement/src/jobs.ts`, `settlement/src/outbound.ts`).
 - **Token decimals on BSC-resident USDT (18, against 6 elsewhere)** is stated from general
   knowledge, not from a contract this document read. It is the kind of fact §4's on-chain
   verification exists to catch, and it should be checked before phase 5 rather than trusted here.

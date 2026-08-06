@@ -112,12 +112,12 @@ except the registry row in `micro-ui` and the topic registry in `micro-contracts
 
 - **It is the first title to implement the contract `worlds` actually calls.** `18-build-status`
   records that no title serves `GET /v1/title` or `POST /v1/provision`
-  (`worlds/src/titleclient.ts:122`, `:134-135`) — the bridge is complete and tested against a
+  (`worlds/src/titleclient.ts`) — the bridge is complete and tested against a
   fake, and a private-world entitlement ends as a terminal `unsupported` row. Aetherholm closes
   that: the descriptor answers `slug: 'aetherholm'` with `capabilities: ['private_world']` — **not
   `['provision']`, which this document first said**: worlds' capability set is closed
-  (`worlds/src/titles.ts:43-51`), its conformance fails anything outside it, and the bridge calls a
-  title only if `hasCapability(title, 'private_world')` holds (`worlds/src/provisioning.ts:441`).
+  (`worlds/src/titles.ts`), its conformance fails anything outside it, and the bridge calls a
+  title only if `hasCapability(title, 'private_world')` holds (`worlds/src/provisioning.ts`).
   The build agent caught the doc against the source, which is the direction checking is supposed
   to run, and
   provision creates a **Private Skerry** — a small private archipelago for a group — returning

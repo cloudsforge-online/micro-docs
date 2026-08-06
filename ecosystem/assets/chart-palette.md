@@ -212,7 +212,7 @@ not new brand colours.
 | Today | Change |
 | --- | --- |
 | Crucible's local gain/loss pair | **Promoted, unchanged**, into `--cf-viz-gain` / `--cf-viz-loss`. It was right. |
-| Crucible's ad-hoc chart series colours in `EquityChart.tsx:20-25` | Replaced by `--cf-viz-1..8` |
+| Crucible's ad-hoc chart series colours in `EquityChart.tsx` | Replaced by `--cf-viz-1..8` |
 | Lantern's Lantern-only 5-level severity ramp | Keep — log severity is an **ordinal** scale, not a status scale, and correctly uses one hue's steps |
 | Beacon's `charts.js` hand-rolled series colours | Replaced by the token block |
 | Grafana default palette | Overridden by a CloudsForge theme JSON generated from this block, so operator dashboards and product charts agree |

@@ -39,14 +39,14 @@ single-label wildcard, so `*.cloudsforge.online` matches
 two-label wildcard needs Advanced Certificate Manager, which is paid. Rather than
 buy it, the environment was moved into the **first label, as a suffix**. The
 registry carries it: `ENV_LABELS` and `splitEnvLabel()`
-(`ui/packages/ui/src/surfaces.ts:1030-1078`), with the reasoning and the
+(`ui/packages/ui/src/surfaces.ts`), with the reasoning and the
 before/after stated in the comment above them
-(`ui/packages/ui/src/surfaces.ts:995-1010`).
+(`ui/packages/ui/src/surfaces.ts`).
 
 **The split is on the LAST hyphen, and `worlds-api` is why**:
 `worlds-api-testnet` must read as the surface `worlds-api` on `testnet`, not as
 `worlds` on an environment called `api-testnet`
-(`ui/packages/ui/src/surfaces.ts:1042-1046`).
+(`ui/packages/ui/src/surfaces.ts`).
 
 **Consequently, in this document:** §3's worked example (`hub.testnet...` → apex
 `testnet...`) describes a shape that was configured and unreachable; §7's
@@ -67,12 +67,12 @@ hostname resolved the whole time. It serves on both networks now, answering `404
 text/plain` on an unmatched path. **Retired rather than broken:** `worlds-api.` has no DNS
 record because the game API was consolidated into `api.` — so the rename this
 document plans in §3 and elsewhere did not happen, and the reverse did. It is
-still a registry row (`ui/packages/ui/src/surfaces.ts:770-783`), which is an
+still a registry row (`ui/packages/ui/src/surfaces.ts`), which is an
 inconsistency worth closing.
 
 **Neither network's EMBER has monetary value.** Testnet EMBER is worthless by
 construction and comes from the faucet, which is a route on the Network site
-rather than a host (`ui/packages/ui/src/surfaces.ts:545-561`) — so the testnet
+rather than a host (`ui/packages/ui/src/surfaces.ts`) — so the testnet
 faucet is **`network-testnet.cloudsforge.online/faucet`**. Nothing gives away
 mainnet EMBER.
 
@@ -148,7 +148,7 @@ A reader will ask, so here is the argument rather than the conclusion.
 
 **The estate already *is* compose, and it became genuinely reproducible today.**
 Three pieces of undeclared runtime state were found and declared: credentials
-that blanked on a plain `up`, a missing `:443` binding, and an unattached estate
+that blanked on a plain `up`, a missing binding, and an unattached estate
 network. That is the work k3s would have been adopted to avoid, and it is done.
 
 **A single-node k3s adds an orchestrator to buy scheduling nobody needs.** The
@@ -197,7 +197,7 @@ accurate, and **the reason it gave was not the reason it was true**. Three thing
 blocked it, and the documented escape hatch was the one that did nothing:
 
 1. **`name: cloudsforge-estate` was a literal** at
-   `docker-compose.estate.yml:64`. A top-level `name:` **overrides
+   `docker-compose.estate.yml`. A top-level `name:` **overrides
    `COMPOSE_PROJECT_NAME` entirely** — so the variable `.env.example` points at
    had been dead since that line was written.
 2. **Four networks were pinned by literal name** with `external: true`
@@ -205,7 +205,7 @@ blocked it, and the documented escape hatch was the one that did nothing:
    `cloudsforge-estate_default`). Two projects would have *shared* them. That is
    not isolation; it is one estate with two names, each service resolving the
    other's by container alias.
-3. **47 fixed host ports** — 45 loopback debug ports, `:443`, and 9095/9096/9097.
+3. **47 fixed host ports** — 45 loopback debug ports, and 9095/9096/9097.
 
 All three are now variables **with their current values as defaults**. This was
 verified rather than asserted: `docker compose config` renders all three files
@@ -244,7 +244,7 @@ reconciliation alarm. That label is load-bearing and belongs in
 The brief's claim was that `CF_WEB_APEX=testnet.cloudsforge.online` suffices. The
 mechanism is different from the claim and **better**: browser bundles do not read
 `CF_WEB_APEX` at all. `cloudsforgeHosts()`
-(`ui/packages/ui/src/index.tsx:154-162`) derives the apex from
+(`ui/packages/ui/src/index.tsx`) derives the apex from
 `window.location.hostname`, stripping the first label **only when it is a known
 registry subdomain**:
 
@@ -266,7 +266,7 @@ So one build serves both environments and no rebuild is needed per environment.
 > label**: `hub-testnet.cloudsforge.online`, apex `cloudsforge.online`. One build
 > still serves both, by the same argument; the derivation now splits the first
 > label on its last hyphen against `ENV_LABELS` rather than stripping a label
-> against `KNOWN_SUBS` alone (`ui/packages/ui/src/surfaces.ts:1030-1078`).
+> against `KNOWN_SUBS` alone (`ui/packages/ui/src/surfaces.ts`).
 
 **The one way it could stop being true, which is now a check.** If any surface
 ever takes `subdomain: 'testnet'`, `KNOWN_SUBS` gains `testnet`, and the *bare
@@ -283,8 +283,8 @@ Found by grep across all 68 repositories, excluding tests and `dist/`:
 
 | Where | What | Severity |
 |---|---|---|
-| `contracts/packages/chain/src/index.ts:127-128` | `explorerTxUrl` for EMBER: **mainnet and testnet were the same literal string**, `https://explorer.cloudsforge.online/#/tx/`. Every testnet transaction link pointed at the mainnet explorer, where it would not resolve. | **FIXED** 2026-08-04, `contracts` 326de9d — and the compile-time guard that replaced it found a third instance in SOL. |
-| `wallet-extension/src/background/storage.ts:177-186` | Mainnet RPC was `https://rpc.hearth.cloudsforge.online` — a **three-label host that the plan's `rpc.<apex>` does not match**. Testnet was `http://127.0.0.1:8545` with `explorerUrl: null`, so the shipped wallet could not reach a public testnet at all. | **FIXED** 2026-08-04, `wallet-extension` 34912bd — the same dead host was also in `host_permissions`, so MV3 blocked the fetch outright. |
+| `contracts/packages/chain/src/index.ts` | `explorerTxUrl` for EMBER: **mainnet and testnet were the same literal string**, `https://explorer.cloudsforge.online/#/tx/`. Every testnet transaction link pointed at the mainnet explorer, where it would not resolve. | **FIXED** 2026-08-04, `contracts` 326de9d — and the compile-time guard that replaced it found a third instance in SOL. |
+| `wallet-extension/src/background/storage.ts` | Mainnet RPC was `https://rpc.hearth.cloudsforge.online` — a **three-label host that the plan's `rpc.<apex>` does not match**. Testnet was `http://127.0.0.1:8545` with `explorerUrl: null`, so the shipped wallet could not reach a public testnet at all. | **FIXED** 2026-08-04, `wallet-extension` 34912bd — the same dead host was also in `host_permissions`, so MV3 blocked the fetch outright. |
 | `sdk/`, `devportal-web`, `site`, `network-site` | `https://api.cloudsforge.online` in OpenAPI servers and prose. Correct for a published SDK; noted so it is not mistaken for drift. | Fine. |
 | `deploy/gateway/dynamic/policy.yml` | The **literal** `cloudsforge.online` CORS block, beside the templated one. Deliberate — policy.yml argues the two halves must not be required to match. | Fine, and now checked (§4). |
 
@@ -397,7 +397,7 @@ obscurity.
 
 **The `/internal` refusal is restored at the edge.** `README.md`, `policy.yml`
 and `docker-compose.gateway.yml` all cited a rule in
-`deploy/cloudflared/config.example.yml` "asserted by a CI job at ci.yml:155".
+`deploy/cloudflared/config.example.yml` "asserted by a CI job at ci.yml".
 **Neither existed** — there was no `cloudflared/` directory and CI had one job.
 That is `surface-routes.py`'s own check-4 defect (prose describing a control
 nobody wrote) sitting one directory outside what check 4 reads. It is now the
@@ -411,7 +411,7 @@ first ingress rule in every generated config.
 ## 5. The chain, the seeds, and the part a tunnel cannot solve
 
 **Cloudflare Tunnel is HTTP(S) only. Hearth P2P on 8646 is raw TCP** —
-newline-delimited JSON, no dependencies (`hearth/MAP.md:823`) — **and will not
+newline-delimited JSON, no dependencies (`hearth/MAP.md`) — **and will not
 pass through it.** `rpc.<apex>` over the tunnel gives JSON-RPC and nothing else,
 and a chain reachable only on JSON-RPC has no peers and is not a network.
 
@@ -443,8 +443,8 @@ fact drifts. A seed list in the site's content module, checked against what the
 node actually reports on `/info`, is the shape.
 
 **Genesis.** Chain IDs are already fixed and asserted in the node's own tests:
-`hearth` = **7411**, `hearth-testnet` = **7412** (`node/src/params.js:37-38`), and
-`node/test/cli.js:1001` asserts genesis carries 7411. `params.js` states the
+`hearth` = **7411**, `hearth-testnet` = **7412** (`node/src/params.js`), and
+`node/test/cli.js` asserts genesis carries 7411. `params.js` states the
 reason directly: *"If both networks declare 7411 then every testnet transaction
 is replayable on mainnet"* — the EIP-155 replay domain. **Mainnet genesis has not
 been created**, and creating it is a one-way action: it fixes the premine, the
@@ -475,7 +475,7 @@ decision rather than an engineering one, and it is load-bearing.
   compares the ledger's total against the indexer's *confirmed on-chain* total.
   When no reading can be obtained it records `observed_source = 'unavailable'`
   with a NULL observed total and `status = 'failed'` — **which freezes
-  withdrawals for that asset** (`ledger/src/reconcile.ts:2-44`). Before migration
+  withdrawals for that asset** (`ledger/src/reconcile.ts`). Before migration
   11 it could *never unfreeze*. The file's own words: a network fault here *"looks
   exactly like insolvency"*. That loop froze EMBER twice today, and was right both
   times.
@@ -557,7 +557,7 @@ authority.
       2026-08-05, under the **single-label** scheme of §0
       (`<surface>-testnet.cloudsforge.online`). The link-derivation half — that a
       sibling link from a testnet page never resolves to mainnet — is enforced by
-      `splitEnvLabel()`/`envLabel()` (`ui/packages/ui/src/surfaces.ts:1059-1078`)
+      `splitEnvLabel()`/`envLabel()` (`ui/packages/ui/src/surfaces.ts`)
       and has not been re-walked click-by-click in a browser since the scheme
       changed.
 
@@ -587,7 +587,7 @@ authority.
       Done 2026-08-05. Note the hostname per §0: testnet's RPC is
       `rpc-testnet.cloudsforge.online`, not `rpc.testnet.cloudsforge.online`.
 - [ ] **§6 answered.** Do not launch mainnet without an answer.
-- [x] Fix `contracts/packages/chain/src/index.ts:127-128` — testnet explorer links point at mainnet.
+- [x] Fix `contracts/packages/chain/src/index.ts` — testnet explorer links point at mainnet.
       Done 2026-08-04 (`contracts` 326de9d). The table is now built by `explorers()`, which makes two
       equal non-null URLs a compile error rather than a value to be re-checked. That guard found a
       third instance nobody had reported: SOL had the same defect, and its testnet is now `null`,

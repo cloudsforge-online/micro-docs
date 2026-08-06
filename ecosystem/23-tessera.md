@@ -45,14 +45,14 @@ place, and every tile carries a proof of who made it.
 
 ## 1. The constraint, stated first, in the voice 19 used
 
-[19-new-products.md:97](19-new-products.md) says it about creatures; it needs saying again, louder,
+[19-new-products.md](19-new-products.md) says it about creatures; it needs saying again, louder,
 about a world:
 
 > **What FLUX and Qwen do not solve, said plainly: they produce 2D.**
 
 Neither FLUX 2 Pro nor Qwen-Image 2512 emits a mesh, a UV layout, a rig or a single frame of
 skeletal animation. The estate's only 3D assets today are procedural glTF bakes
-(`emberkin-web/src/game/render/scene.js:5-26` renders them; `19-new-products.md:97-100` records
+(`emberkin-web/src/game/render/scene.js` renders them; `19-new-products.md` records
 that they stay procedural "until real modelling happens"). Nothing in this estate can author a
 mesh, and nothing in this design pretends otherwise.
 
@@ -95,11 +95,11 @@ Two facts decide it, and the second is measured rather than argued:
 
 So: **luminous painterly gouache, warm ash-and-ember key light against cool shadow, visible brush
 economy, no outlines, no bevels, no gloss.** Grounds normalise numerically to `#12100f` as
-everywhere else in this estate (`brand/normalise_ground.py:27` — `TARGET = (0x12,0x10,0x0F)`,
+everywhere else in this estate (`brand/normalise_ground.py` — `TARGET = (0x12,0x10,0x0F)`,
 because FLUX will not hit an exact hex).
 
 Game art follows the bible; **UI chrome wears Forge Worlds' accent `#6d9a49`**, as Emberkin and
-Aetherholm both do (`ui/packages/ui/src/surfaces.ts:455` and `:477`) — a title wears its product's
+Aetherholm both do (`ui/packages/ui/src/surfaces.ts` and) — a title wears its product's
 colour rather than claiming its own.
 
 ---
@@ -116,30 +116,29 @@ generation is the long pole and an H100 is billing while it waits.
   a lamp-post fits). A 2×2 object uses the same 512×512 canvas at half the depicted scale.
 - **One canonical facing per object.** The second facing is a **horizontal mirror applied at
   render time**, not a second asset. This is not laziness, it is forced: `micro-studio` has **no
-  `seed` column** — the generation schema at `studio/src/migrations.ts:154-252` records `prompt`,
+  `seed` column** — the generation schema at `studio/src/migrations.ts` records `prompt`,
   `backend_choice`, `backend`, `model`, `requested_size`, `attempts`, `cost_estimate`,
   `provider_cost_units`, `credit_state` and `checksum`, and nothing else. Grepping `seed` across
   `studio/src` returns no hits. **A pipeline that cannot fix a seed cannot render the same chair
   four times.** Four-facing objects become possible the day studio stores a seed; until then, two
   facings, and the design does not depend on more.
 - **Every dimension is a multiple of 16.** FLUX floors to a 16-pixel grid
-  (`studio/src/specs.ts:126-133`, `DIMENSION_GRANULARITY = 16`, and `requestSizeFor` rounds **up**
-  at `:147-158`). Sizes that are not multiples of 16 — the 1200×630 OG card is the only one — are
+  (`studio/src/specs.ts`, `DIMENSION_GRANULARITY = 16`, and `requestSizeFor` rounds **up**). Sizes that are not multiples of 16 — the 1200×630 OG card is the only one — are
   **derived** by cropping a compliant generation.
 - **`width`/`height`, never `aspect_ratio`.** FLUX ignores `aspect_ratio`; the wire contract is
-  pinned at `studio/src/backend.ts:12-17` and the lesson is repeated in all three asset repos'
-  generator headers (`brand/generate.ts:16`, `emberkin-assets/generate.ts:8-9`,
-  `aetherholm-assets/generate.ts:8-9`).
+  pinned at `studio/src/backend.ts` and the lesson is repeated in all three asset repos'
+  generator headers (`brand/generate.ts`, `emberkin-assets/generate.ts`,
+  `aetherholm-assets/generate.ts`).
 - **Qwen's `size` is transposed.** Request 1024×384 and you receive 384×1024, reported as
   1024×384. **For every non-square asset below, the Qwen request must send `H×W` to receive
   `W×H`.** Its wire contract is `POST /openai/v1/images/generations` with
-  `{"model":"qwen--qwen-image-2512","size":"HxW",...}` (`brand/backends.ts:446-451`,
-  `brand/providers.ts:19`); the deployment name `qwen--qwen-image-2512` is the id that works — the
-  bare `Qwen-Image-2512` 404s (`brand/backends.ts:144-145`).
+  `{"model":"qwen--qwen-image-2512","size":"HxW",...}` (`brand/backends.ts`,
+  `brand/providers.ts`); the deployment name `qwen--qwen-image-2512` is the id that works — the
+  bare `Qwen-Image-2512` 404s (`brand/backends.ts`).
 - **Transparency is a post-step, not a generation.** Diffusion does not emit alpha. Every object
   sprite is generated on the pinned `#12100f` ground and keyed to alpha by a `cutout.py` derive
   step, recorded in the manifest's `postProcessing` field — the same field
-  `aetherholm-assets/MANIFEST.json:42` already carries on 91 of its 101 entries.
+  `aetherholm-assets/MANIFEST.json` already carries on 91 of its 101 entries.
 
 ### 2.2 Repository layout
 
@@ -167,20 +166,20 @@ micro-tessera-assets/
 
 - `brand` ships **almost no** C2PA — 96 of its 98 entries are `c2pa: false`, including all but two
   of its 56 FLUX generations, because `normalise_ground.py`'s PNG writer keeps no ancillary chunks
-  and the re-encode drops the box the hash is bound to (`brand/verify.py:16-24`,
-  `brand/MANIFEST.json:7`). **The two exceptions prove the rule rather than weakening it:**
+  and the re-encode drops the box the hash is bound to (`brand/verify.py`,
+  `brand/MANIFEST.json`). **The two exceptions prove the rule rather than weakening it:**
   `assets/currency-ember/mark-1024x1024.png` and `assets/currency-spark/mark-1024x1024.png` were
   generated after the comparison concluded and never went through the normaliser, so they still
   carry the chunk. `emberkin-assets` and `aetherholm-assets` fixed it properly by copying ancillary
-  chunks through (`aetherholm-assets/MANIFEST.json:8`). **Tessera uses the fixed writer from the
+  chunks through (`aetherholm-assets/MANIFEST.json`). **Tessera uses the fixed writer from the
   first asset.**
   *(Counts corrected 2026-08-03 against `brand/MANIFEST.json`; this line previously read "zero"
-  and "all 94 entries". `brand/COMPARISON.md:8,224` still carries the pre-currency figures —
+  and "all 94 entries". `brand/COMPARISON.md,224` still carries the pre-currency figures —
   see [24](24-asset-model-comparison.md) §8.2.)*
 - `emberkin-assets/verify.py` has **no c2pa check at all** — `grep -c c2pa` on it returns 0, so its
-  83 `c2pa: true` entries are asserted by `generate.ts:509-510` at write time and never measured.
-  **Tessera's `verify.py` measures c2pa off the bytes**, the way `brand/verify.py:328-331` and
-  `aetherholm-assets/verify.py:300-303` do: `carries_c2pa = b"c2pa" in data`, compared against the
+  83 `c2pa: true` entries are asserted by `generate.ts` at write time and never measured.
+  **Tessera's `verify.py` measures c2pa off the bytes**, the way `brand/verify.py` and
+  `aetherholm-assets/verify.py` do: `carries_c2pa = b"c2pa" in data`, compared against the
   manifest flag. The estate measures c2pa and never asserts it; a repo that asserts it is a repo
   that will be wrong quietly.
 
@@ -351,7 +350,7 @@ Twelve tool glyphs — `place` · `move` · `rotate` · `remove` · `paint` · `
 `camera` · `select` · `group` · `lock` · `undo`.
 
 Glyphs sit on brand ground with CVD-safe distinctions per the corrected accent method in `ui/`,
-the same rule Emberkin's type icons follow (`19-new-products.md:91`).
+the same rule Emberkin's type icons follow (`19-new-products.md`).
 
 ### 2.12 Set 11 — Status & economy icons (16 generated, 256×256)
 
@@ -385,7 +384,7 @@ someone who cannot tell the two accent colours apart.
 `chrome/capsule` (1024×512, generated); then `favicon-32`, `favicon-192`, `favicon-512`,
 `apple-touch-180`, `og-title`, `wordmark-lockup` all **derived from the mark** — the accounting
 Aetherholm's run recorded ("favicons cut from the mark, wide cards composited",
-[20-aetherholm.md:184](20-aetherholm.md)).
+[20-aetherholm.md](20-aetherholm.md)).
 
 **Set 15 — event & season splashes (6 generated, 1024×1024).** `splash/firstlight` (launch) ·
 `splash/the-long-dusk` · `splash/harvest-of-tesserae` · `splash/the-open-kiln` ·
@@ -393,7 +392,7 @@ Aetherholm's run recorded ("favicons cut from the mark, wide cards composited",
 
 ### 2.15 What `verify.py` must check, per asset
 
-Carried forward from `brand/verify.py:9-30` and `aetherholm-assets/verify.py`, plus two new ones
+Carried forward from `brand/verify.py` and `aetherholm-assets/verify.py`, plus two new ones
 this title needs:
 
 1. Dimensions read **from the bytes**, matched against `deliveredSize`.
@@ -459,7 +458,7 @@ one thing a social world cannot recover from is having nowhere to stand.
 **Land is claimed, not bought, and the platform never sells it.** A parcel is a claim over a
 rectangle of tiles in one of four tiers (§6.2). Claiming free land costs nothing. Parcels are
 traded **between players** on `micro-market`, and the platform takes its ordinary 2.5% fee on that
-trade (`market/src/env.ts:183`, `MARKET_PLATFORM_FEE_BPS` default 250) — but it never mints supply
+trade (`market/src/env.ts`, `MARKET_PLATFORM_FEE_BPS` default 250) — but it never mints supply
 for money, because a platform that sells land has a permanent incentive to keep land scarce, and
 that incentive is precisely what strangled the reference.
 
@@ -484,9 +483,9 @@ rent to hold it and nobody could reclaim it. Here, dead land returns to the comm
 rent at all.
 
 Fallow is **computed lazily on read** from `(lastFootfallAt, lastEditAt, bankedUntil)` and settled
-on write — the Aetherholm discipline ([20-aetherholm.md:139-141](20-aetherholm.md)). There is no
+on write — the Aetherholm discipline ([20-aetherholm.md](20-aetherholm.md)). There is no
 per-day sweep marking parcels dead, because that would be a timer doing domain work and CI
-forbids it (`org/.github/workflows/service-ci.yml:1043-1054`).
+forbids it (`org/.github/workflows/service-ci.yml`).
 
 **Persistence means Postgres, and nothing else.** The authoritative world is rows in
 `micro-tessera`'s database. The client is a viewer: it renders what it is told and decides nothing.
@@ -536,7 +535,7 @@ A creator economy whose last arrow points back into the platform is a scrip syst
 
 Counts are the contract implementation is built against. The trees live as canonical JSON in
 `micro-tessera-assets/content/`, so the engine and the art prompts read the same file and cannot
-drift — the Emberkin pattern ([19-new-products.md:86](19-new-products.md)).
+drift — the Emberkin pattern ([19-new-products.md](19-new-products.md)).
 
 ### 6.1 Space
 
@@ -625,9 +624,9 @@ real constraints, spelled out in §11.
   different product with a different trust model.
 - **No adult-content economy.** The reference's was large, and building the age-assurance and
   payment-risk apparatus it requires is a company, not a feature. `worlds` already models
-  `ageBracket` and `parentalControls` (`worlds/src/players.ts:52-64`) and **enforces neither** —
+  `ageBracket` and `parentalControls` (`worlds/src/players.ts`) and **enforces neither** —
   no route sets a sanction and `parentalControls` is accepted as free-form JSON at
-  `worlds/src/server.ts:602-604` and never read by any decision. Building on an unenforced gate
+  `worlds/src/server.ts` and never read by any decision. Building on an unenforced gate
   would be the worst version of this.
 - **No land sold by the platform, at any tier, ever.** §4.
 
@@ -635,7 +634,7 @@ real constraints, spelled out in §11.
 
 ## 7. No pay-to-win, in a world whose entire point is commerce
 
-`01-product-vision.md:128` states the rule:
+`01-product-vision.md` states the rule:
 
 > **No pay-to-win.** In Forge Worlds, purchasable means cosmetic, convenience or access — never
 > power. Scarcity is the game.
@@ -647,7 +646,7 @@ resolved here, in writing, because every later implementation decision leans on 
 
 Tessera has no victory, no ladder, no stats and nothing to lose a fight with. So "power" cannot
 mean what it means in Aetherholm, where a bought shield is power on the defensive axis
-([20-aetherholm.md:96](20-aetherholm.md)). It needs a definition that survives having no combat:
+([20-aetherholm.md](20-aetherholm.md)). It needs a definition that survives having no combat:
 
 > **Power is the ability to affect another player's experience against their will.**
 
@@ -669,9 +668,9 @@ discovery, it needs to be shut down instead.
 **2. Voice — governance cannot be bought.**
 A ward is a `micro-community` community and votes are **one member, one vote**. That is also the
 only resolver actually implemented: `WeightResolver` is a typed seam
-(`community/src/votes.ts:111-114`), the sole implementation is `oneMemberOneVote` returning `1n`
-(`community/src/votes.ts:122-124`), and the server falls back to it because `deps.weights` is
-optional and unwired (`community/src/server.ts:861`, `:168`). **Tessera must never wire a
+(`community/src/votes.ts`), the sole implementation is `oneMemberOneVote` returning `1n`
+(`community/src/votes.ts`), and the server falls back to it because `deps.weights` is
+optional and unwired (`community/src/server.ts`). **Tessera must never wire a
 token-weighted resolver for wards.** Buying votes is buying power over people, and here the code
 already agrees.
 
@@ -693,9 +692,9 @@ earning more. Is that power?
 anything from another creator; they have made more things, which is the behaviour the world exists
 to produce. Paying for production capacity is how every real creative economy has ever worked, and
 this estate already sells exactly this shape: generation has a genuine marginal cost in USD
-(`studio/src/credits.ts:43` holds spend as `UsdMicros`, the cap is a DB CHECK
-`credit_accounts_within_cap` at `studio/src/migrations.ts:146-147`, and exceeding it is a 402 at
-`studio/src/credits.ts:52-71`). `15-monetisation-model.md` §2 calls work with a marginal cost "the
+(`studio/src/credits.ts` holds spend as `UsdMicros`, the cap is a DB CHECK
+`credit_accounts_within_cap` at `studio/src/migrations.ts`, and exceeding it is a 402 at
+`studio/src/credits.ts`). `15-monetisation-model.md` §2 calls work with a marginal cost "the
 easiest revenue to explain and the hardest to resent", and it is right.
 
 But that argument only holds while one condition is true, so the condition is written down as a
@@ -706,7 +705,7 @@ The platform fee and the royalty cap are **identical for every account**, and **
 subscription reduces either**. A subscription that cut your marketplace fee would convert money
 directly into structural earning advantage over every creator who did not buy it — which is
 compound, permanent, and exactly the thing §7.1 forbids. The rates are snapshotted onto each
-listing at creation (`market/src/listings.ts:29`, `market/src/migrations.ts:218`), so this is
+listing at creation (`market/src/listings.ts`, `market/src/migrations.ts`), so this is
 checkable per order rather than promised in a document.
 
 And the free tier is what keeps the whole argument honest: **96 seed objects, free to every
@@ -720,7 +719,7 @@ account forever** (§2.6), plus a **free daily firing allowance**. Nobody is eve
 | Deed Slots (2 → 12) | entitlement | how many non-Homestead parcels you may hold at once. **Capped at 12 by CHECK, at any price** |
 | Appearance sets | entitlement | avatar overlays, parcel skins, gate styles, beacon colours |
 | Name reservation | entitlement | a held ward or Workshop name |
-| Private Ward | subscription | a ward for a group. **This SKU already exists** — `world.private.small`, 750, 30-day, title-scoped (`billing/src/migrations.ts:405`, `:418`) and no title serves it today |
+| Private Ward | subscription | a ward for a group. **This SKU already exists** — `world.private.small`, 750, 30-day, title-scoped (`billing/src/migrations.ts`) and no title serves it today |
 | Venue calendar | subscription | bookings, ticketing, recurring events — convenience for someone running a place |
 
 **Refusals, stated once and testable:** no discovery, no votes, no safety, no land from the
@@ -733,16 +732,16 @@ an absence with a test, the way `admin-web` asserts its missing og card.
 ### 8.1 One asset, not two — and Sparks is a denomination, not a currency
 
 **Shards do not appear in this title.** They are being removed estate-wide; a Shard was one US cent
-by definition (`contracts/packages/chain/src/index.ts:146` — `SHARDS_PER_USD = 100n`, "100 Shards =
-1 USD, fixed") and its `ChainSpec` says the quiet part out loud at `:112-120`:
+by definition (`contracts/packages/chain/src/index.ts` — `SHARDS_PER_USD = 100n`, "100 Shards =
+1 USD, fixed") and its `ChainSpec` says the quiet part out loud:
 `family: 'evm', // never used on chain`. Shards were a US-dollar unit wearing a chain's clothes.
 
 The ledger asset for Tessera is **`EMBER`**. This costs no schema change: `accounts.asset_code` and
-`postings.asset_code` are plain `text`, not an enum (`ledger/src/migrations.ts:121`, `:220`), the
-balancing invariant is enforced per `asset_code` by trigger (`ledger/src/migrations.ts:302-313`),
+`postings.asset_code` are plain `text`, not an enum (`ledger/src/migrations.ts`), the
+balancing invariant is enforced per `asset_code` by trigger (`ledger/src/migrations.ts`),
 and money is `numeric(78,0)` chosen precisely because "78 digits holds any uint256"
-(`ledger/src/migrations.ts:215`). EMBER has 18 decimals
-(`contracts/packages/chain/src/index.ts:53`); wei is a uint256; it fits with room to spare.
+(`ledger/src/migrations.ts`). EMBER has 18 decimals
+(`contracts/packages/chain/src/index.ts`); wei is a uint256; it fits with room to spare.
 
 **A Spark is 10⁻⁶ EMBER — one micro-EMBER, exactly 10¹² wei.** And the most important sentence in
 this section:
@@ -754,17 +753,17 @@ If Sparks were its own asset code, the ledger's per-asset balancing trigger woul
 Sparks and EMBER drift apart, and reconciling them would require a rate — and a rate between an
 internal unit and a chain asset is precisely the mechanism of the estate's oldest defect, the
 `convertCoinToEmber` path that "credit[s] custodial EMBER with no on-chain movement behind it"
-(`ledger/src/migrations.ts:540`, again at `:550`, and `wallet/src/money.ts:41-43`: "a liability
+(`ledger/src/migrations.ts`, again, and `wallet/src/money.ts`: "a liability
 minted against nothing, with no counter-account and therefore nothing that could ever notice").
 **One asset, one trial balance, one number to reconcile against the chain.** Sparks is what the
 client prints.
 
 The formatters already cope: `formatAmount(smallestUnits, decimals)`
-(`contracts/packages/chain/src/index.ts:187`) and `formatMoney` via `assetDecimals`
-(`contracts/packages/money/src/index.ts:900`, `:86-93`) are decimals-driven, not cents-driven, so
+(`contracts/packages/chain/src/index.ts`) and `formatMoney` via `assetDecimals`
+(`contracts/packages/money/src/index.ts`) are decimals-driven, not cents-driven, so
 EMBER formats at 18 places today with no change. What must be rewritten is the Shard-specific
 conversion layer, and one line in it deserves naming because it will bite silently:
-`contracts/packages/money/src/index.ts:239` takes `assetCode: LedgerAssetCode = 'SHARD'` **as a
+`contracts/packages/money/src/index.ts` takes `assetCode: LedgerAssetCode = 'SHARD'` **as a
 default parameter** — a silent fallback that will keep producing SHARD postings long after
 everything visible has been changed.
 
@@ -786,42 +785,42 @@ costing an awkward number.
 **And a Spark is the floor, enforced in the schema.** Every in-world price is stored in wei and
 carries `CHECK (price_wei % 1000000000000 = 0)` — no price finer than one Spark. Prices are
 `bigint` in TypeScript and decimal strings on the wire, never a JSON number, following
-`market/src/money.ts:222-227` where `parseAmount` requires `/^\d{1,78}$/` **before** calling
+`market/src/money.ts` where `parseAmount` requires `/^\d{1,78}$/` **before** calling
 `BigInt`, which is how that repo makes the `BigInt('') === 0n` hazard unreachable rather than
 merely handled.
 
 ### 8.2 Pending and available — two accounts, not two columns
 
 The owner asked for a visible pending-versus-available split. This estate already has the shape,
-and it is architectural rather than cosmetic. `ledger/src/accounts.ts:9`:
+and it is architectural rather than cosmetic. `ledger/src/accounts.ts`:
 
 > **The available/reserved split is two accounts, not two columns.** Reserving funds is a posting
 > from `available` to `reserved`, which makes a reservation auditable, reversible and impossible to
 > lose track of.
 
-An account is `(subject, asset_code, purpose)` and nothing else (`ledger/src/accounts.ts:4`), and
+An account is `(subject, asset_code, purpose)` and nothing else (`ledger/src/accounts.ts`), and
 the purpose set is closed — `available | reserved | escrow | treasury | fees | payout_due |
-suspense` (`contracts/packages/money/src/index.ts:309`). So Tessera needs no new concept at all.
+suspense` (`contracts/packages/money/src/index.ts`). So Tessera needs no new concept at all.
 But there are **two different things a user calls "pending"**, and conflating them is how you
 recreate the estate's oldest bug:
 
 **Pending-out — money that is yours, clearing.** Sale proceeds sit in
 `user:<id> / EMBER / payout_due` for the listing's dispute window, then release to `available`.
 `micro-market` already does exactly this: the window is snapshotted onto the listing at creation
-(`market/src/migrations.ts:234-238`, `market/src/orders.ts:298`) and the proceeds are posted to
-`payout_due` (`market/src/ledgerclient.ts:205-211`). It is **visible** — it is a real balance in a
+(`market/src/migrations.ts`, `market/src/orders.ts`) and the proceeds are posted to
+`payout_due` (`market/src/ledgerclient.ts`). It is **visible** — it is a real balance in a
 real account — and **structurally unspendable**, because nothing in Tessera ever debits
 `payout_due` except the release, and a spend attempt against it would be an overdraft the ledger's
-`ledger_assert_no_overdraft` trigger refuses (`ledger/src/migrations.ts:441`, `:479`).
+`ledger_assert_no_overdraft` trigger refuses (`ledger/src/migrations.ts`).
 
 **Pending-in — a deposit that is confirming.** This one is **not a ledger balance and must never
-be**. EMBER credits at **60 confirmations** (`contracts/packages/chain/src/index.ts:57`,
-rationalised at `:45-47` as ~15 minutes at Hearth's 15-second block time,
-`hearth/node/src/params.js:90`). Posting a liability before confirmation is `convertCoinToEmber`
+be**. EMBER credits at **60 confirmations** (`contracts/packages/chain/src/index.ts`,
+rationalised as ~15 minutes at Hearth's 15-second block time,
+`hearth/node/src/params.js`). Posting a liability before confirmation is `convertCoinToEmber`
 again. So an unconfirmed deposit is displayed **from the indexer**, labelled *"confirming, 34 of
 60"*, and is **in no balance and no total**. The indexer already emits both halves —
-`DEPOSIT_OBSERVED` and `DEPOSIT_CONFIRMED` (`indexer/src/topics.ts:59`) — and `wallet` deliberately
-consumes only the confirmed one (`wallet/src/deposits.ts:422`, whose header calls the event
+`DEPOSIT_OBSERVED` and `DEPOSIT_CONFIRMED` (`indexer/src/topics.ts`) — and `wallet` deliberately
+consumes only the confirmed one (`wallet/src/deposits.ts`, whose header calls the event
 "evidence, not an instruction"). Tessera shows the observed one and counts neither it nor its
 absence as money.
 
@@ -848,7 +847,7 @@ two places a user already expects a chain to behave like a chain.
 **And the world cannot pay out EMBER it does not hold — that is a trigger, not a policy.** Every
 grant Tessera makes debits `engagement:tessera`, which is an **`equity`** account, so the ledger's
 no-overdraft trigger refuses an unfunded grant at the database. `micro-market` proves the pattern
-already works: `market/src/engagement.ts:22-29` names `engagementAccount` from `contracts-money`
+already works: `market/src/engagement.ts` names `engagementAccount` from `contracts-money`
 with `equity` type precisely "so the ledger's no-overdraft rule refuses an unfunded grant". This is
 what "chain-backed by construction" actually reduces to in code: **not a promise that reserves
 exist, but a constraint that makes spending non-existent reserves unrepresentable.**
@@ -856,7 +855,7 @@ exist, but a constraint that makes spending non-existent reserves unrepresentabl
 The **pre-funded reserve** is therefore just `engagement:tessera`, topped up ahead of demand by the
 approval-gated `engagement.transfer` action ([21-engagement-treasury.md](21-engagement-treasury.md)
 §6), whose cap is enforced by a constraint trigger in `admin-api` — `engagement_over_cap_refused`,
-`admin-api/src/migrations.ts:585`, raise at `:569`.
+`admin-api/src/migrations.ts`, raise.
 
 ### 8.4 What is bought, what is earned, what the platform takes
 
@@ -865,50 +864,50 @@ commissions. **Bought from the platform:** the six SKUs in §7.3, in EMBER throu
 **Earned:** object sales, royalties on every resale, venue bookings, and commissions.
 
 **The platform takes 2.5%.** `MARKET_PLATFORM_FEE_BPS` defaults to 250 bps and
-`MARKET_MAX_ROYALTY_BPS` to 1000 bps (`market/src/env.ts:183-184`), boot refuses if they sum to
-≥ 10000 (`market/src/env.ts:193-198`), and the database refuses a listing whose
+`MARKET_MAX_ROYALTY_BPS` to 1000 bps (`market/src/env.ts`), boot refuses if they sum to
+≥ 10000 (`market/src/env.ts`), and the database refuses a listing whose
 `royalty_bps + platform_fee_bps` reaches 10000 — the constraint is named
-`listings_terms_leave_the_seller_something` (`market/src/migrations.ts:266-268`), which is a good
+`listings_terms_leave_the_seller_something` (`market/src/migrations.ts`), which is a good
 name.
 
 **The arithmetic cannot leak.** `bpsOf` rounds **down**, deliberately in the platform's disfavour
-(`market/src/money.ts:41-53`); the seller's proceeds are the **remainder**, `price − fee − royalty`
-(`market/src/money.ts:160`), so `fee + royalty + proceeds === price` by construction, asserted on
-every call (`assertPartition`, `market/src/money.ts:195-212`) and again by Postgres
-(`orders_partition`, `market/src/migrations.ts:516`).
+(`market/src/money.ts`); the seller's proceeds are the **remainder**, `price − fee − royalty`
+(`market/src/money.ts`), so `fee + royalty + proceeds === price` by construction, asserted on
+every call (`assertPartition`, `market/src/money.ts`) and again by Postgres
+(`orders_partition`, `market/src/migrations.ts`).
 
 ### 8.5 How a creator is paid, and why the royalty is real
 
 Settlement is **one balanced ledger entry** covering the payment, the proceeds, the platform fee,
-every royalty share and the item itself (`market/src/orders.ts:324-338`,
-`market/src/ledgerclient.ts:232-258`). Proceeds land in `payout_due` (§8.2) and release to
+every royalty share and the item itself (`market/src/orders.ts`,
+`market/src/ledgerclient.ts`). Proceeds land in `payout_due` (§8.2) and release to
 `available`, from which the creator can withdraw to their own Hearth wallet.
 
 **The royalty is enforced, not requested** — and this is the direct answer to the reference's
 copybot problem, because it converts theft from a policing exercise into an accounting one:
 
-- It is **snapshotted onto the listing at creation** (`market/src/listings.ts:477-482`,
-  `market/src/migrations.ts:324-330`), so an owner cannot re-cut a sale that is already in flight.
-- It is **paid as credits inside the settlement entry** (`market/src/ledgerclient.ts:250-252`) and
-  audited per order in `order_royalties` (`market/src/migrations.ts:549-554`).
+- It is **snapshotted onto the listing at creation** (`market/src/listings.ts`,
+  `market/src/migrations.ts`), so an owner cannot re-cut a sale that is already in flight.
+- It is **paid as credits inside the settlement entry** (`market/src/ledgerclient.ts`) and
+  audited per order in `order_royalties` (`market/src/migrations.ts`).
 - Multi-recipient splits use **largest-remainder allocation with an index tie-break** so two
-  replicas compute the same split (`market/src/money.ts:68-113`), and zero-weight recipients never
-  receive dust (`:102`). This matters here specifically: a derivative object splits its royalty
+  replicas compute the same split (`market/src/money.ts`), and zero-weight recipients never
+  receive dust. This matters here specifically: a derivative object splits its royalty
   between the original author and the remixer, so a remix culture is expressible without either
   party trusting the other.
 
 **One verified constraint decides an architectural question for us.** The royalty is enforced
-**only on the custodial settlement path** — `market/src/orders.ts:299-345` builds the ledger entry
+**only on the custodial settlement path** — `market/src/orders.ts` builds the ledger entry
 inside `if (listing.settlementMode === 'custodial')`, and the `else` branch merely demands an
 `onchainTransactionId`. For an `onchain` listing the royalty is recorded on the order row and
 **never posted**. Therefore: **every Tessera listing is `custodial`, without exception.** That is
 not a preference; it is the only mode in which the royalty exists.
 
 **And `micro-market` needs no change to sell a chair.** `listings.item_urn` is `text not null`
-with **no format constraint at all** (`market/src/migrations.ts:205`), and `asset_kind` already
-includes `game_item` alongside `entitlement` and `membership` (`market/src/migrations.ts:245-247`).
+with **no format constraint at all** (`market/src/migrations.ts`), and `asset_kind` already
+includes `game_item` alongside `entitlement` and `membership` (`market/src/migrations.ts`).
 The one constraint that binds is `listings_active_is_escrowed`
-(`market/src/migrations.ts:289-293`): an active listing must hold an escrow, so a Tessera object
+(`market/src/migrations.ts`): an active listing must hold an escrow, so a Tessera object
 must be ledger-reservable under an `item_asset_code` before it can go live.
 
 ### 8.6 Seeding an empty world — which is not a liquidity problem
@@ -921,7 +920,7 @@ Funding is the same: `engagement:tessera` under `platform:engagement-treasury`, 
 platform mining (doc 21 §3 — the consensus carve-out was rejected because the public copy says "no
 premine" and "the distinction is lost on every reader who matters") and later by the fee recycle,
 which starts at 0 bps and still writes `status='skipped'` rows so the job's silence is visible
-(`billing/src/recycle.ts:14-33`).
+(`billing/src/recycle.ts`).
 
 **What Tessera spends it on, in order of honesty:**
 
@@ -930,16 +929,16 @@ which starts at 0 bps and still writes `status='skipped'` rows so the job's sile
    strongest cold-start answer available and it involves no pretence at all: it is the platform
    buying work and saying so.
 2. **The free firing allowance.** Every account's daily Kiln allowance is engagement money, because
-   a firing costs real USD (`studio/src/credits.ts:43`). Subsidising creation is subsidising
+   a firing costs real USD (`studio/src/credits.ts`). Subsidising creation is subsidising
    supply, which is the side of the market that is genuinely missing.
 3. **Listing subsidies and first-listing bounties.** Both grant kinds already exist in market —
-   `listing_fee_subsidy` and `first_listing_bounty` (`market/src/migrations.ts:738`,
-   `market/src/engagement.ts:39`) — labelled `engagement.grant` in buyer-visible history.
+   `listing_fee_subsidy` and `first_listing_bounty` (`market/src/migrations.ts`,
+   `market/src/engagement.ts`) — labelled `engagement.grant` in buyer-visible history.
 
 **What it must never spend it on, and cannot:** ghost demand. No platform-owned avatars walking
 around to look like a crowd, no house-owned shops, no platform bids. Doc 21 §2 refuses "fake it"
 outright as fraud, and `micro-market` has already made it **unrepresentable by DB constraint** —
-platform-funded bids, offers and escrows cannot be written (`market/src/engagement.ts:11-15`).
+platform-funded bids, offers and escrows cannot be written (`market/src/engagement.ts`).
 Tessera adds the world-specific version of the same rule: **no synthetic footfall**, because
 footfall is the ranking signal (§6.5) and a platform that fakes footfall is a platform rigging its
 own discovery.
@@ -962,27 +961,27 @@ The flow, against the source:
 
 1. The client posts a description to `micro-tessera`, which calls `micro-studio` with a service
    token holding `studio:write`. A **service** principal skips ownership narrowing entirely —
-   `assertOwned` returns early at `studio/src/server.ts:561` — and names the acting user via
-   `body.userId` (`subjectOf`, `studio/src/server.ts:533-536`). So a title can generate on a
+   `assertOwned` returns early at `studio/src/server.ts` — and names the acting user via
+   `body.userId` (`subjectOf`, `studio/src/server.ts`). So a title can generate on a
    player's behalf without impersonating them, which is exactly the shape needed.
-2. Studio returns **202 with a `statusUrl`** (`studio/src/server.ts:454-465`). Generation is a
+2. Studio returns **202 with a `statusUrl`** (`studio/src/server.ts`). Generation is a
    **leased job**, not a request handler: `requestGeneration` opens no socket
-   (`studio/src/generation.ts:173-238`) and `runGeneration` executes inside a lease
-   (`studio/src/generation.ts:263-386`) claimed `for update skip locked`
-   (`runtime/packages/jobs/src/index.ts:183`). The lease key is `owner:<subject>`
-   (`studio/src/generation.ts:234`), so one player's firings serialise and cannot stampede the
+   (`studio/src/generation.ts`) and `runGeneration` executes inside a lease
+   (`studio/src/generation.ts`) claimed `for update skip locked`
+   (`runtime/packages/jobs/src/index.ts`). The lease key is `owner:<subject>`
+   (`studio/src/generation.ts`), so one player's firings serialise and cannot stampede the
    provider.
 3. The bytes come back, `cutout.py` keys the ground to alpha, and the asset is stored
    **content-addressed**: `ab/<hex>.<format>` under a sha256 checksum prefixed `sha256:`
-   (`studio/src/assets.ts:93`, `:77-79`).
+   (`studio/src/assets.ts`).
 4. Provenance is recorded per asset — prompt, backend, model, requested size, attempts, cost
-   (`studio/src/migrations.ts:154-252`) — and `c2pa` is **measured off the bytes**, never asserted:
-   `const C2PA_MARKER = Buffer.from('c2pa')` at `studio/src/backend.ts:269`, set by
-   `outcome.bytes.includes(C2PA_MARKER)` at `:460` under the comment "Read from the bytes rather
+   (`studio/src/migrations.ts`) — and `c2pa` is **measured off the bytes**, never asserted:
+   `const C2PA_MARKER = Buffer.from('c2pa')` at `studio/src/backend.ts`, set by
+   `outcome.bytes.includes(C2PA_MARKER)` under the comment "Read from the bytes rather
    than assumed".
 
 **One studio change is required and it is small:** asset kinds are a fixed eight-item catalogue
-(`studio/src/specs.ts:61-73`). Tessera needs a `world_object` kind with a 512×512 default. That is
+(`studio/src/specs.ts`). Tessera needs a `world_object` kind with a 512×512 default. That is
 the only change to `micro-studio` the design depends on.
 
 ### 9.2 Why copybot is dead here, and what is honestly still alive
@@ -1002,9 +1001,9 @@ that must be enforced — it is an addressing scheme.
 
 **2. Placing someone else's object is licensing, not theft.** The response to somebody wanting your
 chair is not a takedown, it is a payment: the royalty is enforced inside the settlement entry
-(§8.5, `market/src/ledgerclient.ts:250-252`), snapshotted at listing creation so it cannot be
-re-cut mid-sale (`market/src/listings.ts:477-482`), and split deterministically across multiple
-recipients (`market/src/money.ts:68-113`) so a remix can pay its original. **The estate has a
+(§8.5, `market/src/ledgerclient.ts`), snapshotted at listing creation so it cannot be
+re-cut mid-sale (`market/src/listings.ts`), and split deterministically across multiple
+recipients (`market/src/money.ts`) so a remix can pay its original. **The estate has a
 ledger that can enforce a royalty rather than request one**, and that converts the reference's
 central creator grievance from a policing problem into an accounting one.
 
@@ -1026,28 +1025,27 @@ source draws the line for us rather than the other way round.
 
 **The good news: Hearth's EVM is real and Shanghai-complete.** It is a self-written, zero-dependency
 JavaScript EVM (`hearth/node/src/evm/`, 3,705 lines) targeting Shanghai
-(`hearth/node/src/evm/opcodes.js:2`). It has `CREATE` and `CREATE2` (`opcodes.js:197`, `:204`,
-implemented `interpreter.js:707`, `:910` with EIP-1014 address derivation at `:159-161`), the full
-call family including `DELEGATECALL` and `STATICCALL` (`opcodes.js:199-206`), **`LOG0`–`LOG4`**
-(`opcodes.js:191-194`, feeding a bloom filter at `hearth/node/src/chain/bloom.js`), all nine
-precompiles (`precompiles.js:2-5`), and the EIP-170 / EIP-3541 / EIP-3860 deployment guards
-(`interpreter.js:474`, `:475`, `:914`). The estate pins **Solidity 0.8.26**
-(`hearth/contracts/src/WEMBER.sol:2` and 23 siblings). **Do not target Cancun** — `TLOAD`, `TSTORE`
-and `MCOPY` are deliberately undefined (`opcodes.js:38-40`), so no `ReentrancyGuardTransient`.
+(`hearth/node/src/evm/opcodes.js`). It has `CREATE` and `CREATE2` (`opcodes.js`,
+implemented `interpreter.js` with EIP-1014 address derivation), the full
+call family including `DELEGATECALL` and `STATICCALL` (`opcodes.js`), **`LOG0`–`LOG4`**
+(`opcodes.js`, feeding a bloom filter at `hearth/node/src/chain/bloom.js`), all nine
+precompiles (`precompiles.js`), and the EIP-170 / EIP-3541 / EIP-3860 deployment guards
+(`interpreter.js`). The estate pins **Solidity 0.8.26**
+(`hearth/contracts/src/WEMBER.sol` and 23 siblings). **Do not target Cancun** — `TLOAD`, `TSTORE`
+and `MCOPY` are deliberately undefined (`opcodes.js`), so no `ReentrancyGuardTransient`.
 
 **The bad news, in two named blockers that decide v1's scope:**
 
 - **A player cannot sign an on-chain transaction through custody.** Signing purposes are
-  `deployer | treasury | deposit`; **`user` is deliberately excluded** (`custody/src/gates.ts:31`,
-  `:34`) even though the DB constraint admits the address purpose
-  (`custody/src/migrations.ts:117`). And a `deployer` key may sign **contract creations only** —
-  `custody/src/signing.ts:213` refuses anything with a non-null `to`.
+  `deployer | treasury | deposit`; **`user` is deliberately excluded** (`custody/src/gates.ts`) even though the DB constraint admits the address purpose
+  (`custody/src/migrations.ts`). And a `deployer` key may sign **contract creations only** —
+  `custody/src/signing.ts` refuses anything with a non-null `to`.
 - **The indexer cannot subscribe to a contract's logs.** Its entire emitted-topic set is
-  `[DEPOSIT_OBSERVED, DEPOSIT_CONFIRMED]` (`indexer/src/topics.ts:59`); there is no `/logs` route
-  (`indexer/src/server.ts:154-162`); and ERC-721 `Transfer`s are *explicitly skipped*
-  (`indexer/src/evm.ts:320-322`). **There is no ERC-721 anywhere in the estate** — grepping
+  `[DEPOSIT_OBSERVED, DEPOSIT_CONFIRMED]` (`indexer/src/topics.ts`); there is no `/logs` route
+  (`indexer/src/server.ts`); and ERC-721 `Transfer`s are *explicitly skipped*
+  (`indexer/src/evm.ts`). **There is no ERC-721 anywhere in the estate** — grepping
   `*.ts`/`*.sol` returns three hits, all in the indexer, all present to exclude it. Logs *are*
-  stored and indexed by address and topic0 (`indexer/src/migrations.ts:207`, `:228`, `:231`), so a
+  stored and indexed by address and topic0 (`indexer/src/migrations.ts`), so a
   log-query endpoint is cheap — but it is **unbuilt work**, not a capability.
 
 So the design splits, honestly:
@@ -1055,7 +1053,7 @@ So the design splits, honestly:
 **v1 — the Registry of Authorship.** One platform-deployed contract on Hearth storing
 `(sha256, authorAddress, firstAnchoredBlock)`, written by a platform key. This needs **zero new
 signing paths**: it deploys through the existing `mint` route — a resumable job-driven state
-machine, not a request handler (`mint/src/deploy.ts:5`, `:33-38`) — with custody signing the
+machine, not a request handler (`mint/src/deploy.ts`) — with custody signing the
 creation and settlement broadcasting it. Anchoring is **lazy and user-initiated**: written when a
 creator first *lists* an object, not when they fire it, because most objects are never sold and
 paying gas to anchor a chair nobody sells is waste.
@@ -1082,12 +1080,12 @@ Getting this wrong is easy and two live repos already have. The three spaces are
    (`service-template/.env.example:26`, and `worlds/.env.example:51`, `market`, `community`,
    `ledger`, `identity`, all the same).
 2. **The host port in the estate compose file.** This is **derived, never chosen**: `4100 + index
-   in deployableRepos()` (`org/tools/cfctl.ts:864-871`, `org/tools/registry.ts:134`), documented at
-   `deploy/compose/docker-compose.estate.yml:1313-1321`. The four repos absent from micro-org's
-   registry got hand-picked numbers at `deploy/compose/docker-compose.estate.yml:1333-1338` —
+   in deployableRepos()` (`org/tools/cfctl.ts`, `org/tools/registry.ts`), documented at
+   `deploy/compose/docker-compose.estate.yml`. The four repos absent from micro-org's
+   registry got hand-picked numbers at `deploy/compose/docker-compose.estate.yml` —
    foresight-web 4136, foresight-admin-web 4137, emberkin-web 4138, aetherholm-web 4139.
 3. **The `devPort` in the `micro-ui` surface registry**, which is documented as *"not an
-   allocation; it is a fact about a service"* (`ui/packages/ui/src/surfaces.ts:455`) — the port the
+   allocation; it is a fact about a service"* (`ui/packages/ui/src/surfaces.ts`) — the port the
    service actually binds.
 
 **The live defect Tessera avoids:** emberkin binds 4100 (`emberkin/.env.example:40`), which is
@@ -1108,34 +1106,34 @@ quarantined event or a failing estate check.
 
 | Repo | Change | Line |
 | --- | --- | --- |
-| `ui` | A registry row: `kind: 'service'`, `subdomain: 'tessera'`, `devPort: 4022`, `accent: '#6d9a49'`, `inSwitcher: false`, `verb: null`, `glyph: '◆'`, `markId: null` | `ui/packages/ui/src/surfaces.ts:169` |
-| `ui` | A `BOUND` entry pinning 4022 with a `tessera/src/env.ts:NN` citation; the test asserts the registry agrees with what the service binds and that no two unrelated surfaces share a port | `surfaces.test.ts:187`, `:189-196`, `:326` |
-| `contracts` | **`'tessera'` added to the `ProducerService` union** — a topic cannot be registered without it | `contracts/packages/events/src/index.ts:183-205` |
-| `contracts` | Tessera's topics registered as `TopicSpec`s (`producer`, `payloadType`, `version`, `keyedBy`, `description`) | `contracts/packages/events/src/index.ts:231-740` |
-| `contracts` | The **pinned enumerated inventory** — a sorted literal list of every topic — must be edited or the package test fails | `contracts/packages/events/src/index.test.ts:153-215` |
-| `contracts` | Tessera's scopes registered | `contracts/packages/auth/src/index.ts:168-458` |
-| `studio` | A `world_object` asset kind, 512×512 default | `studio/src/specs.ts:61-73` |
-| `activity` | Classify rules mapping Tessera's topics to `category` / `visibility` / `userId` / `summary`. **No new category is needed** — the sixteen are closed (`activity/src/categories.ts:31-51`) and Tessera's events land on `ownership`, `market`, `reward` and `community`, as worlds, emberkin and aetherholm already do | `activity/src/classify.ts:1134` |
-| `notify` | Routing rules and templates — both are hardcoded maps, so registration is a PR, not an API | `notify/src/catalogue.ts:276`, `notify/src/templates.ts:54` |
-| `billing` | Seed rows for the §7.3 SKUs. `world.private.small` already exists and is unserved | `billing/src/migrations.ts:405`, `:418` |
-| `worlds` | **A data row, not code** — `POST /v1/titles` with capabilities drawn from the closed set | `worlds/src/server.ts:524-554`, `worlds/src/titles.ts:43-51` |
-| `org` | Append to `REGISTRY`. **Warning: appending renumbers every host port after the insertion point**, so append at the end of the block | `org/tools/registry.ts:52`, `:134` |
-| `deploy` | Compose services, gateway routes (`cf-web-aetherholm` at `estate-web.yml:310-315`, `:426-428` is the pattern), CORS origins, scope grants, smoke checks | `docker-compose.estate.yml`, `gateway/dynamic/estate-web.yml`, `policy.yml:80`, `:118`, `estate/grant-gaps.json`, `scripts/estate-verify.sh` |
+| `ui` | A registry row: `kind: 'service'`, `subdomain: 'tessera'`, `devPort: 4022`, `accent: '#6d9a49'`, `inSwitcher: false`, `verb: null`, `glyph: '◆'`, `markId: null` | `ui/packages/ui/src/surfaces.ts` |
+| `ui` | A `BOUND` entry pinning 4022 with a `tessera/src/env.ts:NN` citation; the test asserts the registry agrees with what the service binds and that no two unrelated surfaces share a port | `surfaces.test.ts` |
+| `contracts` | **`'tessera'` added to the `ProducerService` union** — a topic cannot be registered without it | `contracts/packages/events/src/index.ts` |
+| `contracts` | Tessera's topics registered as `TopicSpec`s (`producer`, `payloadType`, `version`, `keyedBy`, `description`) | `contracts/packages/events/src/index.ts` |
+| `contracts` | The **pinned enumerated inventory** — a sorted literal list of every topic — must be edited or the package test fails | `contracts/packages/events/src/index.test.ts` |
+| `contracts` | Tessera's scopes registered | `contracts/packages/auth/src/index.ts` |
+| `studio` | A `world_object` asset kind, 512×512 default | `studio/src/specs.ts` |
+| `activity` | Classify rules mapping Tessera's topics to `category` / `visibility` / `userId` / `summary`. **No new category is needed** — the sixteen are closed (`activity/src/categories.ts`) and Tessera's events land on `ownership`, `market`, `reward` and `community`, as worlds, emberkin and aetherholm already do | `activity/src/classify.ts` |
+| `notify` | Routing rules and templates — both are hardcoded maps, so registration is a PR, not an API | `notify/src/catalogue.ts`, `notify/src/templates.ts` |
+| `billing` | Seed rows for the §7.3 SKUs. `world.private.small` already exists and is unserved | `billing/src/migrations.ts` |
+| `worlds` | **A data row, not code** — `POST /v1/titles` with capabilities drawn from the closed set | `worlds/src/server.ts`, `worlds/src/titles.ts` |
+| `org` | Append to `REGISTRY`. **Warning: appending renumbers every host port after the insertion point**, so append at the end of the block | `org/tools/registry.ts` |
+| `deploy` | Compose services, gateway routes (`cf-web-aetherholm` at `estate-web.yml` is the pattern), CORS origins, scope grants, smoke checks | `docker-compose.estate.yml`, `gateway/dynamic/estate-web.yml`, `policy.yml`, `estate/grant-gaps.json`, `scripts/estate-verify.sh` |
 
 **And two repositories that need nothing, which is the more useful finding:**
 
 - **`micro-market` needs no change to sell a Tessera object.** `item_urn` has no format constraint
-  (`market/src/migrations.ts:205`) and `asset_kind` already includes `game_item`
-  (`market/src/migrations.ts:245-247`). §8.5.
+  (`market/src/migrations.ts`) and `asset_kind` already includes `game_item`
+  (`market/src/migrations.ts`). §8.5.
 - **`micro-community` needs no change to govern a ward.** A ward is a community of
   `kind: 'public'` with `governance_model: 'one_member_one_vote'`
-  (`community/src/migrations.ts:121-123`, `:129-131`). Ward decisions ride **`parameter_change`**
+  (`community/src/migrations.ts`). Ward decisions ride **`parameter_change`**
   proposals — one of the four kinds in the closed catalogue
-  (`community/src/proposals.ts:23-28`) — and Tessera **subscribes to
+  (`community/src/proposals.ts`) — and Tessera **subscribes to
   `community.proposal.executed`**, which is one of only three community topics actually registered
-  in contracts (`community/src/events.ts:4-8`), and applies the parameter itself. This matters:
+  in contracts (`community/src/events.ts`), and applies the parameter itself. This matters:
   community's execution handler does nothing for any kind except `treasury_spend`
-  (`community/src/executions.ts:217-219`), so a design that expected community to *enact* a world
+  (`community/src/executions.ts`), so a design that expected community to *enact* a world
   change would have needed a new execution kind and a new handler in somebody else's repo. Putting
   the effect in Tessera keeps the change count at zero and puts the game logic in the game.
 
@@ -1148,35 +1146,35 @@ Assertion is not application. Each rule below is followed by what Tessera actual
 ### 11.1 Outbox → signed HTTP → inbox
 
 Events leave through an outbox row written **in the same transaction as the domain change**, and a
-relay job delivers them. The relay pattern to copy is `community/src/outbox.ts:281-357`: scan
+relay job delivers them. The relay pattern to copy is `community/src/outbox.ts`: scan
 unpublished rows in `occurred_at` order, resolve active subscriptions per topic, **sign the exact
-bytes** (`signEvent(JSON.stringify(envelope), …)` at `:317`), mark published only when zero
-deliveries are outstanding (`:340-351`), and call `ctx.heartbeat()` so a long backlog does not
-outlive its lease (`:354`).
+bytes** (`signEvent(JSON.stringify(envelope), …)`), mark published only when zero
+deliveries are outstanding, and call `ctx.heartbeat()` so a long backlog does not
+outlive its lease.
 
 Signing is `t=<seconds>,v1=<hmac>` under `cf-signature`
-(`contracts/packages/events/src/index.ts:1272-1275`), with a 5-minute tolerance (`:1243`) and
-`timingSafeEqual` comparison plus multi-secret rotation in `verifyDelivery` (`:1285-1330`).
+(`contracts/packages/events/src/index.ts`), with a 5-minute tolerance and
+`timingSafeEqual` comparison plus multi-secret rotation in `verifyDelivery`.
 
 On the receiving side Tessera **verifies the signature over the raw bytes before parsing** —
-`activity/src/ingest.ts:83-95`, whose header at `:76-82` explains why re-serialising before
+`activity/src/ingest.ts`, whose header explains why re-serialising before
 verifying is forbidden — and dedupes with `withInbox`: `insert into inbox (topic, event_id) … on
 conflict (topic, event_id) do nothing returning event_id`, with the handler running **inside the
 same transaction**, so a failed handler leaves no row and the event is retried
-(`service-template/src/outbox.ts:311-328`, `:307-309`).
+(`service-template/src/outbox.ts`).
 
 **Versions are `"major.minor"` strings**, per `EventVersion = \`${number}.${number}\``
-(`contracts/packages/events/src/index.ts:110`). One trap worth naming: `worlds` stores its version
-as an `integer` column (`worlds/src/migrations.ts:65`) and maps it to `"n.0"` on the wire via
-`wireVersion` (`worlds/src/outbox.ts:52`). **Tessera stores the string**, so the stored value and
+(`contracts/packages/events/src/index.ts`). One trap worth naming: `worlds` stores its version
+as an `integer` column (`worlds/src/migrations.ts`) and maps it to `"n.0"` on the wire via
+`wireVersion` (`worlds/src/outbox.ts`). **Tessera stores the string**, so the stored value and
 the wire value are the same value.
 
 ### 11.2 Topics, keyed by a subject that is the right one
 
 Names are `<service>.<aggregate>.<past-tense-verb>`, exactly three lowercase segments, first
-segment equal to the producer (`contracts/packages/events/src/index.ts:749-756`, enforced at
-`contracts/packages/events/src/index.test.ts:37`, `:43`). `keyedBy` is documented as the ordering
-partition and therefore **part of the contract, not a producer's private choice** (`:213-218`).
+segment equal to the producer (`contracts/packages/events/src/index.ts`, enforced at
+`contracts/packages/events/src/index.test.ts`). `keyedBy` is documented as the ordering
+partition and therefore **part of the contract, not a producer's private choice**.
 
 | Topic | `keyedBy` | Why that key |
 | --- | --- | --- |
@@ -1190,72 +1188,69 @@ partition and therefore **part of the contract, not a producer's private choice*
 
 That last row is the rule doing work rather than being quoted. Seven topics, all registered in
 `contracts-events` **in the same commit** as the code that emits them — otherwise they are
-quarantined as `internal` and appear in nobody's feed (`activity/src/classify.ts:1139-1150`), which
+quarantined as `internal` and appear in nobody's feed (`activity/src/classify.ts`), which
 is how `micro-market` ended up emitting ten topics with one registered
-(`market/src/topics.ts:65`, `contracts/packages/events/src/index.ts:497`) and `micro-community`
-eleven with three (`community/src/events.ts:4-8`).
+(`market/src/topics.ts`, `contracts/packages/events/src/index.ts`) and `micro-community`
+eleven with three (`community/src/events.ts`).
 
 ### 11.3 Scopes, registered in the same commit as the gate
 
 Convention is `service:noun` or `service:noun:verb`, first segment equal to the service
-(`contracts/packages/auth/src/index.ts:150-153`). Tessera registers **`tessera:read`**,
+(`contracts/packages/auth/src/index.ts`). Tessera registers **`tessera:read`**,
 **`tessera:write`** and **`tessera:provision`** — the last following Aetherholm's precedent for the
-title contract (`aetherholm/src/server.ts:119`).
+title contract (`aetherholm/src/server.ts`).
 
 "Same commit" is not a convention here, it is a build failure: the check lives in CI at
-`org/.github/workflows/service-ci.yml:197-212` ("Every scope this service demands is registered"),
-derives demanded scopes from inline literals, sibling constants and wrapper arguments
-(`:495-597`), treats an unresolvable derivation as fatal (`:550`, `:556`, `:597`), and is itself
-unit-tested at `org/test/workflow-shell.test.ts:300` — "a demanded scope missing from the registry
+`org/.github/workflows/service-ci.yml` ("Every scope this service demands is registered"),
+derives demanded scopes from inline literals, sibling constants and wrapper arguments, treats an unresolvable derivation as fatal, and is itself
+unit-tested at `org/test/workflow-shell.test.ts` — "a demanded scope missing from the registry
 fails the build **and names the gate**".
 
 **A caution, verified rather than assumed:** the reverse direction is weaker. `community` demands
-`community:read` (`community/src/scopes.ts:37-46`) and that scope is **absent** from the registry —
+`community:read` (`community/src/scopes.ts`) and that scope is **absent** from the registry —
 grepping `'community:` in `contracts/packages/auth/src/index.ts` returns exactly two hits,
-`community:execute` at `:236` and `community:write` at `:241`. Tessera registers all three of its
+`community:execute` and `community:write`. Tessera registers all three of its
 scopes before the first gate ships.
 
 ### 11.4 Leased jobs, and no timer doing domain work
 
-**The lease key names the contended resource, not the row** (`service-template/src/jobs.ts:10-20`).
+**The lease key names the contended resource, not the row** (`service-template/src/jobs.ts`).
 Tessera's keys:
 
 | Key | Contended resource |
 | --- | --- |
 | `parcel:<parcelId>` | claim, transfer, fallow settlement, contest resolution |
 | `ward:<wardId>` | ward minting, occupancy recompute |
-| `owner:<subject>` | Kiln firings — deliberately the same key shape studio uses (`studio/src/generation.ts:234`), so one player's firings serialise consistently on both sides |
-| `stream` | the outbox relay singleton, as `market/src/jobs.ts:104-110` and `settlement/src/jobs.ts:91` both do |
+| `owner:<subject>` | Kiln firings — deliberately the same key shape studio uses (`studio/src/generation.ts`), so one player's firings serialise consistently on both sides |
+| `stream` | the outbox relay singleton, as `market/src/jobs.ts` and `settlement/src/jobs.ts` both do |
 
-Claims are `for update skip locked` (`runtime/packages/jobs/src/index.ts:183`, full query
-`:168-194`). Backoff is `min(1000 × 2^(attempt−1), 5 min)` with full jitter (`:275-279`, applied
-`:417`); five attempts then `dead` (`:90`, `:93`).
+Claims are `for update skip locked` (`runtime/packages/jobs/src/index.ts`, full query). Backoff is `min(1000 × 2^(attempt−1), 5 min)` with full jitter (, applied); five attempts then `dead`.
 
 **No `setInterval` doing domain work** is enforced by a CI grep, not a lint rule:
-`org/.github/workflows/service-ci.yml:1036-1056`, exiting 1 on a hit (`:1054`), with an inline
-`cfctl-allow setInterval` comment as the only escape hatch (`:1046`). **Tessera uses no escape
+`org/.github/workflows/service-ci.yml`, exiting 1 on a hit, with an inline
+`cfctl-allow setInterval` comment as the only escape hatch. **Tessera uses no escape
 hatch**, and it does not need one, because the two things that look like they want a timer do not:
 
 - **Presence** is push-on-change — a move writes a row and raises a Postgres `NOTIFY`; the SSE
   handler forwards. No broadcast loop exists.
 - **Fallow** is lazy — computed on read from `(lastFootfallAt, lastEditAt, bankedUntil)` and
   settled on write, so there is no nightly sweep marking parcels dead. Aetherholm's lazy-accrual
-  discipline ([20-aetherholm.md:139-141](20-aetherholm.md)), applied to time rather than resources.
+  discipline ([20-aetherholm.md](20-aetherholm.md)), applied to time rather than resources.
 
 ### 11.5 Money as `bigint`, and `BigInt('')`
 
 `BigInt('')` is `0n`, which turns a missing amount into a free purchase. `micro-market` makes it
 **unreachable rather than handled**: `parseAmount` requires `/^\d{1,78}$/` before calling `BigInt`
-(`market/src/money.ts:222-227`). **Tessera imports that helper rather than writing a second one.**
+(`market/src/money.ts`). **Tessera imports that helper rather than writing a second one.**
 
 Amounts are `numeric(78,0)` in Postgres, read as `::text` then `BigInt`
-(`market/src/escrow.ts:100-102`), and decimal strings on the wire — never a JSON number, because
+(`market/src/escrow.ts`), and decimal strings on the wire — never a JSON number, because
 `Number.MAX_SAFE_INTEGER` is about 9×10¹⁵ and a single EMBER is 10¹⁸ wei.
 
 ### 11.6 Invariants in the schema, in all three forms
 
 **CHECK constraints** — the form for a single-row, single-column truth
-(`ledger/src/migrations.ts:227` is the estate's canonical example):
+(`ledger/src/migrations.ts` is the estate's canonical example):
 
 - `tessera_price_whole_sparks CHECK (price_wei % 1000000000000 = 0)` — §8.1's floor, in the
   database rather than in a validator.
@@ -1265,7 +1260,7 @@ Amounts are `numeric(78,0)` in Postgres, read as `::text` then `BigInt`
 - `tessera_parcel_tier_known CHECK (tier IN ('homestead','plot','court','quarter'))`.
 
 **Partial unique indexes** — the form for "at most one of these, under a condition"
-(`identity/src/migrations.ts:292-294` is the pattern):
+(`identity/src/migrations.ts` is the pattern):
 
 - `create unique index tessera_one_homestead on parcels (owner_subject) where tier = 'homestead'
   and status = 'held'` — **a second Homestead is unrepresentable**, not merely refused.
@@ -1273,14 +1268,13 @@ Amounts are `numeric(78,0)` in Postgres, read as `::text` then `BigInt`
   'open'`.
 
 **Deferred constraint triggers** — the form for a cross-row invariant Postgres cannot express as a
-CHECK. The rationale is written out at `community/src/migrations.ts:660-670` and the shape at
-`:691-695`:
+CHECK. The rationale is written out at `community/src/migrations.ts` and the shape:
 
 - **Object cap.** Placements may not exceed the parcel's cap, checked `deferrable initially
   deferred` at commit — so pasting 200 objects is one check, not 200.
 - **Contest window.** A fallow parcel cannot be contested before its 30 days, evaluated on the
   **database clock**, the way community enforces timelocks before insert on the DB clock
-  (`community/src/migrations.ts:720-752`) rather than on a clock the caller supplies.
+  (`community/src/migrations.ts`) rather than on a clock the caller supplies.
 - **The Homestead is not tradeable.** An UPDATE moving `owner_subject` on a `homestead` row raises.
   An error, not a policy.
 
@@ -1289,30 +1283,29 @@ CHECK. The rationale is written out at `community/src/migrations.ts:660-670` and
 `micro-tessera` owns its own database and reaches no other service's. Ward governance is HTTP to
 `community`; listings are HTTP to `market`; balances are HTTP to `ledger`. Migrations run in a
 **separate migrator process**, serialised by an advisory lock derived from the service name, and
-never from `index.ts` (`service-template/src/migrator.ts:34-53`, `:4-15`).
+never from `index.ts` (`service-template/src/migrator.ts`).
 
 Migrations are versioned, ascending and **immutable once released** — `@cloudsforge/db` checksums
 the text and refuses a changed migration; the fix is always a new one
-(`service-template/src/migrations.ts:1-15`). Version 1 is `JOBS_SCHEMA_SQL` taken **verbatim** from
-`@cloudsforge/jobs` (`service-template/src/migrations.ts:29`) so the lease claim query's table
+(`service-template/src/migrations.ts`). Version 1 is `JOBS_SCHEMA_SQL` taken **verbatim** from
+`@cloudsforge/jobs` (`service-template/src/migrations.ts`) so the lease claim query's table
 cannot drift from the query that claims against it.
 
 ### 11.8 The title contract, which Tessera actually implements
 
 `worlds` calls exactly two routes, despite its own client header saying four
-(`worlds/src/titleclient.ts:7`): `GET /v1/title` returning `{slug, name, capabilities[]}`
-(`worlds/src/titleclient.ts:122`), and `POST /v1/provision` taking
-`{entitlementId, subject, userId, sku, scope, metadata}` and returning `{urn, replayed}`
-(`:134-152`, `:69-74`), with the `entitlementId` sent as **both** the `Idempotency-Key` header and
-a body field (`:149`).
+(`worlds/src/titleclient.ts`): `GET /v1/title` returning `{slug, name, capabilities[]}`
+(`worlds/src/titleclient.ts`), and `POST /v1/provision` taking
+`{entitlementId, subject, userId, sku, scope, metadata}` and returning `{urn, replayed}`, with the `entitlementId` sent as **both** the `Idempotency-Key` header and
+a body field.
 
 Capabilities come from a **closed set** — `private_world | cosmetics | achievements | seasons |
-inventory` (`worlds/src/titles.ts:43`, runtime array `:45-51`), duplicated in the contract package
-at `contracts/packages/worlds/src/index.ts:121`. Tessera declares
+inventory` (`worlds/src/titles.ts`, runtime array), duplicated in the contract package
+at `contracts/packages/worlds/src/index.ts`. Tessera declares
 **`['private_world', 'cosmetics', 'inventory']`**. `private_world` is the one that matters: the
 provisioning bridge calls a title only when that capability holds
-(`worlds/src/provisioning.ts:441-451`), and provisioning a **Private Ward** is how the existing,
-currently-unserved `world.private.small` SKU (`billing/src/migrations.ts:405`) finally gets a code
+(`worlds/src/provisioning.ts`), and provisioning a **Private Ward** is how the existing,
+currently-unserved `world.private.small` SKU (`billing/src/migrations.ts`) finally gets a code
 path.
 
 ## 12. What must be proven by test, before it ships
@@ -1330,15 +1323,15 @@ path.
    paste that is individually under the cap and collectively over it.
 7. `fee + royalty + proceeds === price` across randomised prices, fee/royalty rates and recipient
    splits — property-tested, and asserted again by `orders_partition`
-   (`market/src/migrations.ts:516`).
+   (`market/src/migrations.ts`).
 8. A grant against an unfunded `engagement:tessera` is refused by the overdraft trigger
-   (`ledger/src/migrations.ts:441`, `:479`) — the world cannot pay EMBER it does not hold.
+   (`ledger/src/migrations.ts`) — the world cannot pay EMBER it does not hold.
 9. **An unconfirmed deposit appears in no balance and no total.** An absence, asserted with force,
    because the alternative is the estate's oldest defect.
 10. `payout_due` cannot be spent; the release moves it to `available` and only the release does.
 11. `GET /v1/title` and `POST /v1/provision` satisfy `worlds`' client against the real service, and
     provision replays idempotently on `entitlementId` — same `urn`, `replayed: true` on the second
-    ask, the way `worlds/src/conformance.ts:233-246` checks it.
+    ask, the way `worlds/src/conformance.ts` checks it.
 12. Ranking admits exactly two inputs. A test on the ranking function's signature, so that adding a
     third — paid or otherwise — cannot happen quietly.
 13. No `setInterval` doing domain work, and **no `cfctl-allow` escape hatch anywhere in the repo**.
@@ -1391,11 +1384,11 @@ two outright and contributes to three more.
 
 | # | Claim | Today | With Tessera |
 | --- | --- | --- | --- |
-| **7** | Assets you create in one product are usable in the others | **False** (`01:55`) | **True.** A Tessera object is a `micro-studio` asset with provenance, sold on `micro-market` as `asset_kind: 'game_item'`, and wearable as a cosmetic on the `worlds` shared profile (`worlds/src/players.ts:56`). One asset, three products, no export step |
+| **7** | Assets you create in one product are usable in the others | **False** (`01:55`) | **True.** A Tessera object is a `micro-studio` asset with provenance, sold on `micro-market` as `asset_kind: 'game_item'`, and wearable as a cosmetic on the `worlds` shared profile (`worlds/src/players.ts`). One asset, three products, no export step |
 | **6** | One internal economy — spend and earn identically everywhere | **Partly** — `01:54` says it plainly: "Shards are universal; **nothing earns them**" | **True.** Tessera is the first surface in the estate where a user *earns*, and it earns EMBER, not scrip |
-| **10** | One financial source of truth that reconciles against the chain | False | **Moved, not closed.** The custody-vs-chain half of reconciliation still needs the indexer and is unwired (`ledger/src/migrations.ts:547-551`). But a chain-backed world economy is the most demanding possible test of the half that exists |
-| **5** | One activity history | False | **Contributes.** Tessera's seven topics land on the shared timeline in existing categories — no new category needed (`activity/src/categories.ts:31-51`) |
-| **2** | One identity — the same profile and reputation everywhere | Partly | **Contributes, specifically.** `players.reputation` is a column **no code writes**: it is declared at `worlds/src/migrations.ts:146` and read at `worlds/src/players.ts:56`, `:70`, `:89`, and grepping `worlds/src` finds no UPDATE anywhere. Tessera would be the first surface to write it, from footfall and completed sales |
+| **10** | One financial source of truth that reconciles against the chain | False | **Moved, not closed.** The custody-vs-chain half of reconciliation still needs the indexer and is unwired (`ledger/src/migrations.ts`). But a chain-backed world economy is the most demanding possible test of the half that exists |
+| **5** | One activity history | False | **Contributes.** Tessera's seven topics land on the shared timeline in existing categories — no new category needed (`activity/src/categories.ts`) |
+| **2** | One identity — the same profile and reputation everywhere | Partly | **Contributes, specifically.** `players.reputation` is a column **no code writes**: it is declared at `worlds/src/migrations.ts` and read at `worlds/src/players.ts`, and grepping `worlds/src` finds no UPDATE anywhere. Tessera would be the first surface to write it, from footfall and completed sales |
 
 Claim 7 is the one Tessera exists for. The platform has claimed cross-product assets since
 `01-product-vision.md` was written and has never had a product that produced one.
@@ -1415,8 +1408,8 @@ Claim 7 is the one Tessera exists for. The platform has claimed cross-product as
 5. **The Registry of Authorship** contract and its deployment.
 
 **The one hard dependency is not in this document.** Tessera cannot ship denominated in EMBER while
-`micro-billing`'s SKUs are priced in SHARD (`billing/src/migrations.ts:402-406`) and
-`contracts/packages/money/src/index.ts:239` still defaults `assetCode` to `'SHARD'` as a silent
+`micro-billing`'s SKUs are priced in SHARD (`billing/src/migrations.ts`) and
+`contracts/packages/money/src/index.ts` still defaults `assetCode` to `'SHARD'` as a silent
 parameter default. **The estate-wide Shard removal is a prerequisite for phase 2, not a parallel
 tidy-up**, and §13 records that it is roughly 60% larger than currently briefed.
 

@@ -171,17 +171,17 @@ delivers.
 
 | # | Fix | Where | Defect |
 | --- | --- | --- | --- |
-| 1 | Deterministic settlement id from `(bot_id, period)` + unique index on `fee_settlements` | `crucible/src/store.ts:359`, `migrate.ts:181` | **Double-billed performance fees** |
-| 2 | `POST /bots/:id/actions {stop}` takes the same lease as the sweep | `crucible/routes/bots.ts:304` | Same, via a different path |
-| 3 | Mandatory idempotency key on `POST /spend` | `forge-pay/src/store.ts:465` | The one money route accepting a missing key |
+| 1 | Deterministic settlement id from `(bot_id, period)` + unique index on `fee_settlements` | `crucible/src/store.ts`, `migrate.ts` | **Double-billed performance fees** |
+| 2 | `POST /bots/:id/actions {stop}` takes the same lease as the sweep | `crucible/routes/bots.ts` | Same, via a different path |
+| 3 | Mandatory idempotency key on `POST /spend` | `forge-pay/src/store.ts` | The one money route accepting a missing key |
 | 4 | Idempotency keys on all four game shop purchases | `ninety-days-after/apps/game/src/pages/Shop.tsx` | Retry double-charges; `rent` is `ownOnce:false` |
-| 5 | `private_world` purchase either provisions or refuses the sale | `forge-pay/routes/monetization.ts:100-138` | **Charged for a thing no code creates** |
+| 5 | `private_world` purchase either provisions or refuses the sale | `forge-pay/routes/monetization.ts` | **Charged for a thing no code creates** |
 | 6 | Withdraw the undeliverable SKUs **from the API**, not just the UI | `forge-pay`, `@cloudsforge/shared/pay.ts` | 4 convenience items + 3 cosmetic kinds + 2 ForgeMint features |
-| 7 | `assignHomestead` gets `WHERE owner_id IS NULL` | `ninety-days-after/world/generate.ts:80-108` | Two players on one tile |
-| 8 | Nimbus's two proxies use `fetchJson` with a timeout and forward `x-request-id` | `nimbus/routes/vault.ts:61`, `pay.ts:73` | A hung keyvault pins the SSO service **indefinitely** |
-| 9 | `onBroadcast` on the Solana deploy path + extend `/status` settle beyond `family==='evm'` | `forge-mint/routes/tokens.ts:321,407` | Double-mint paying gas and rent twice |
+| 7 | `assignHomestead` gets `WHERE owner_id IS NULL` | `ninety-days-after/world/generate.ts` | Two players on one tile |
+| 8 | Nimbus's two proxies use `fetchJson` with a timeout and forward `x-request-id` | `nimbus/routes/vault.ts`, `pay.ts` | A hung keyvault pins the SSO service **indefinitely** |
+| 9 | `onBroadcast` on the Solana deploy path + extend `/status` settle beyond `family==='evm'` | `forge-mint/routes/tokens.ts,407` | Double-mint paying gas and rent twice |
 | 10 | Per-service `env_file` | `docker-compose.yml` | The game container holds `KEYVAULT_MASTER_SECRET` |
-| 11 | XRP network binding in key derivation and signing | `forge-keyvault/src/chains.ts:141` | One seed valid on testnet **and** mainnet |
+| 11 | XRP network binding in key derivation and signing | `forge-keyvault/src/chains.ts` | One seed valid on testnet **and** mainnet |
 | 12 | Clamp `convertCoinToEmber` behind a reserve check, or disable it | `forge-pay/src/store.ts` | Credits custodial EMBER with no on-chain movement |
 
 **Repositories affected.** `crucible`, `forge-pay`, `ninety-days-after`, `forge-mint`,

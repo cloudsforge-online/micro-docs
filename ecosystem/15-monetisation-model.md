@@ -45,7 +45,7 @@ Everything in §3 is work or access. Everything in §4 is custody, movement or e
 | Portfolio, balances, valuation | `hub-api` + `ledger` + `pricing` | Test 4 |
 | Unified activity history, unlimited retention | `activity` | Test 5 |
 | Notifications on all channels | `notify` | §4.3 |
-| Backtesting, the full strategy catalogue, paper trading | `trade` | Already free and already stated in source: "Crucible is free until it makes you money" (`crucible/packages/contracts/src/index.ts:773-779`) |
+| Backtesting, the full strategy catalogue, paper trading | `trade` | Already free and already stated in source: "Crucible is free until it makes you money" (`crucible/packages/contracts/src/index.ts`) |
 | Everything on testnet | all | §4.6 |
 | Block explorer, node software, mining, faucet | Forge Network | A public chain whose explorer is paywalled is not a public chain |
 
@@ -96,7 +96,7 @@ Anything that fits none of these four is not a product, it is a toll.
 **What it is.** ForgeMint deploys a real ERC-20 to one of five EVM chains; the customer's own
 wallet is the contract owner and the platform's deployer key only pays gas.
 
-**Pricing today**, verbatim from `shared-libs/packages/shared/src/forgemint.ts:150-183`:
+**Pricing today**, verbatim from `shared-libs/packages/shared/src/forgemint.ts`:
 
 **Pricing basis, decided 2026-08-04.** These tiers keep their **stated USD** and change unit: the
 Shard column is historical, converted at the documented 100-Shards-to-the-dollar peg. So `Fixed`
@@ -130,7 +130,7 @@ because there is nothing to take a percentage *of* — a token has no value at d
 from the peg for display, so the catalogue stops carrying two numbers that disagree by a cent.
 Add a **mainnet gas surcharge quoted at order time**: the tier price was set against testnet
 reality (`FORGE_MINT_MAINNET_ENABLED` is off by default with an allowlist,
-`forge-mint/services/forge-mint/src/env.ts:115,119`), and a $90 Foundry deploy on Ethereum
+`forge-mint/services/forge-mint/src/env.ts,119`), and a $90 Foundry deploy on Ethereum
 mainnet during congestion can cost more in gas than the tier charges in total. The surcharge is
 a quote, honoured for a stated window, refunded if the deploy fails.
 
@@ -148,9 +148,9 @@ wordmarks, favicons, OG images, banners and game tiles.
 
 **Pricing model: prepaid credits, not per-call billing.** Generation is the one place in the
 estate where a customer action costs the platform real, variable money on a third-party API. The
-published rates the CLI already uses (`asset-forge/src/model.ts:57-63`) are, for `gpt-image-1` at
+published rates the CLI already uses (`asset-forge/src/model.ts`) are, for `gpt-image-1` at
 1024²: **$0.011 low, $0.042 medium, $0.167 high**. The CLI's guard is a `$2` default spend limit
-and a TTY prompt (`asset-forge/src/generate.ts:55`), which is not a service-grade control.
+and a TTY prompt (`asset-forge/src/generate.ts`), which is not a service-grade control.
 
 Recommendation: **5 Shards (5 cents) per standard image, 20 Shards for high quality**, sold in
 credit packs, with a free allocation of 10 standard images per account per month so a first
@@ -210,21 +210,21 @@ first time a verified project rugs.
 
 **What it is.** A 15% fee on a live bot's gains above its high-water mark.
 `PERFORMANCE_FEE_BPS = 1500` and `MIN_FEE_SHARDS = 5`
-(`crucible/packages/contracts/src/index.ts:780-786`); the calculation floors at zero when equity
-has not exceeded the mark (`performanceFee()`, `:803-808`).
+(`crucible/packages/contracts/src/index.ts`); the calculation floors at zero when equity
+has not exceeded the mark (`performanceFee()`).
 
 **This is the best-designed price in the estate and it should be copied, not changed.** The
 high-water mark means the same gain is never billed twice and a recovery from a drawdown is
 billed nothing. The 5-Shard floor means the platform does not bill 3 cents and spend more than
 that recording it. Rounding is *down*, deliberately, "with an integer currency somebody has to
-eat the fraction, and it should be the house" (`:797-802`).
+eat the fraction, and it should be the house".
 
 **It earns nothing today.** `CRUCIBLE_LIVE_ENABLED` defaults to `false`
-(`crucible/services/crucible/src/env.ts:107`) — the correct default for a product whose engine
+(`crucible/services/crucible/src/env.ts`) — the correct default for a product whose engine
 has one test file ([00](00-current-state.md) §3.9), but it means Forge Trade's revenue line is
 **zero until P10**, and any plan that counts it before then is counting a flag.
 
-**Limits stay as they are** (`CRUCIBLE_LIMITS`, `:788-798`): 200 backtests per day, 10 paper
+**Limits stay as they are** (`CRUCIBLE_LIMITS`): 200 backtests per day, 10 paper
 bots, 5 live bots, minimum live allocation 1,000 Shards ($10) because below that the fee floor
 dominates.
 
@@ -235,14 +235,14 @@ strategy that only works for free does not work" — is a commercial asset and s
 
 ### 3.7 R7 · Conversion spread
 
-**What it is.** `PAY_CONVERSION_SPREAD_BPS`, default **200** (`forge-pay/services/pay/src/env.ts:68`),
+**What it is.** `PAY_CONVERSION_SPREAD_BPS`, default **200** (`forge-pay/services/pay/src/env.ts`),
 applied in both directions on coin↔Shard conversion
-(`forge-pay/services/pay/src/pricing.ts:370-406`).
+(`forge-pay/services/pay/src/pricing.ts`).
 
 **Why this is not monetising the spine.** Holding is free; moving is free; *converting* is a
 position the platform takes, carrying price risk on a real asset it must hold. 200 bps is the
 price of that risk, and the source already says the spread "runs against the user, in both
-directions and on purpose" (`pricing.ts:179-181`) — the right posture, honestly stated.
+directions and on purpose" (`pricing.ts`) — the right posture, honestly stated.
 
 **Conditions.** The spread is quoted as an explicit number before confirmation, in both
 directions, with the mid-price and the timestamp shown; a spread inferred from two rates is a
@@ -325,12 +325,12 @@ incurred beyond the network fee.
 
 **Pass through the network cost, exactly, and nothing more.** This is already the behaviour:
 `send = amount - fee` where `fee` is `estimateFee()` — `gasPrice × TRANSFER_GAS` for EVM, the
-node's fee in drops for XRP (`forge-pay/services/pay/src/withdrawer.ts:193-194`,
-`outbound.ts:979-999`) — quoted once and locked into the row so two attempts cannot produce two
+node's fee in drops for XRP (`forge-pay/services/pay/src/withdrawer.ts`,
+`outbound.ts`) — quoted once and locked into the row so two attempts cannot produce two
 different transactions. Keep it exactly as it is. The one addition: **show the estimate and the
 actual, and refund the difference** when the chain charges less than quoted.
 
-`PAY_WITHDRAWAL_MIN_FEE_MULTIPLE` (default 3, `env.ts:93`) stays a dust guard, not a minimum fee.
+`PAY_WITHDRAWAL_MIN_FEE_MULTIPLE` (default 3, `env.ts`) stays a dust guard, not a minimum fee.
 It exists so a withdrawal is not consumed by its own gas, and it must never be repurposed as a
 floor that earns.
 
@@ -382,7 +382,7 @@ before it is trusted.
 ## 5. The Shards model
 
 **What a Shard is.** A platform-internal accounting unit, pegged at **100 Shards = 1 USD** —
-`shardsPerUsdScaled = 100n * RATE_SCALE` (`forge-pay/services/pay/src/pricing.ts:181`). A Shard
+`shardsPerUsdScaled = 100n * RATE_SCALE` (`forge-pay/services/pay/src/pricing.ts`). A Shard
 is one US cent. The same constant anchors Crucible's paper trading (`SHARDS_PER_USD = 100`).
 
 **Why a platform currency at all**, when it could all be priced in a coin:
@@ -513,9 +513,9 @@ never from analytics ([02](02-target-architecture.md) AD-20, the four-planes rul
 product becomes derivable for the first time because every posting records
 `originating_service`. Today it is not: `ledger.source` is written only by `/internal/*`, and
 ForgeMint charges through the user-token `POST /spend` path
-(`forge-mint/services/forge-mint/src/clients/pay.ts:38-60`), so **token deployment revenue
+(`forge-mint/services/forge-mint/src/clients/pay.ts`), so **token deployment revenue
 currently carries no source at all**, while Crucible's does (`source: 'crucible'`,
-`crucible/services/crucible/src/clients/pay.ts:134`).
+`crucible/services/crucible/src/clients/pay.ts`).
 
 ---
 
@@ -571,7 +571,7 @@ charged (`ninety-days-after/apps/game/src/lib/shop.ts`, "WHAT THIS FILE CANNOT D
 | 3 | Cosmetics of three undrawable kinds — `map_banner`, `commune_crest`, `herald_flair` | 150–600 Shards | Charged; no renderer, and the game service refuses to equip them | **Refund and withdraw from the API** | P1; deliver in P10 | Six of the fourteen catalogue items. Buying one buys a row |
 | 4 | Season pass | 500 Shards | Sold; unlocks 3 ids wholesale; 2 of the 3 are undrawable kinds; no progression track | **Keep selling, deliver in P10** | P1 corrects the copy | The pass delivers *something* (`frame_ember` renders). Correct the description to name only what exists, then build the track |
 | 5 | ForgeMint "verified metadata" and "liquidity-lock helper" | Bundled | **Already withdrawn** — `shared-libs` commit `620230c` | None | Done | Supersedes [00](00-current-state.md) §3.8 item 4 |
-| 6 | Game `tokens` currency | Earned, not sold | No sink; `resolve.ts:79` notes the tick never awards them | **Deliver a sink in P10, or remove the currency** | P10 | Not a refund case — nobody paid — but an unspendable currency is a broken promise of the same kind |
+| 6 | Game `tokens` currency | Earned, not sold | No sink; `resolve.ts` notes the tick never awards them | **Deliver a sink in P10, or remove the currency** | P10 | Not a refund case — nobody paid — but an unspendable currency is a broken promise of the same kind |
 | 7 | Crucible live trading | 15% of gains | Earns nothing: `CRUCIBLE_LIVE_ENABLED=false` | **Keep off until P10** | P10 | Not a defect. Correct caution for an engine with one test file |
 | 8 | Refunds | — | **No refund path exists anywhere**; `/internal/credit` has no caller | **Build the path in P1, complete it in P7** | P1, P7 | Items 1–3 cannot be remediated without it. This is the blocking dependency |
 

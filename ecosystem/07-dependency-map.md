@@ -81,7 +81,7 @@ Three structural properties this graph has, and must keep:
 ## 2. Every service-to-service dependency
 
 **Universal edges, listed once rather than 24 times.** Every service depends on `identity` twice:
-JWKS to verify user tokens (cached 30 s — `platform/services/nimbus/src/keys.ts:62`), and from P4
+JWKS to verify user tokens (cached 30 s — `platform/services/nimbus/src/keys.ts`), and from P4
 a short-TTL scoped service token to call anyone (AD-17). Both are `soft` — each survives an
 identity outage for its cache or token lifetime. Every service also writes to the collector,
 always `soft`: telemetry loss never fails a request.
@@ -94,7 +94,7 @@ always `soft`: telemetry loss never fails a request.
 | `bff-fanout` | 600 ms per upstream, 1.5 s total page budget | None | Per-upstream, same thresholds; an open breaker returns instantly rather than burning the budget |
 | `money-write` | 5 s | **None automatic.** The caller re-submits with the same idempotency key | Opens at 5 consecutive failures; half-open after 30 s |
 | `sign` | 10 s | None | **No breaker.** The job fails, the lease releases, the leased job re-runs |
-| `chain-rpc` | 6 s (matches `PAY_CHAIN_RPC_TIMEOUT_MS`, `forge-pay/services/pay/src/env.ts:197`) | 1 per provider, then failover | Per-provider health score, not a binary breaker |
+| `chain-rpc` | 6 s (matches `PAY_CHAIN_RPC_TIMEOUT_MS`, `forge-pay/services/pay/src/env.ts`) | 1 per provider, then failover | Per-provider health score, not a binary breaker |
 | `decision` | 1.5 s | 1 | Fail-**closed** for the four actions in AD-09; fail-open with an alert otherwise |
 
 | Caller | Callee | Protocol | Purpose | Criticality | Profile |
@@ -285,7 +285,7 @@ which service to *ask*, and what a cache of the answer is allowed to be.
 
 | Concept | Source of truth | Who holds a copy | TTL / staleness rule |
 | --- | --- | --- | --- |
-| Account, credentials, MFA | `identity` | JWKS in every verifier | 30 s (`nimbus/src/keys.ts:62`), and key rotation deliberately waits one access-token TTL before activation |
+| Account, credentials, MFA | `identity` | JWKS in every verifier | 30 s (`nimbus/src/keys.ts`), and key rotation deliberately waits one access-token TTL before activation |
 | Profile (name, avatar, locale) | `identity` | hub-api, worlds, market, community | 5 min; never persisted as a column |
 | Organisation membership | `identity` | billing, devplatform | 5 min |
 | **Balance** | `ledger` (journal), materialised in the `balances` projection | **nobody else, ever** — [04](04-domain-model.md) §11 | hub-api dashboard cache 15 s, labelled with its as-of time. A cached balance in a product database is the bug that made Crucible's bot state diverge from Pay's |
@@ -309,14 +309,14 @@ which service to *ask*, and what a cache of the answer is allowed to be.
 
 | Dependency | Consumer | Failure mode | Fallback | How it is detected |
 | --- | --- | --- | --- | --- |
-| EVM RPC — `ethereum-sepolia-rpc.publicnode.com`, `ethereum-rpc.publicnode.com` (`forge-pay/services/pay/src/env.ts:210-211`) | indexer, settlement, mint | Rate limit, timeout, or a lagging node answering `latest` with a stale height | Health-scored multi-provider failover inside the indexer's EVM worker; a provider that lags is demoted, not just retried | `rpc_provider_success_rate` and failover events on the Chain Health dashboard |
-| Bitcoin — `blockstream.info/api` (`env.ts:208-209`) | indexer, settlement | REST rate-limits aggressively | Second provider, optionally a self-hosted Electrum. BTC withdrawal and sweep do not exist today; built in P5 | Provider success rate; BTC deposit parity |
-| Solana — `api.devnet.solana.com`, `api.mainnet-beta.solana.com` (`env.ts:212-213`) | indexer, settlement, mint | Public endpoints throttle under load | Paid provider. Solana deploy is **suspended** today; unsuspended or removed in P8 | Same |
-| XRP — `s.altnet.rippletest.net:51234`, `s1.ripple.com:51234` (`env.ts:214-215`) | indexer, settlement | Cluster unavailability | Second cluster node | Same |
-| Hearth JSON-RPC on 8545 (`env.ts:206`) | indexer, settlement, explorer-web | Single node — a stateful singleton by design (AD-18) | None. EMBER degrades to read-only and the status page says so | Beacon chain probes: height, peers, mempool, block age |
-| Price sources — coingecko, coinbase, kraken, binance (`forge-pay/services/pay/src/pricing.ts:91-147`) | pricing | Any source down or lying | Median of whatever answered, provided at least `PAY_ORACLE_MIN_SOURCES` (default 2) did; if sources diverge by more than `PAY_ORACLE_MAX_DIVERGENCE_BPS` (default 500) **none is used**, because there is no way to tell which is wrong | The last failure per coin is surfaced by `GET /coins/rates` rather than left as a silent gap — already implemented |
-| SMTP (generic, nodemailer; `SMTP_HOST/USER/PASS/FROM`) | notify, identity | Provider outage or unconfigured | **Unconfigured is a supported mode** (`platform/services/nimbus/src/env.ts:335`): the reset is recorded and an operator hands the link over from the console. `notify` queues and retries with a leased job; critical notifications escalate to a second channel | Delivery success rate per channel; dead-letter depth |
-| OpenAI images — `gpt-image-1`, the only model reachable on the CloudsForge key (`asset-forge/src/model.ts:23-33`) | studio | API error, content refusal, or cost cap hit | The deterministic placeholder generator (`asset-forge/src/placeholder.ts`), so a brand kit still renders and the job is retried rather than lost | Generation job failure rate and per-account spend against the cap |
+| EVM RPC — `ethereum-sepolia-rpc.publicnode.com`, `ethereum-rpc.publicnode.com` (`forge-pay/services/pay/src/env.ts`) | indexer, settlement, mint | Rate limit, timeout, or a lagging node answering `latest` with a stale height | Health-scored multi-provider failover inside the indexer's EVM worker; a provider that lags is demoted, not just retried | `rpc_provider_success_rate` and failover events on the Chain Health dashboard |
+| Bitcoin — `blockstream.info/api` (`env.ts`) | indexer, settlement | REST rate-limits aggressively | Second provider, optionally a self-hosted Electrum. BTC withdrawal and sweep do not exist today; built in P5 | Provider success rate; BTC deposit parity |
+| Solana — `api.devnet.solana.com`, `api.mainnet-beta.solana.com` (`env.ts`) | indexer, settlement, mint | Public endpoints throttle under load | Paid provider. Solana deploy is **suspended** today; unsuspended or removed in P8 | Same |
+| XRP — `s.altnet.rippletest.net:51234`, `s1.ripple.com:51234` (`env.ts`) | indexer, settlement | Cluster unavailability | Second cluster node | Same |
+| Hearth JSON-RPC on 8545 (`env.ts`) | indexer, settlement, explorer-web | Single node — a stateful singleton by design (AD-18) | None. EMBER degrades to read-only and the status page says so | Beacon chain probes: height, peers, mempool, block age |
+| Price sources — coingecko, coinbase, kraken, binance (`forge-pay/services/pay/src/pricing.ts`) | pricing | Any source down or lying | Median of whatever answered, provided at least `PAY_ORACLE_MIN_SOURCES` (default 2) did; if sources diverge by more than `PAY_ORACLE_MAX_DIVERGENCE_BPS` (default 500) **none is used**, because there is no way to tell which is wrong | The last failure per coin is surfaced by `GET /coins/rates` rather than left as a silent gap — already implemented |
+| SMTP (generic, nodemailer; `SMTP_HOST/USER/PASS/FROM`) | notify, identity | Provider outage or unconfigured | **Unconfigured is a supported mode** (`platform/services/nimbus/src/env.ts`): the reset is recorded and an operator hands the link over from the console. `notify` queues and retries with a leased job; critical notifications escalate to a second channel | Delivery success rate per channel; dead-letter depth |
+| OpenAI images — `gpt-image-1`, the only model reachable on the CloudsForge key (`asset-forge/src/model.ts`) | studio | API error, content refusal, or cost cap hit | The deterministic placeholder generator (`asset-forge/src/placeholder.ts`), so a brand kit still renders and the job is retried rather than lost | Generation job failure rate and per-account spend against the cap |
 | GHCR | every deploy | **A new repository's package inherits the repository's visibility and 403s the deploy path until flipped by hand** | None — it must be flipped. `cfctl doctor` checks it, which is why it is a check and not a runbook line | `cfctl doctor`, run in CI |
 | GitHub Packages | every service build | Registry outage, or a dead token | Today `NPM_TOKEN` is dead, which is the root cause of every manual release ritual; AD-02 moves publishing to the workflow's own `GITHUB_TOKEN` | Renovate lag measurement (§5) |
 | Cloudflare tunnel | public ingress | Tunnel down | Currently one of the **two** locks keeping `/internal` off the public internet, alongside loopback binding; the gateway takes over the refusal in P2 and CI asserts the new mechanism | CI invariant, plus a Beacon probe that `/internal` returns 404 publicly |

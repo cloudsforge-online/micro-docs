@@ -722,7 +722,7 @@ Served by `status-web` from a **new** group-rollup projection in Beacon. A platf
 customer money owes one.
 
 **Correction to an earlier assumption:** Beacon's existing `redactStatus`
-(`infra/beacon/src/server.js:247`) is *not* sufficient. It emits `t.name` and
+(`infra/beacon/src/server.js`) is *not* sufficient. It emits `t.name` and
 `incidents[].subject` verbatim — `pay.rates`, `hearth.seed` — which is internal topology.
 It also carries no scheduled-maintenance and no chain-state fields. So the public projection is
 new work, not a configuration change, and `BEACON_PUBLIC_STATUS` stays `false` until it lands.

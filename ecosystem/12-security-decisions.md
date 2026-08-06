@@ -336,7 +336,7 @@ scan (SD-16) proving no other route returns key material.
 **Decision.** Delete the route. Replace it with a two-operator break-glass procedure that cannot
 be invoked from the admin console.
 
-**Context.** `forge-keyvault/src/routes/admin.ts:123`. It accepts any address, decrypts it, and
+**Context.** `forge-keyvault/src/routes/admin.ts`. It accepts any address, decrypts it, and
 returns `{address, chain, network, privateKey}` in plaintext — for **any** address including
 every customer deposit key, in whatever native form was stored. The only gate is a Nimbus admin
 JWT. The only mitigation is a `key_reveals` row and a `log.warn`. There is no approval, no rate
@@ -421,7 +421,7 @@ service unavailable and hoping for fail-open. The gate must be co-located with t
 
 **Additions in this programme.** A **signing audit table** — today a *successful* `/sign` records
 nothing at all, only refusals are logged. Per-user authorisation — `row.userId` is currently
-compared to nothing (`routes/vault.ts:303`). Rate limiting — there is none. Network binding for
+compared to nothing (`routes/vault.ts`). Rate limiting — there is none. Network binding for
 XRP — testnet and mainnet currently share a seed and address, so one signed Payment is
 submittable on either. Output policies for Bitcoin and Solana, which are specified in source
 comments and not built, leaving both chains unable to sweep or withdraw.
@@ -575,7 +575,7 @@ consequence is security, not merely uptime.
   nondeterministic across replicas: a consumer caches one key and rejects tokens minted by the
   other. Fixed by an advisory-locked bootstrap, deterministic ordering, and publishing all
   non-retired keys.
-- **Bare `fetch` in Nimbus's two admin proxies** (`routes/vault.ts:61`, `routes/pay.ts:73`) has
+- **Bare `fetch` in Nimbus's two admin proxies** (`routes/vault.ts`, `routes/pay.ts`) has
   no total-request timeout on undici, so a hung custody service pins the identity service
   indefinitely — a denial of service on authentication for the entire estate, reachable by making
   one downstream slow.

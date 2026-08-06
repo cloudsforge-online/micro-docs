@@ -107,7 +107,7 @@ for the reason §6.1 gives.
 
 **FLUX's set is not moved to `sets/flux/` to make the three roots look alike, and must not be.**
 The reasoning is recorded at length in `micro-brand/providers.json`'s `$comment` block and again in
-`micro-brand/materialise.py:12-15`, and it is a measurement rather than a preference:
+`micro-brand/materialise.py`, and it is a measurement rather than a preference:
 
 - roughly twenty sibling repositories point at `assets/<surface>/favicon-32x32.png` and friends —
   each web app's `test/brand-chrome.test.ts`, `network-site/src/components/shell.tsx`,
@@ -198,7 +198,7 @@ every file, so "which set is this container serving?" is answerable without an e
 
 ### 3.1 An incomplete set fails loudly and writes nothing
 
-`micro-brand/materialise.py:162-173` raises `IncompleteSetError`, naming every gap, before the
+`micro-brand/materialise.py` raises `IncompleteSetError`, naming every gap, before the
 first byte is written. There is **no fallback to the reference, ever.** A blend would produce a
 directory that is mostly one model and quietly partly another, and every judgement made by looking
 at it — which is the entire point of running a challenger — would be a judgement about something
@@ -214,7 +214,7 @@ take its own surface out of a set that is incomplete elsewhere.
 
 ### 3.2 Two alternatives rejected on measurement, not taste
 
-Both rejections are recorded in `micro-brand/materialise.py:30-55`, and both rest on the same
+Both rejections are recorded in `micro-brand/materialise.py`, and both rest on the same
 measured fact: **nothing in the estate reads these repositories at run time.** Every consumer holds
 a committed copy in its own `public/`, which Vite copies into `dist/` and the Dockerfile bakes into
 an nginx image; `deploy/compose/docker-compose.estate.yml` mounts exactly one volume and it is
@@ -273,7 +273,7 @@ internally consistent game-UI artefacts **whatever it is asked for**. From the b
 
 The same reading is visible in the bytes: **7.1× the file size per megapixel** on `micro-brand`'s
 flat vector set against **2.6×** on the painterly game sets
-(`micro-tessera-assets/COMPARISON.md:209-210`, `micro-tessera-assets/ART_BIBLE.md:22-23`). Flat
+(`micro-tessera-assets/COMPARISON.md`, `micro-tessera-assets/ART_BIBLE.md`). Flat
 vector art does not compress to 1.3MB.
 
 Two individual failures are worth naming because they are different in kind from being off-style:
@@ -350,12 +350,12 @@ worth keeping is *"the registry can express such a pair"* and not *"those two en
 
 **"Positive" is enforced, not claimed.** `dialects.json` declares the vocabulary the dialect forbids
 itself — *no, not, never, nothing, neither, nor, without, cannot, avoid, omit, exclude*
-(`micro-brand/dialects.json:44`) — the transformed prompt is scanned for it on word boundaries
-(`dialects.py:136` and `dialects.ts:110-116`, both `\b`-anchored regexes), and a prompt still
-carrying any of it **cannot be sent**: `prompts.ts:381` throws `ResidualNegationError` before a
+(`micro-brand/dialects.json`) — the transformed prompt is scanned for it on word boundaries
+(`dialects.py` and `dialects.ts`, both `\b`-anchored regexes), and a prompt still
+carrying any of it **cannot be sent**: `prompts.ts` throws `ResidualNegationError` before a
 socket is opened.
 
-The error class is worth reading (`dialects.ts:117-137`), because it names why it exists rather
+The error class is worth reading (`dialects.ts`), because it names why it exists rather
 than merely what it checks: *"This is a refusal to SPEND, not a lint… generating against a brief
 that still holds four of them would answer a question nobody asked, on a deployment billed by the
 hour, and the resulting set would carry a `dialect: positive` label that is not true of its own
@@ -579,7 +579,7 @@ the reader can see what was wrong, and because two of them are still open.
 | | claim | state |
 | --- | --- | --- |
 | 8.1 | `compare.py` described as byte-identical across repositories | **repaired** — `providers.json` now carries a machine-readable `shared` block that `claims.py` re-derives in both directions |
-| 8.2 | `23-tessera.md:141` — brand ships zero C2PA | **repaired in place** here; the `micro-brand` copies are repaired too |
+| 8.2 | `23-tessera.md` — brand ships zero C2PA | **repaired in place** here; the `micro-brand` copies are repaired too |
 | 8.3 | five stale figures in `micro-brand` | **repaired**, and four of the five are now pinned by `claims.py` |
 | 8.4 | table and prose disagreeing about idea drift | **repaired** — both are now pinned to the same derivation |
 | 8.5 | two ledger lines predating the current sets | **still open**, and deliberately so — see below |
@@ -593,7 +593,7 @@ about `verify.py`'s *parity check* specifically is exactly true — 6514 bytes, 
 repositories — which is worth noting, because the imprecision is in the paraphrase and not in the
 engineering.
 
-### 8.2 `docs/ecosystem/23-tessera.md:141` — brand's C2PA claim is now wrong twice over
+### 8.2 `docs/ecosystem/23-tessera.md` — brand's C2PA claim is now wrong twice over
 
 It reads: *"`brand` ships **zero** C2PA — all 94 entries are `c2pa: false`, including the 54 FLUX
 generations."* Measured against `micro-brand/MANIFEST.json` today: **98 entries, 56 generated, and
@@ -606,7 +606,7 @@ the comparison concluded, and were not put through `normalise_ground.py`, whose 
 the ancillary chunk the C2PA hash is bound to. So the lesson tessera inherits — *use the fixed
 writer from the first asset* — is unchanged and still correct. Only the count and the word "zero"
 are wrong. **This line is in this repository and is corrected in place; the note is kept here
-because the same stale numbers appear in `micro-brand/COMPARISON.md:8` and `:224`, which are not
+because the same stale numbers appear in `micro-brand/COMPARISON.md` and, which are not
 mine to edit.**
 
 ### 8.3 `micro-brand/COMPARISON.md` — three stale figures, all from the same cause
@@ -616,11 +616,11 @@ its §8 says so explicitly. It was not renumbered afterwards:
 
 | claim | source | measured today |
 | --- | --- | --- |
-| `micro-brand` (94) | `COMPARISON.md:8` | 98 manifest entries |
-| 54 generated | `COMPARISON.md:8`, §5 | 56 |
-| C2PA on **0 of 94** files | `COMPARISON.md:224` | 2 of 98 (§8.2) |
-| *"32 rules, applied in order"* | `COMPARISON.md:355` | **31** rules in `dialects.json`'s `positive` dialect |
-| *"the Qwen brand set is 93 of 94 today"* | `materialise.py:61` | 97 of 98 |
+| `micro-brand` (94) | `COMPARISON.md` | 98 manifest entries |
+| 54 generated | `COMPARISON.md`, §5 | 56 |
+| C2PA on **0 of 94** files | `COMPARISON.md` | 2 of 98 (§8.2) |
+| *"32 rules, applied in order"* | `COMPARISON.md` | **31** rules in `dialects.json`'s `positive` dialect |
+| *"the Qwen brand set is 93 of 94 today"* | `materialise.py` | 97 of 98 |
 
 **None of these changed any verdict** — the currency marks are that document's own §8 subject and
 reproduce the finding rather than disturbing it. They are recorded because the estate has repeatedly
@@ -651,8 +651,8 @@ above carries the corrected figure.
 
 ### 8.5 Two ledger lines that predate the current sets
 
-`18-build-status.md:162` records `micro-brand` as *"73 generated assets"* and
-`19-new-products.md:83` refers to *"The 73-asset brand run"*. The manifest holds 56 generated and
+`18-build-status.md` records `micro-brand` as *"73 generated assets"* and
+`19-new-products.md` refers to *"The 73-asset brand run"*. The manifest holds 56 generated and
 98 total. [18](18-build-status.md) is a dated ledger and 73 may have been an accurate total at the
 moment it was written, so **this is flagged, not corrected** — reconstructing the historical state
 would need the run's own history and I did not do that. A reader should treat `MANIFEST.json` as
