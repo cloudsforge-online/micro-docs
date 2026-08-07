@@ -1,5 +1,18 @@
 # 10 — Migration strategy
 
+> ## ⚠ CUTOVER COMPLETE — 2026-08-07
+>
+> This is "the document to read the night before a cutover". **The cutover happened**, on
+> 2026-08-05, and the estate has been public since. Every procedure here is written in the future
+> tense about an event now in the past.
+>
+> It is retained for its rollback and reconciliation procedures, which remain sound and are cited
+> from 13 places outside `docs/`. **Nothing in it is scheduled work.** A session looking for work
+> should read [33-roadmap-index-and-next-sessions](33-roadmap-index-and-next-sessions.md); a session
+> looking for the current deployment path should read
+> [26-public-deployment](26-public-deployment.md) and its §0 correction.
+
+
 How the transformation in [06-ecosystem-workflow.md](06-ecosystem-workflow.md) happens without
 breaking anything, losing anything, or crediting anything twice.
 

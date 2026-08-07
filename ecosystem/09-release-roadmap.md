@@ -1,5 +1,17 @@
 # 09 — Release roadmap
 
+> ## ⚠ PREMISE SPENT — 2026-08-07
+>
+> This document opens "Today they cannot" and describes thirty-one repositories that cannot be
+> released as one thing. **That problem was solved.** The estate is versioned, deployed and public
+> as of 2026-08-05. Its release *mechanism* sections are still accurate and still cited; its
+> *narrative of the present*, its phase gates and its sequencing are not.
+>
+> Do not plan from this document. Plan from
+> [33-roadmap-index-and-next-sessions](33-roadmap-index-and-next-sessions.md). The one live item it
+> still owns — the Beacon release gate that no pipeline calls — is carried as 30 §C4.
+
+
 How thirty-one independently versioned repositories become one thing a person can deploy, roll
 back and name.
 
@@ -349,6 +361,11 @@ contacted.
 `api.cloudsforge.online` currently points at the *game* API. It is renamed to `worlds-api.`
 before anything depends on it — a rename done in P11, not a deprecation, because at that point
 nothing external depends on it at all.
+
+> **CORRECTION 2026-08-07 — this rename was performed and then REVERSED.** The estate serves the
+> game API at `api.<apex>/v1/...`, not `worlds-api.<apex>`, and `worlds-api.cloudsforge.online`
+> does not resolve. Do not implement what this passage specifies. See
+> [18-build-status](18-build-status.md) §0.1 and `ui/packages/ui/src/surfaces.ts`.
 
 ---
 

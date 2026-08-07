@@ -1,5 +1,19 @@
 # 00 — Current state
 
+> ## ⚠ SUPERSEDED AS A DESCRIPTION OF THE ESTATE — 2026-08-07
+>
+> **Do not act on this document, and do not cite it as the state of anything.** It is the July 2026
+> baseline of the *pre-migration monorepo*: the system it describes no longer exists. It is retained
+> because [02-target-architecture](02-target-architecture.md) and
+> [08-prioritised-backlog](08-prioritised-backlog.md) are written as responses to it, and its
+> `TD-01`–`TD-20` defect ids are cited from 37 places outside `docs/`. Read it as **history — the
+> problem statement the estate was built to answer** — never as a current fact.
+>
+> For what exists now: [34-service-catalogue](34-service-catalogue.md).
+> For what is done: [18-build-status](18-build-status.md).
+> For what is next: [33-roadmap-index-and-next-sessions](33-roadmap-index-and-next-sessions.md).
+
+
 The baseline. Everything in this document was verified against source in July 2026 by
 per-repository inspection, not read from documentation. Where a repository's own `MAP.md`
 disagrees with its code, the code is recorded here and the drift is noted, because several

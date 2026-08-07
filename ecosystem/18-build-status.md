@@ -39,10 +39,10 @@ inherited from:**
   before today and is untouched by any of the above.
 - Mainnet is a few hundred blocks old. Reachable is not established.
 - **Two configured hostnames do not work**: `api.cloudsforge.online` answers 502, and
-  `worlds-api.cloudsforge.online` has no DNS record at all.
+  `worlds-api.cloudsforge.online` has no DNS record at all. <!-- dead-ok -->
 - **There is no publicly reachable testnet.** Cloudflare's Universal SSL covers the single-label
   wildcard `*.cloudsforge.online`, which matches `testnet.cloudsforge.online` but not
-  `hub.testnet.cloudsforge.online`. A two-label wildcard needs Advanced Certificate Manager, which
+  `hub.testnet.cloudsforge.online`. A two-label wildcard needs Advanced Certificate Manager, which <!-- dead-ok -->
   is paid and is not bought, so every testnet subdomain fails the TLS handshake at Cloudflare's
   edge before reaching the estate.
 - One machine. No redundancy, no failover, and no backup that has ever been restored.
@@ -74,7 +74,7 @@ The environment is a **suffix on the first label**, not a second label. `ENV_LAB
 `splitEnvLabel()` carry it in the registry (`ui/packages/ui/src/surfaces.ts`), and the
 comment above them states the change and its cause directly
 (`ui/packages/ui/src/surfaces.ts`). The split is on the **last** hyphen, so that
-`worlds-api-testnet` reads as `worlds-api` on `testnet` rather than as `worlds` on an environment
+`worlds-api-testnet` reads as `worlds-api` on `testnet` rather than as `worlds` on an environment <!-- dead-ok -->
 called `api-testnet` (`ui/packages/ui/src/surfaces.ts`).
 
 **`X.testnet.cloudsforge.online` is dead in every form.** Any document still showing it — including
@@ -94,13 +94,13 @@ called `api-testnet` (`ui/packages/ui/src/surfaces.ts`).
 - `nimbus`, `pay` and `vault` return **200 on `/livez` and 404 at `/`** on both networks. That is
   correct rather than a fault: they are `servesUi: false`
   (`ui/packages/ui/src/surfaces.ts`) and are not pages. Neither they, nor `account`, `api`
-  or `worlds-api`, may be linked from a nav or a footer.
+  or `worlds-api`, may be linked from a nav or a footer. <!-- dead-ok -->
 - `p2p.` and `p2p-testnet.` return **426** at `/p2p`, which is the WebSocket upgrade response.
   Only that path is routed.
 
-**The `worlds-api` bullet in §0 is misleading, and is corrected here.** It has no DNS record, which
+**The `worlds-api` bullet in §0 is misleading, and is corrected here.** It has no DNS record, which <!-- dead-ok -->
 is true, but §0 lists it beside a 502 as though both were faults. The game API was consolidated
-into `api.`, so **`worlds-api.` is retired, not broken** — it should be dropped from documents as a
+into `api.`, so **`worlds-api.` is retired, not broken** — it should be dropped from documents as a <!-- dead-ok -->
 live endpoint rather than reported as down. It does, however, **still exist as a registry row**
 (`ui/packages/ui/src/surfaces.ts`), which is a genuine inconsistency: the registry
 publishes a surface for a hostname the estate no longer serves.
@@ -143,12 +143,19 @@ as they are (`hearth`, `asset-forge`, `stack`), plus the five added by
 
 Five further repositories exist that the plan did not enumerate as products — `brand`,
 `conformance`, `deploy`, `docs` and `emberkin-assets` — and Aetherholm added three more. The
-working tree holds **58 directories**: 56 `micro-` repositories in `cloudsforge-online`, plus
-`hearth` (the legacy repo, deliberately unchanged) and `kindred-upstream` (a mirror of
-`savvaniss/kindred-resonance`, not a CloudsForge repo at all). Neither of the last two is
-`micro-` prefixed, which is worth knowing before running any estate-wide sweep by name: a sweep
-that assumes the prefix reports them as having no CI rather than as unmigrated, and that is how
-`hearth`'s one red workflow stayed invisible.
+working tree holds **67 directories** (recounted 2026-08-07; it held 58 when this paragraph was
+first written), each its own git repository. `hearth` is the legacy repo, deliberately
+unchanged, and `kindred-upstream` is a mirror of `savvaniss/kindred-resonance`, not a
+CloudsForge repo at all.
+
+> **Correction, 2026-08-07 — the `micro-` prefix is a *remote* name, not a directory name.**
+> This paragraph used to describe "56 `micro-` repositories" in the working tree. There are
+> none: `ls -d */ | grep -c '^micro-'` returns `0`. Each directory `X` pushes to
+> `github.com/cloudsforge-online/micro-X` (except `hearth`, which pushes to
+> `cloudsforge-online/hearth`). A sweep that filters local directories by the prefix therefore
+> matches **nothing at all** rather than matching most of them — the opposite of the failure
+> this paragraph warned about, and a worse one, because it returns cleanly. Sweep by
+> `ls -d */`, and read the org name from each `.git/config` rather than by constructing it.
 
 Verified 2026-08-03 by sweeping all 58: every working tree clean, nothing unpushed, and the
 latest `main` run green in all 56 `micro-` repositories. `hearth`'s `ci.yml` and `publish.yml`
@@ -160,21 +167,30 @@ against 48 targeted. Both cannot be true. The count above is the one that was ch
 the repositories themselves rather than against a previous revision of this file.
 
 **Repository count is the least useful measure of the three, and it is the one that flatters.**
-The truthful reading is that the *expensive* half is behind us. Everything that touches money,
-keys, chain state or identity is built and adversarially tested: ledger, custody, settlement,
-indexer, wallet, pricing, billing, identity, policy. What remains is dominated by frontends,
-which are lighter per repository, and by three operational services whose behaviour is already
-specified in [13-operational-model](13-operational-model.md).
+Everything that touches money, keys, chain state or identity is built and adversarially tested:
+ledger, custody, settlement, indexer, wallet, pricing, billing, identity, policy. Nothing is
+left in the build column at all — which is precisely why the count now measures nothing useful.
+What is left is not *building* services but *making them worth visiting*: the estate is
+complete and cold. Read [33-roadmap-index-and-next-sessions](33-roadmap-index-and-next-sessions.md)
+§1 for what that means for priority.
 
-**CI is green across all 32 repositories** (verified on the runner, 2026-07-31) — including the
-sixteen that silently had no workflow file at all, despite the definition of done claiming CI
-everywhere. That claim is now true rather than assumed.
-
-**Two services now run together** — identity and ledger, with real migrations, a real database and
-real cross-service authentication (§3.3g). The other eighteen still do not, and no environment
-exists beyond a local compose file. Phase exit is
-defined by behaviour in an environment, so on the criteria in
-[06-ecosystem-workflow](06-ecosystem-workflow.md) no phase has formally exited.
+> **Three sentences were removed here on 2026-08-07 because they had become false**, under the
+> instruction in §4 of this file. For the record of what they said and why they stopped being
+> true:
+>
+> - *"CI is green across all 32 repositories (verified on the runner, 2026-07-31)."* Superseded by
+>   the 2026-08-03 sweep recorded above, which covered every repository, not 32.
+> - *"What remains is dominated by frontends … and by three operational services."* Nothing
+>   remains; the table above reads 48/48/0.
+> - *"Two services now run together … the other eighteen still do not, and no environment exists
+>   beyond a local compose file … no phase has formally exited."* Both networks were deployed on
+>   2026-08-05 — mainnet (chain 7411) and testnet (chain 7412) — and every service in
+>   `deploy/compose/docker-compose.estate.yml` runs on the host under `cloudsforge-estate-*` and
+>   `cf-testnet-*`.
+>
+> The estate's remaining gap is not deployment. It is that **no real visitor has yet used any of
+> it** — see [33-roadmap-index-and-next-sessions](33-roadmap-index-and-next-sessions.md) §1 and
+> §A1 of [30-roadmap-completion](30-roadmap-completion.md).
 
 ---
 

@@ -235,6 +235,26 @@ all three tags present and anonymously pullable, which is precisely what
 
 ### 2.3 29 of 48 running services will not restart. Measured, not read.
 
+> ## ✅ FIXED SINCE — re-measured on the host, 2026-08-07
+>
+> This blocker no longer holds. Across both networks the host runs **181 containers: 105
+> `unless-stopped`, 76 `no`** — and all 76 are one-shot `*-migrate`, `*-init` and `*-check` jobs
+> (each appearing twice, once per network), for which `no` is the correct policy. Every one of
+> the 105 long-running services carries `unless-stopped`; the count of *running* containers is
+> also 105, i.e. the two sets coincide exactly.
+>
+> ```
+> $ docker ps -a --format '{{.Names}}' | wc -l                 # 181
+> $ … docker inspect -f '{{.HostConfig.RestartPolicy.Name}}'   # 105 unless-stopped, 76 no
+> $ docker ps -a --filter status=exited --format '{{.Names}}'  # 76, all *-migrate/-init/-check
+> ```
+>
+> **The second half of the requirement below still stands**: there is still no systemd unit in
+> `deploy/`, so nothing brings the estate up at host boot. `unless-stopped` restarts a crashed
+> container but does not survive a reboot of the machine — treat that as the live remainder of
+> this item. The section below is retained as written, because its reasoning about *why* the
+> policy matters on a cloud instance is unaffected.
+
 ```
 $ for c in $(docker ps --filter label=com.docker.compose.project=cloudsforge-estate --format '{{.Names}}'); do
     docker inspect -f '{{.HostConfig.RestartPolicy.Name}}' $c; done | sort | uniq -c

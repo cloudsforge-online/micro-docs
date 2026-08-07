@@ -1,5 +1,22 @@
 # 08 — Prioritised backlog
 
+> ## ⚠ SUPERSEDED AS A WORK QUEUE — 2026-08-07
+>
+> 3,399 lines and 256KB of backlog items written against the *pre-migration* estate. The great
+> majority are **done** — 48 repositories are built, tested and deployed — and the ledger of which
+> is [18-build-status](18-build-status.md), not this file. This document is not maintained against
+> completion, so an item appearing open here is not evidence that it is open.
+>
+> **Do not pick work from this document.** The live queue is
+> [33-roadmap-index-and-next-sessions](33-roadmap-index-and-next-sessions.md) §3, which supersedes
+> it and was written against the estate as measured on 2026-08-07.
+>
+> Retained because its `MIG-` and `AD-` item ids are cited across the plan set and carry the
+> reasoning behind decisions that are now shipped. At least one item is known-inverted: **MIG-26**
+> specifies the `worlds-api` rename that the estate performed and then **reversed** — see
+> [18-build-status](18-build-status.md) §0.1.
+
+
 The executable inventory. Every item below is scoped so that one engineer can pick it up, read
 this entry plus the documents it cites, and start work without rediscovering the estate.
 
@@ -2385,6 +2402,12 @@ trail on money-adjacent code matters, and configuration comes with the history.
 - **Blocking status** — Blocks nothing.
 
 #### MIG-26 · Rename `api.cloudsforge.online` to `worlds-api`
+
+> **INVERTED 2026-08-07 — do not implement.** The estate made the opposite decision. `api.<apex>`
+> serves the game API today and `worlds-api.cloudsforge.online` does not resolve; the public
+> developer API is namespaced under `api.<apex>/v1/...` instead of taking the bare hostname. The
+> acceptance criteria below describe a state the estate has deliberately moved away from. See
+> [18-build-status](18-build-status.md) §0.1 and `ui/packages/ui/src/surfaces.ts`.
 
 - **Description** — The hostname currently points at the *game* API and must be freed before the public developer API can use it.
 - **User or operator value** — The public API gets the obvious hostname; game clients get an honest one.

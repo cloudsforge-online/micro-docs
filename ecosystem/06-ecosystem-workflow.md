@@ -1135,6 +1135,12 @@ every service exposing a public API. **New repositories.** Three.
 contracts and fronted by the gateway. `api.cloudsforge.online` — currently the *game* API — is
 renamed to `worlds-api.` before anything depends on it.
 
+> **CORRECTION 2026-08-07 — this rename was performed and then REVERSED.** The estate serves the
+> game API at `api.<apex>/v1/...`, not `worlds-api.<apex>`, and `worlds-api.cloudsforge.online`
+> does not resolve. Do not implement what this passage specifies. See
+> [18-build-status](18-build-status.md) §0.1 and `ui/packages/ui/src/surfaces.ts`.
+
+
 **Dependencies.** P6, P7, P9.
 
 **Data-model changes.** All of [04](04-domain-model.md) §1.5 plus devplatform's own.
