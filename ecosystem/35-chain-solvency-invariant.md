@@ -190,6 +190,7 @@ The indexer's answer already carries `addresses` and `labelPrefixes` precisely s
 see what was summed — those two fields are what identified the unbooked treasury during the
 incident. Having the reconciliation failure and `estate-verify` print the observed total broken down
 by label prefix beside the ledger total turns a day of investigation into a glance.
+cloudsforge-online/micro-org#248, shipped in 2.5.4. See *What step 5 actually required* below.
 
 ## What this plan deliberately does not do
 
@@ -345,3 +346,89 @@ checking before it is scheduled.
 * `indexer/src/custody.ts` — `DERIVED_FAMILIES`, `deriveTotal`, and the two proofs
 * `indexer/src/store.ts` — `unspentOutputTotal`, and why it is not `in − out`
 * `indexer/src/bitcoin.ts:324` — the unconditional spend record that makes `in − out` over-state
+
+---
+
+## What step 5 actually required
+
+*Appended 2026-08-08. Step 5 is written above as a reporting change — print what is already
+carried. The fields it names do exist, and printing them as they stood would have produced a
+message that names a cause confidently and sometimes names the wrong one.*
+
+### `addresses` and `labelPrefixes` are not a breakdown
+
+`GET /custody/:chain/:network/total` answered with a `total`, an `addresses` count, and the
+`labelPrefixes` it was asked to sum over. Three facts, and no statement of which coin sat under
+which prefix — the operator during the incident got there by *inference*, knowing the treasury was
+the only `treasury:` key and that the total had moved by its balance. That inference is available
+when a set has one interesting member. It is not available in general, and a freeze message built
+on it would be an assertion the service never made.
+
+So the answer gains `byLabelPrefix`: one bucket per **configured** prefix, in configured order,
+`{ prefix, addresses, total }`. Empty buckets included, because "`treasury:` holds nothing" is the
+sentence that ends the incident and an omitted bucket does not say it.
+
+### The breakdown has to be what the total is made of
+
+The trap is writing the breakdown as a second pass over the same addresses. Two passes are two
+arithmetics, and the day they disagree is the day the freeze message is most load-bearing and least
+trustworthy.
+
+`custody.ts` now sums per address and never per set: `sumFromChain` and `deriveBalances` both return
+a `Map<address, bigint>`, and `groupByPrefix` is the *only* place a total is formed —
+`Σ buckets == total` and `Σ bucket.addresses == |set|` hold because the whole is built from the
+parts, not checked against them. It asserts both anyway, under a fault code of its own,
+`breakdown_inconsistent`: every other code names something an operator can go and look at, and this
+one names a defect in that file. Reusing `address_unreadable` would send whoever read the freeze to
+the node, which is the one place the answer would not be.
+
+`unspentOutputTotals` (plural) replaces the set-wide sum in `store.ts` for the same reason.
+
+### The breakdown must not be able to become a number
+
+The ledger's solvency arithmetic is built from `Observation`. If the breakdown entered it as
+`readonly {prefix, total: bigint}[]`, then some later change — reasonably, locally — computes with
+it, and the display of the check becomes an input to the check. It crosses the boundary as a
+**string**: `breakdownFrom` (`ledger/src/indexerclient.ts`) is the sibling of `reasonFor`, pure,
+total, and structurally unable to hand back a quantity. It clamps to 8 buckets and 24 characters of
+prefix, strips everything outside `[A-Za-z0-9:._-]`, and returns `null` rather than a partial
+answer; `reconcile.ts` clamps the assembled line to 300 characters. A freeze reason is written to
+the ledger and read by humans, and a peer that has been tampered with does not get to choose what
+is in it.
+
+**No address appears in the answer, at any point.** A custody address in a freeze reason is a
+custody address in a log aggregator, and a bucket answers the operator's question — *which pot is
+short* — without one. The `balance()` path is handed `{ address, historyFromHeight }` and nothing
+else, so there is no bucket for it to fill in wrongly.
+
+### The test that could not have passed
+
+The end-to-end case drives a real `micro-indexer` `createServer` from the sibling checkout through
+a real HTTP hop into a real `JobRunner`, and asserts the exact freeze string. Standing beside it was
+a case asserting that a token without `indexer:read` is a 401, which recorded `indexer_error`
+instead — and kept doing so after being handed this repository's `TokenError`.
+
+pnpm materialises the `file:` dependency on `runtime/packages/auth` into *each checkout's own*
+store, so `@cloudsforge/auth` is two module evaluations and `TokenError` is two classes.
+`statusFor` is `err instanceof TokenError`. Correct in every deployed configuration — one container,
+one graph — and silently false in exactly this test. It was gated on an indexer checkout beside the
+ledger's, so CI had always skipped it. cloudsforge-online/micro-org#255.
+
+The wider point outlives the fix: an `instanceof` across the estate's shared packages is a statement
+about one process's module graph, not about a type.
+
+### What this says about the plan's shape
+
+Steps 1–3 found defects a running estate had to show. Step 4 found a gap visible in the source that
+nothing had read for. Step 5 found neither — it found that a step phrased as *reporting* was really
+a step about *arithmetic*, because a message that names a cause is a claim, and a claim needs the
+same construction discipline as the number it explains. "Print what we already have" was true of the
+fields and false of the sentence.
+
+### Cross-references
+
+* cloudsforge-online/micro-org#248 — the structural defect this closes
+* cloudsforge-online/micro-org#255 — the cross-checkout `instanceof` defect in the LIVE harness
+* `indexer/src/custody.ts` — `groupByPrefix`, `byLabelPrefix`, `breakdown_inconsistent`
+* `ledger/src/indexerclient.ts` — `breakdownFrom`, and why it returns a string
+* `ledger/src/reconcile.ts` — where the breakdown lands in the freeze reason
