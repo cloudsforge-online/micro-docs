@@ -176,7 +176,8 @@ cannot land ahead of one.
    explorer-web, network-site, foresight. Parallelisable by repo once 3 has merged.
 5. **BTC configuration** the moment its sync completes (§3.1).
 6. **DOGE and ETC node provisioning and configuration**, in the owner's stated sync order.
-7. **The pool** (§5), which depends on nodes but not on any of 1-6.
+7. **The pool** (§5) — `micro-pool` then `micro-pool-web` (§5.4). Depends on nodes, but on none
+   of 1-6, so it can be built in parallel with them.
 
 Steps 1-4 are code and can proceed today. Steps 5-6 are blocked on syncs that are hours to days
 away.
@@ -246,6 +247,7 @@ So this is a new repository, `micro-pool`, and the shape is:
 | Accounting | PPLNS over a sliding window. Shares are a debt record, not money |
 | Payout | Credit the ledger, reusing the `credit_key` idempotency shape from `wallet/src/deposits.ts:580` rather than inventing a second one |
 | Honesty surface | Published pool fee, published payout scheme, per-worker share history a miner can check against their own machine |
+| `micro-pool-web` | The surface all of that is read through. §5.4 |
 
 Two rules this repository inherits and must not bend. **Found blocks are the pool's revenue and the
 miners' claim on it; the pool's own fee is disclosed on the page, in a number derived at runtime
@@ -255,7 +257,43 @@ say, in its own voice, that browser mining is EMBER-only and why** — `copy.ts:
 "None exists, and nothing in the protocol prevents one from being built", which is the honest
 sentence to replace when one does exist.
 
-### 5.4 What this track does not claim
+### 5.4 The pool needs a surface, and it is not like the other surfaces
+
+`micro-pool-web`, routed at `pool.cloudsforge.online` (and `pool-testnet.` under the estate's
+one-label scheme). It is a new repository and a new entry in `deploy/compose`, the gateway registry
+and `34-service-catalogue`.
+
+It differs from every other public surface in the estate in one respect that shapes the whole
+design: **its primary user arrives with a machine, not a browser.** A miner's first question is
+"what do I point at you", their second is "is my hardware actually working", and their third — the
+one that decides whether they stay — is "can I check that you counted my shares". Everything else
+is secondary.
+
+| Route | Public? | What it must do |
+| --- | --- | --- |
+| `/` | yes | The connection string, per chain, copyable in one click. Pool fee and payout scheme as numbers derived from the accounting's own constants, never typed. Current pool hashrate, connected workers, last block found — or a named hole if none has been |
+| `/start` | yes | The actual commands for the actual common miners, per chain. This is documentation as product; a miner who has to guess the `-u` format leaves |
+| `/workers` | account | Per-worker hashrate, share counts, accept/reject/stale rates, last-seen. The rejected and stale columns are not optional — hiding them is how pools lose trust |
+| `/shares` | account | The miner's own share history, at enough resolution to reconcile against their machine's local log. §5.3's checkability requirement lands here |
+| `/payouts` | account | Every payout, its shares, its window, and the ledger entry it created |
+| `/blocks` | yes | Every block the pool has found, with its height, its value and its distribution. Empty until one is found, and honestly empty |
+
+Three rules it inherits. **Every number is derived at runtime or bound by a test to the constant it
+describes** (32 §1.1) — this surface is mostly numbers and most of them are about money, so the
+rule bites hardest here. **Render a named hole, never a plausible screen over nothing** (32 §1.2) —
+a new pool has no blocks, no luck history and no averages, and the empty states are the deliverable
+until it does. And **no yield figure of any kind** until there is a measured one; "earn up to" is
+the single most common lie in this product category and the estate has a rule against it already.
+
+It is also the one surface in the estate with a genuine case for its own visual direction rather
+than the shared spine's defaults. Every other frontend is a product page or an operator console;
+this one is an instrument panel, read at a glance, often on a second monitor, by someone who is
+comparing it against three other pools' dashboards. Monospace and density are the subject's own
+vernacular, not a style choice. It should still consume `ui/packages/ui` for chrome, tokens and
+accessibility floor — the estate does not need a seventeenth spine — but the data surfaces
+themselves should be designed for the reading, not inherited from a marketing layout.
+
+### 5.5 What this track does not claim
 
 It does not claim a browser will ever mine Bitcoin. It does not claim the pool will be competitive
 on fee against established pools on day one. It does not claim any yield figure — there is no
