@@ -61,12 +61,29 @@ venue symbol maps), `sdk/packages/sdk/src/chain.ts:63-99` (a deliberate copy, po
 Litecoin is fully synced and its deposit path works end to end. Two things are missing, and both
 are worse than they sound.
 
-**2.1 No Litecoin withdrawal can be built or broadcast. At all.**
-`deploy/compose/docker-compose.estate.yml:368-385` populates `SETTLEMENT_RPC_URLS` with an `ltc`
-entry *only if* `LTC_RPC_URL` is set. It is not set. So `settlement/src/registry.ts:99` raises
-`NoEndpointError` for every LTC withdrawal, sweep and fee quote, and settlement's own boot line
-reports `{ltc, endpoint:false}`. The estate can take custody of Litecoin and has no tested path to
-send it back.
+**2.1 No Litecoin withdrawal can be built or broadcast. At all — but not for the reason this
+document first gave.**
+
+The first draft said `LTC_RPC_URL` was unset, so `SETTLEMENT_RPC_URLS` had no `ltc` entry and
+`settlement/src/registry.ts:99` raised `NoEndpointError`. **That was wrong**, and it was wrong in
+the way worth recording: it was inferred from the compose expression rather than measured against
+the running estate. `LTC_RPC_URL` *is* set in `compose/estate/tokens.env`, the `ltc` entry *is*
+present, and settlement's boot line reports `{"chain":"ltc","endpoint":true}`.
+
+The real blocker is one line of transport code. `settlement/src/registry.ts:161` builds its client
+with `baseUrl: parsed.origin`, and **`URL.origin` discards userinfo**, so an endpoint written
+`http://user:pass@host:50002` sends no `Authorization` header. Bitcoin-family nodes have no
+cookie-auth path over that transport and answer 401. Measured from inside the running settlement
+container, against the endpoint it already holds:
+
+```
+NO-AUTH   (baseUrl = parsed.origin — what registry.ts does today) -> 401 Unauthorized
+WITH-AUTH (Authorization: Basic base64(user:pass))                -> 200, blocks=3156498, ibd=false
+```
+
+So the estate can take custody of Litecoin and has no path to send it back, and the reason has
+nothing to do with Litecoin. Filed as **micro-org#267**. It will block BTC and DOGE identically —
+same family, same auth scheme — which is why it moves to the front of §4.
 
 **2.2 Litecoin deposits credit with no solvency check whatsoever.**
 `deploy/compose/docker-compose.estate.yml:1009` reads `LEDGER_RECONCILE_ASSETS: "SHARD,EMBER"`.
@@ -82,9 +99,16 @@ lifts a freeze. So the flip is last, not first, and it is gated on a real observ
 
 **2.3 The remaining Litecoin items**, each smaller:
 
-- `WALLET_FEE_QUOTES` carries `LTC: 10000` (`docker-compose.estate.yml:346`) but the comment above
-  it says this is a floor derived from `minrelaytxfee`, not from `estimatesmartfee`, and says
-  "REVISIT once `estimatesmartfee` answers". Now that the node is synced, it answers. Measure it.
+- ~~`WALLET_FEE_QUOTES` carries `LTC: 10000` … "REVISIT once `estimatesmartfee` answers". Now that
+  the node is synced, it answers. Measure it.~~ **Done, and the premise was wrong: it will never
+  answer.** The node runs `blocksonly=1`, so it holds no mempool, and the fee estimator learns
+  only by watching transactions enter a mempool and later confirm — every target returns
+  "Insufficient data or no fee rate found" and always will. Filed as **micro-org#268**. The quote
+  is instead backed by `getblockstats` `feerate_percentiles`, which work under `blocksonly` and
+  are confirmed transactions rather than a forecast: over blocks 3,156,352-3,156,495 (53,590
+  transactions) the median block's median feerate is 5 sat/vB and the p90 block's p90 is 36, so
+  10,000 litoshis buys a ~141 vB spend about 70 sat/vB. The figure is unchanged; what it rests on
+  is not. Bitcoin's node carries the same `blocksonly` posture, so BTC lands here too.
 - `ltc:mainnet` is cold-started at record floor 3,155,209, so unclaimed addresses answer
   `history_unknown` (35:322-326). Settlement never makes the `freshlyDerived` claim, so a pinned
   treasury needs an operator-supplied `historyFromHeight` (35:328-333).
@@ -167,6 +191,10 @@ key set is `['XLTCZUSD','LTCUSD']`, and Dogecoin on Kraken is historically `XDG`
 The code order is not the sync order, because code can land ahead of a node and configuration
 cannot land ahead of one.
 
+0. **Fix `settlement`'s RPC authentication** (§2.1, micro-org#267). It is ahead of everything
+   because it is not a Litecoin item at all: it is the one transport defect that will otherwise be
+   rediscovered separately for BTC and again for DOGE. One line, and it unblocks every
+   Bitcoin-family withdrawal the estate will ever build.
 1. **Finish Litecoin** (§2). It is the only chain synced today, and it is the template that proves
    the path. Withdrawal wiring first, reconciliation last and gated on an observed run.
 2. **`pricing` venue maps for DOGE and ETC** (§3.4), verified live. Must merge before 3.
