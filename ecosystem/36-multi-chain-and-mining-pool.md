@@ -202,13 +202,19 @@ cannot land ahead of one.
    consumer, which is the forcing function working; do not merge it on a Friday.
 4. **The consumer sweep** — indexer, custody, wallet, settlement, ledger, sdk, hub-web,
    explorer-web, network-site, foresight. Parallelisable by repo once 3 has merged.
-5. **BTC configuration** the moment its sync completes (§3.1).
-6. **DOGE and ETC node provisioning and configuration**, in the owner's stated sync order.
-7. **The pool** (§5) — `micro-pool` then `micro-pool-web` (§5.4). Depends on nodes, but on none
-   of 1-6, so it can be built in parallel with them.
+5. **Settle the indexer's storage cost** (§6, micro-org#253) — before BTC is followed, not after.
+   Following BTC writes 4.05 GB/day into a Postgres volume with 268 GB free; together with LTC
+   that is 52 days of headroom. This is the one step whose deadline is set by a disk rather than
+   by a dependency.
+6. **BTC configuration** the moment its sync completes (§3.1). ~31 days out at the current rate.
+7. **DOGE and ETC node provisioning and configuration**, in the owner's stated sync order. DOGE is
+   held behind BTC deliberately: they share a spindle and an uplink (§6).
+8. **The pool** (§5) — `micro-pool` then `micro-pool-web` (§5.4). Depends on nodes, but on none
+   of 1-7, so it can be built in parallel with them.
 
-Steps 1-4 are code and can proceed today. Steps 5-6 are blocked on syncs that are hours to days
-away.
+Steps 1-4 are code and can proceed today. Step 5 is code and is now the critical path, because
+its deadline is a disk filling rather than a sync finishing. Steps 6-7 are blocked on syncs that
+are days to weeks away.
 
 ---
 
@@ -344,9 +350,34 @@ say that too.
   indistinguishable, from the miner's side, from a pool that steals them. The share history has to
   be checkable by the miner against their own machine, which is a product requirement and not a
   nicety.
-- **Disk.** `/data/chains` already holds Bitcoin, Litecoin and Dogecoin; ETC is symlinked to a
-  second volume. Four archive-ish nodes plus the estate is a capacity question that should be
-  measured before DOGE and ETC are started, not after.
+- **Disk, measured — and it is the indexer's Postgres, not the chain data.** The chains are fine:
+  `/data` is 2.0 TB with 1.2 TB free, holding Bitcoin (697 GB), Dogecoin (112 GB), Litecoin and a
+  1.9 GB ETC stub. The constraint is elsewhere. Docker's volume root is
+  `/var/snap/docker/common/var-lib-docker`, which sits on `/dev/sda2` — **440 GB with 268 GB
+  free** — and that is where the indexer database lives.
+
+  Following `ltc:mainnet` cost **1541 MB over 751 blocks** between 2026-08-08 and 2026-08-09
+  (indexer DB 2249 → 3790 MB), which is 2.05 MB per block, **6.3 KB per transaction**, indexes
+  included. `watched_addresses` did not move from 245 across that window: the cost is a function
+  of Litecoin's transaction volume, not of how many addresses the estate watches. Costing the
+  nodes' own `getchaintxstats` at that rate:
+
+  | chain | tx/day | Postgres/day | per year |
+  |---|---|---|---|
+  | `ltc:mainnet` | 173,726 | 1.07 GB | 391 GB |
+  | `btc:mainnet` | 658,777 | **4.05 GB** | 1.48 TB |
+
+  Both together fill the remaining 268 GB in **52 days**, and that is two chains of four. This
+  gates §4: it has to be settled before BTC is followed, not after. The mechanism and the fix are
+  in micro-org#253 — `bitcoin.ts` computes the watched set already and spends it gating the
+  *event* rather than the *row*, and the selective source that `btcsource.ts` was designed around
+  is built but unreferenced.
+- **Dogecoin is 2.6 years behind, and syncing it competes with Bitcoin.** The node holds 112 GB
+  with `txindex=1` and a config repaired on 2026-08-08, but its tip is height 5,008,594 dated
+  2023-12-16 — roughly 1.37M blocks short. Bitcoin is at 75.3% (868,781 of 961,638) and gaining
+  about 126 blocks/hour, so ~31 days out on its own. The two share one spindle and one uplink, so
+  DOGE stays stopped until BTC is done. That is the stated order anyway (§4), but it is now a
+  measured constraint rather than a preference.
 
 ---
 
