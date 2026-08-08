@@ -112,6 +112,15 @@ applies if nobody decides.
 
 ### 2.1 Does Hearth launch mainnet, and when?
 
+> **RESOLVED 2026-08-05. Mainnet launched — chain 7411, live and mining.** See
+> [18-build-status](18-build-status.md) §0. The reasoning below is left intact as the record of why
+> it was deferred, but the **"Default if undecided: mainnet is not launched"** line no longer
+> describes reality and must not be cited as a constraint. The one property it claimed was
+> load-bearing — that no phase's exit criteria depend on a mainnet date — is now moot.
+>
+> Note that mainnet EMBER still has **no monetary value** on either network, so anything downstream
+> that was waiting on "is EMBER real money yet" is still waiting. Launched ≠ valued.
+
 **Deferred because** a mainnet launch is a one-way door: a chain with real value cannot be
 reset, and Hearth has no finality gadget, no multisig, no pools and a supply curve that is
 currently modelled rather than committed. **Resolved by:** sustained testnet hashrate from
@@ -207,6 +216,12 @@ compose" is a governance finding rather than a curiosity. **Gate:** P2.
 afternoon's work and it removes a question that otherwise gets asked at the worst moment.
 
 ### 2.10 Does asset generation stay OpenAI-dependent?
+
+> **RESOLVED. The default below was not taken.**
+> [24-asset-model-comparison](24-asset-model-comparison.md):3, :22 and :296 conclude **"FLUX 2 Pro,
+> decisively"**, and the root README credits FLUX 2 Pro. The **"Default: OpenAI only"** line is
+> therefore stale and contradicts a sibling document with authority on this question. The reasoning
+> below is left as the record of why it was deferred in July 2026.
 
 **Deferred because** `gpt-image-1` is the only model the account can actually generate with
 (probed 2026-07-28), and a second provider is real work for no current benefit.

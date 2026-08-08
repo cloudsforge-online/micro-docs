@@ -35,7 +35,7 @@ form is dead in every occurrence below.
 the two-label form needed no code change, and it was right about the code. It was
 the *certificate* that killed it: Cloudflare's Universal SSL covers a
 single-label wildcard, so `*.cloudsforge.online` matches
-`testnet.cloudsforge.online` but not `hub.testnet.cloudsforge.online`, and a
+`testnet.cloudsforge.online` but not `hub.testnet.cloudsforge.online`, and a <!-- dead-ok -->
 two-label wildcard needs Advanced Certificate Manager, which is paid. Rather than
 buy it, the environment was moved into the **first label, as a suffix**. The
 registry carries it: `ENV_LABELS` and `splitEnvLabel()`
@@ -43,8 +43,8 @@ registry carries it: `ENV_LABELS` and `splitEnvLabel()`
 before/after stated in the comment above them
 (`ui/packages/ui/src/surfaces.ts`).
 
-**The split is on the LAST hyphen, and `worlds-api` is why**:
-`worlds-api-testnet` must read as the surface `worlds-api` on `testnet`, not as
+**The split is on the LAST hyphen, and `worlds-api` is why**: <!-- dead-ok -->
+`worlds-api-testnet` must read as the surface `worlds-api` on `testnet`, not as <!-- dead-ok -->
 `worlds` on an environment called `api-testnet`
 (`ui/packages/ui/src/surfaces.ts`).
 
@@ -64,7 +64,7 @@ is satisfied. `nimbus`, `pay` and `vault` answer `/livez` with 200 and `/` with
 does.** The cause was a `cf-api-catchall` router pointing at `http://127.0.0.1:1`
 — a gateway backend fault rather than a tunnel or DNS one, which is why the
 hostname resolved the whole time. It serves on both networks now, answering `404
-text/plain` on an unmatched path. **Retired rather than broken:** `worlds-api.` has no DNS
+text/plain` on an unmatched path. **Retired rather than broken:** `worlds-api.` has no DNS <!-- dead-ok -->
 record because the game API was consolidated into `api.` — so the rename this
 document plans in §3 and elsewhere did not happen, and the reverse did. It is
 still a registry row (`ui/packages/ui/src/surfaces.ts`), which is an
@@ -585,7 +585,7 @@ authority.
 - [ ] Seed addresses published on `network.<apex>`, derived not typed.
 - [x] `rpc.<apex>` answers `eth_chainId` with the right chain, per environment.
       Done 2026-08-05. Note the hostname per §0: testnet's RPC is
-      `rpc-testnet.cloudsforge.online`, not `rpc.testnet.cloudsforge.online`.
+      `rpc-testnet.cloudsforge.online`, not `rpc.testnet.cloudsforge.online`. <!-- dead-ok -->
 - [ ] **§6 answered.** Do not launch mainnet without an answer.
 - [x] Fix `contracts/packages/chain/src/index.ts` — testnet explorer links point at mainnet.
       Done 2026-08-04 (`contracts` 326de9d). The table is now built by `explorers()`, which makes two

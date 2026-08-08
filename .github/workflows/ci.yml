@@ -17,3 +17,17 @@ jobs:
       require-dockerignore: false
     permissions:
       contents: read
+
+  # The second failure a content repository can commit is an instruction to build something the
+  # estate has retired. It costs a reader a day and is invisible to review, because the sentence
+  # was true when it was written. See tools/check-dead-patterns.mjs for the two escapes.
+  dead-patterns:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node tools/check-dead-patterns.mjs
