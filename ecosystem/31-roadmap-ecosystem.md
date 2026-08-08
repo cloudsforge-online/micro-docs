@@ -614,14 +614,26 @@ gap stays open produces another day of events that can never be delivered.
 
 ### 5.2 Make the topic registry complete, and keep the checker green — P1, effort M
 
-**What it is.** `org/tools/estate-topics.mjs` exists and fails today. Run on 2026-08-07 it
-reported: `estate-topics: FAILED — 2 disagreement(s) between repositories`. One is
+**What it is.** `org/tools/estate-topics.mjs` exists and failed for months. Run on 2026-08-07 it
+reported: `estate-topics: FAILED — 2 disagreement(s) between repositories`. One was
 `identity.password.reset_requested`, which `notify` holds a rule for at
 `notify/src/catalogue.ts:764` and identity emits at `identity/src/passwordReset.ts:362`, with no
-registry entry — so password-reset email reaches notify only because two repositories guessed the
-same string. The other is `studio/src/uploads.ts:220` emitting
+registry entry — so password-reset email reached notify only because two repositories guessed the
+same string. The other was `studio/src/uploads.ts:220` emitting
 `studio.asset.visibility.changed`, which has four segments and is therefore not a legal topic name
-under the contract's `TOPIC_PATTERN`. The same run censused unregistered emitted topics with no
+under the contract's `TOPIC_PATTERN`.
+
+> **Both live findings were fixed on 2026-08-08 — micro-org#263.** contracts registered
+> `identity.password.reset_requested` with the spec identity had been holding in quarantine
+> (character for character, `keyedBy: 'user_id'` read off the emit site) and gave it a
+> `TOPIC_AUDIT` row; identity deleted the quarantine entry, which is that table emptying itself
+> exactly as designed; studio renamed its topic to `studio.asset.visibility_changed`, which cost
+> nothing to coordinate because a four-segment name can have no validating consumer to break.
+> **Items 1 and 2 below remain open for the quarantine sweep** — market's 7, mint's 4, trade's 4,
+> worlds' 3 and custody's 1 — and item 4 is untouched. What changed is that the gate is no longer
+> red for two reasons that were already understood, so a new red line means something new.
+
+The same run censused unregistered emitted topics with no
 quarantine spec: foresight 7, nda 16, studio 5, custody 4, admin-api 3, worlds 3. `market` holds 7
 in an explicit `AWAITING_REGISTRATION` quarantine (`market/src/topics.ts:102-229`); `mint` holds 4
 (`mint/src/topics.ts:115-160`); `trade` holds 4.
@@ -642,17 +654,18 @@ function — so the work is one contracts commit followed by a sweep.
 1. Copy the quarantined specs verbatim into `TOPICS` in
    `contracts/packages/events/src/index.ts`: market's 7, mint's 4, trade's 4, worlds' 3
    (`worlds.inventory.granted`, `worlds.inventory.listed`, `worlds.achievement.unlocked` — the last
-   is the one worlds event that actually flows today), custody's `custody.export.cancelled`, and
-   `identity.password.reset_requested`. `keyedBy` is read off the emit site and is contract, not
-   preference.
+   is the one worlds event that actually flows today) and custody's `custody.export.cancelled`.
+   `keyedBy` is read off the emit site and is contract, not preference.
+   (`identity.password.reset_requested` was the sixth on this list and is done — micro-org#263.)
 2. Add the matching `TOPIC_AUDIT` rows in `contracts/packages/events/src/audit.ts` in the same
    commit — `trade.fill.settled` and `trade.fee.settled` are the two that move money and are
    currently the least classified; `worlds.achievement.unlocked` is unaudited and so never reaches
    admin-api's mirror.
-3. Report the studio rename (`studio.asset.visibility.changed` → `…visibility_changed`) to
-   micro-studio; if it cannot land the same day, record it in `org/tools/estate-topic-gaps.json`
-   with an `until`, rather than leaving the sweep red. The gaps file currently holds exactly one
-   entry, so neither live finding is absorbed.
+3. ~~Report the studio rename (`studio.asset.visibility.changed` → `…visibility_changed`) to
+   micro-studio.~~ Done 2026-08-08 — renamed in `studio/src/uploads.ts` rather than absorbed into
+   `org/tools/estate-topic-gaps.json`, because a gaps entry would have bought a green sweep and
+   left the event unconsumable. The gaps file is for a finding waiting on somebody else, not for
+   one whose fix is a one-line rename in a repository this estate owns.
 4. Add the mirror check each repository is missing: assert that every `_TOPIC` constant in `src/`
    resolves in the registry, and that every topic an inbox branches on is registered. That second
    check is what would have caught `devplatform`'s org-deletion branch, which listens for
