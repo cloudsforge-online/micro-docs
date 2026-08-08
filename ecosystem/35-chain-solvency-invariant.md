@@ -79,10 +79,23 @@ never heard of. `deploy/scripts/ember-seed.js:415-424` had, and named it in adva
 The seeder honoured its own warning by leaving the faucet float unregistered. That workaround is
 available to a seed script and not to settlement, which must register the treasury: sweeps move
 **customer** coin into it, and an unwatched treasury on a swept estate hides the very loss
-reconciliation exists to catch (`settlement/src/migrations.ts:367-372`).
+reconciliation exists to catch (`settlement/src/migrations.ts`).
 
-**Status: repaired by hand on mainnet 2026-08-08, unrepaired in code.** The next chain, the next
-rotation, testnet, and any rebuild reproduce it exactly.
+~~**Status: repaired by hand on mainnet 2026-08-08, unrepaired in code.** The next chain, the next
+rotation, testnet, and any rebuild reproduce it exactly.~~
+
+**Status, corrected 2026-08-09: repaired in code, merged, and deployed.** micro-org#248 is closed
+by `settlement` migration 10 `treasury-opening-balance` together with
+`registerTreasuryWithIndexer`'s measure → watch → post → mark sequence in
+`settlement/src/treasury.ts`, and both are in the running 2.5.6 image. The ordering is the repair:
+the opening balance is measured *before* the address is watched, because measuring first and
+failing to watch leaves nothing behind, whereas watching first and failing to measure is the
+incident itself. `assertSweepable` then refuses to sweep into a treasury that is watched but not
+booked, so the gap cannot reopen silently.
+
+Verified on the live estate: `ledger.asset_freezes` holds **zero rows**, and the last five
+EMBER/mainnet reconciliation runs by `started_at` are all `clean`, `observed_source=indexer`, with
+ledger and indexer agreeing exactly at 25100000000000000000 and drift 0.
 
 ### G2 — The same hazard for every future chain, and LTC is already loaded
 

@@ -109,9 +109,19 @@ lifts a freeze. So the flip is last, not first, and it is gated on a real observ
   transactions) the median block's median feerate is 5 sat/vB and the p90 block's p90 is 36, so
   10,000 litoshis buys a ~141 vB spend about 70 sat/vB. The figure is unchanged; what it rests on
   is not. Bitcoin's node carries the same `blocksonly` posture, so BTC lands here too.
-- `ltc:mainnet` is cold-started at record floor 3,155,209, so unclaimed addresses answer
-  `history_unknown` (35:322-326). Settlement never makes the `freshlyDerived` claim, so a pinned
-  treasury needs an operator-supplied `historyFromHeight` (35:328-333).
+- `ltc:mainnet` is cold-started at record floor **3,154,639** (chain time 2026-08-05 07:08:34 UTC),
+  so unclaimed addresses answer `history_unknown` — doc 35, "A derived number is only a balance
+  with two proofs". This entry previously said 3,155,209, which is not the floor: it is where the
+  live follower took over from the `backfill:3154639-3155208` stream, and the stream's name was
+  read as the record's start. Measured in `indexer.blocks`: 1,882 rows, min 3,154,639, max
+  3,156,520, `count == span`, so the range is contiguous with no holes. Re-read it before relying
+  on it — the follower advances and a reorg or prune moves it.
+- Settlement never makes the `freshlyDerived` claim, so a pinned treasury needs an
+  operator-supplied `historyFromHeight` — doc 35, same section. Note that `deriveBalances` refuses
+  on **any** watched row with a null claim, not just the one being asked about, so the two legacy
+  LTC deposit rows need a claim before the aggregate can answer at all. Both were derived above
+  the floor (heights ≈3,154,705 and ≈3,155,241), so claiming the floor for them is honest and no
+  sub-floor backfill is required.
 - No LTC entry in `LEDGER_ASSET_TOLERANCE`. Deliberate — absence means zero, which is the correct
   default and should stay zero unless a real drift argues otherwise.
 - `foresight` refuses LTC stakes with a "not yet, and here is what is missing" message
