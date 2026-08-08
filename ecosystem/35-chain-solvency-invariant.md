@@ -267,3 +267,81 @@ that claim survived contact. Neither defect was reachable from any repository's 
 first needed a database holding *another service's* treasury key, which only a running estate has,
 and the second needed a peer that actually enforces `role:admin`. Both were found within an hour of
 running the path on testnet, and both were in code that had been green for months.
+
+---
+
+## What step 4 actually required
+
+*Appended 2026-08-08. Step 4 is written above as a configuration change —
+`LEDGER_RECONCILE_ASSETS=SHARD,EMBER,LTC` plus a pinned treasury. It is not one, and making it one
+would have frozen LTC permanently on the day it was flipped.*
+
+### The indexer could not observe a Litecoin balance at all
+
+The invariant compares the ledger's custody balances against the indexer's *observed* ones, and an
+asset absent from the tolerance map gets zero tolerance. So naming LTC has two prerequisites and
+only one of them was met. The ledger's half was ready: migration 14 registers the chain asset, and
+zero tolerance is the correct setting for it. The indexer's half did not exist.
+
+`custody.ts` read balances with `eth_getBalance`, one call per address at the confirmed height, and
+refused every family that has no counterpart to it — `family_not_supported`. Bitcoin, and therefore
+Litecoin, has no counterpart to it. Stock Core keeps no address index, so an address the node's own
+wallet does not own has **no balance the node will state, at any height**. An unobserved run can
+never be clean, and only an exactly-clean observed run lifts a freeze, so LTC would have gone into
+`drift_unobservable` and stayed there. cloudsforge-online/micro-org#252.
+
+### What a UTXO balance is derived from, and the trap in the obvious derivation
+
+The balance exists in this service's own record: the outputs paying the address that nothing has
+spent. Both halves are facts the follower wrote while walking, so the balance is derivable.
+
+The obvious derivation — `Σ in − Σ out` over `address_activity` — is wrong, and wrong in the
+direction that freezes a solvent asset. `bitcoin.ts:324` pushes the spend record from the txin
+outpoint **unconditionally**, but writes the outbound *movement* only when the prevout resolves to
+a value and an address. An input whose prevout could not be fetched increments `unresolvedInputs`
+and leaves no `out` row behind, so `in − out` is over-stated by every such spend. An over-stated
+custody total reads at the ledger as **negative** drift — the 2026-08-05 shape, arriving as a data
+artefact rather than as a bookkeeping mistake, which is far harder to recognise.
+
+Outputs-minus-spent-outpoints cannot express that error. It asks two questions of the record — was
+this output paid to us, and has it since been spent — and both are answered by rows that exist
+whether or not any prevout ever resolved.
+
+### A derived number is only a balance with two proofs
+
+**1. Contiguous canonical coverage** from the record's floor to the confirmed height. A hole loses
+receipts (understates) *and* loses spends (overstates), with nothing bounding either, so a gap is
+not a degradation of the answer — it is a different answer with the same shape.
+
+**2. No activity below that floor**, for every address in the set. The indexer cannot establish
+this and does not try: it has no view below its own record. It is a *claim*, made by whoever
+registered the address, and the only party who can make it truthfully is one that has just derived
+the key — nothing can have paid an address that did not exist. `POST /v1/watch` takes
+`freshlyDerived: true`, deliberately a boolean, because that caller cannot know a block height; the
+indexer stamps its own head. An **absent** claim is read as height 0, which is a tautology rather
+than a default: "no activity below block 0" is true of every address on every chain, so the
+comparison reduces to "did this service walk from genesis". That is why an unclaimed address is
+answerable on EMBER and on a regtest Litecoin, and refuses with `history_unknown` on a cold-started
+`ltc:mainnet`.
+
+Only `micro-wallet`'s mint path makes the claim — not its retry job, and not the reuse path, where
+the address is already in circulation and the claim may have stopped being true. `micro-settlement`
+never makes it: a treasury address is *pinned* by an operator and may be years old, so an operator
+supplying `historyFromHeight` explicitly is the only honest route there. This also means the
+opening measurement of step 1 can refuse on a cold-started UTXO chain, since it reads the address
+before it is watched.
+
+### What this says about the plan's shape
+
+Steps 1–3 found defects that only a running estate could show. Step 4 found the opposite: a gap
+visible from the source alone, which nothing had read for, because the step was phrased as a
+configuration change and configuration changes do not get read for. The lesson is not "test on
+testnet" — it is that "extend X to Y" is a claim that Y is supported, and that claim is worth
+checking before it is scheduled.
+
+### Cross-references
+
+* cloudsforge-online/micro-org#252 — the indexer gap, and the derivation that closes it
+* `indexer/src/custody.ts` — `DERIVED_FAMILIES`, `deriveTotal`, and the two proofs
+* `indexer/src/store.ts` — `unspentOutputTotal`, and why it is not `in − out`
+* `indexer/src/bitcoin.ts:324` — the unconditional spend record that makes `in − out` over-state
