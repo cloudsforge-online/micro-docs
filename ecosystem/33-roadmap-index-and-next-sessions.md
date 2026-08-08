@@ -465,7 +465,7 @@ climbing**. A flat user count would mean beacon stopped, which measures nothing 
 ### 5.4a The testnet hostname, and a correction this session had to make
 
 **The testnet is a suffix on the FIRST LABEL: `hub-testnet.cloudsforge.online`. It is never a
-second label.** This session queried `hub.testnet.cloudsforge.online`, got nothing back from two
+second label.** This session queried `hub.testnet.cloudsforge.online`, got nothing back from two <!-- dead-ok -->
 resolvers, and filed [micro-org#245](https://github.com/cloudsforge-online/micro-org/issues/245)
 claiming sixteen frontends had no reviewable URL. All of them resolve and serve 200. The issue was
 withdrawn.
