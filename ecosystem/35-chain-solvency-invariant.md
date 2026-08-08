@@ -213,3 +213,57 @@ and each one is fixable at its cause.
 * cloudsforge-online/micro-org#249 — the CI break found while opening the repairs
 * `deploy/scripts/ember-seed.js:415-424` — the failure, predicted in advance
 * `settlement/src/treasury.ts:361` — where step 1 lands
+
+---
+
+## What steps 1–3 actually found
+
+*Appended 2026-08-08. The plan above stands as written; this records what the estate did when it
+was carried out, because two defects sat between "the code is right" and "the estate works" and
+neither was visible from the source alone.*
+
+### The treasury custody hands back was not the platform's
+
+Step 1 needs a treasury address. Custody chose one with a query over `purpose` and `status` — and
+`purpose: 'treasury'` means "an address the platform owns", not "the address deposits sweep into".
+On the live testnet stack the only two treasury-purpose keys on `ember/testnet` belonged to
+`foresight` (its house seed) and the `faucet` (its funding address), both of them legitimately
+minted. So `POST /v1/admin/treasuries/ember/testnet/mint` answered `200 reused: true` with
+foresight's house seed, and settlement pins whatever custody returns: one operator call would have
+pinned it, and every user deposit would have swept into another service's float.
+
+Step 1 makes that worse rather than better, which is the part worth keeping in mind when reading
+the plan above. Booking the pinned address's balance as platform equity means the faucet's funding
+address would have been booked as equity and then dripped away — a growing NEGATIVE drift, and
+every EMBER withdrawal frozen. The same failure as the incident, arrived at from the other side.
+
+Both routes that *choose* a treasury — the rotation-candidate query and the pin — now require the
+derived binding `cloudsforge:treasury` / `treasury:<chain>:<network>`. Minting a platform-owned
+address is deliberately untouched, because foresight and the faucet are entitled to one.
+cloudsforge-online/micro-org#250, shipped in 2.5.1.
+
+### The route the runbook names had never worked
+
+With the treasury mintable, step 3 still could not run:
+`POST /v1/treasuries/ember/testnet/provision` answered 500 with
+`missing required authority: role:admin`.
+
+Custody's admin mint requires `role:admin`, which no service token carries, so settlement forwards
+the *operator's* bearer token per request — and says so in a comment at the call site. The shared
+HTTP client applied its own service token after merging per-request headers, so that forwarded
+credential was silently replaced by one that could never be accepted. The route could only ever
+return 500, on both estates, since it was written.
+
+This is a general shape rather than one call site: a seam whose entire purpose is "present this
+other credential for this one call" did not express it, and three other call sites in the estate
+are safe only because of how their clients happen to be constructed. Precedence is now accept
+default → client `headers` → client `token` → per-request `headers`.
+cloudsforge-online/micro-org#251, shipped in 2.5.2.
+
+### What this says about step 3
+
+Step 3 is written above as the step that "distinguishes the tests pass from the estate works", and
+that claim survived contact. Neither defect was reachable from any repository's own suite: the
+first needed a database holding *another service's* treasury key, which only a running estate has,
+and the second needed a peer that actually enforces `role:admin`. Both were found within an hour of
+running the path on testnet, and both were in code that had been green for months.
