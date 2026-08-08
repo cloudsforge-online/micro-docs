@@ -462,6 +462,38 @@ The verification after deploy is therefore a *pair* of numbers, and only the pai
 `deliveries where channel='email'` in the last hour must fall to ~0 **while `users` keeps
 climbing**. A flat user count would mean beacon stopped, which measures nothing at all.
 
+### 5.4a The testnet hostname, and a correction this session had to make
+
+**The testnet is a suffix on the FIRST LABEL: `hub-testnet.cloudsforge.online`. It is never a
+second label.** This session queried `hub.testnet.cloudsforge.online`, got nothing back from two
+resolvers, and filed [micro-org#245](https://github.com/cloudsforge-online/micro-org/issues/245)
+claiming sixteen frontends had no reviewable URL. All of them resolve and serve 200. The issue was
+withdrawn.
+
+Every surface, measured 2026-08-08, and each one byte-identical to what its container serves:
+
+| Hostname | HTTP | Title |
+| --- | --- | --- |
+| `testnet.cloudsforge.online` | 200 | CloudsForge — Mine EMBER on the computer you already own. |
+| `hub-testnet.cloudsforge.online` | 200 | Forge Hub |
+| `explorer-testnet.cloudsforge.online` | 200 | Network Explorer |
+| `status-testnet.cloudsforge.online` | 200 | CloudsForge Status |
+| `developers-testnet.cloudsforge.online` | 200 | Developer Platform |
+| `api-testnet.cloudsforge.online` | 404 | API root; expected |
+| `rpc-testnet.cloudsforge.online` | 405 | JSON-RPC wants POST; expected |
+
+It was already documented in three places, one of which exists solely to prevent this:
+[26-public-deployment](26-public-deployment.md) §0 — *"the testnet is a hostname **suffix**
+(`hub-testnet.cloudsforge.online`), never a second label, and every `X.testnet.cloudsforge.online`
+in the body is dead"* — plus [27](27-cloud-deployment.md):638 and
+[30](30-roadmap-completion.md):102, which prints a working URL outright.
+
+> **The third rule, alongside the two in §4.** An empty resolver answer is evidence about the
+> string you typed before it is evidence about the estate. The same holds for a 404, an empty
+> `grep` and a missing container: *absence is a claim about your query first.* Grep the docs for
+> the identifier before reporting that the thing it names does not exist — this one had a
+> correction sitting one `grep` away, written by a previous session that made the same mistake.
+
 ### 5.5 What the next session picks up
 
 1. Merge [#244](https://github.com/cloudsforge-online/micro-org/pull/244) to `micro-org` `main` —
