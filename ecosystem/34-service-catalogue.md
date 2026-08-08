@@ -506,7 +506,7 @@ origin for Market and Foresight.
 `GET /v1/assets/:id` (:643), `GET /v1/assets/:id/bytes` (:685), `POST /v1/uploads` (:780, raw
 image bytes as body), `POST /v1/assets/:id/visibility` (:840). Scopes are `studio:read` and
 `studio:write`. It publishes `studio.asset.created`, `studio.generation.requested`,
-`studio.usage.recorded` and `studio.asset.visibility.changed`.
+`studio.usage.recorded` and `studio.asset.visibility_changed`.
 
 **Deployed state.** Running on both networks. `deploy/compose/docker-compose.estate.yml:1310`
 (`studio`), `:1296` (`studio-migrate`), `:1284` (`studio-assets-init`, a sidecar that chowns the
