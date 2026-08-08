@@ -619,12 +619,26 @@ scope *means*, and it wants the owner rather than an agent at four in the mornin
 reading, chosen because a credential service should not be the place the estate discovers its
 wildcard semantics.
 
-Three smaller findings from the same build, all recorded rather than fixed: `devplatform.*` is not
-a registered event topic (`contracts/packages/events/src/index.ts`), so the
-`devplatform.key.revoked` mechanism named by 11:363 cannot be built through `makeEvent`;
-`@cloudsforge/contracts-devplatform` is still uncut, so the scope vocabulary lives in the service;
-and there is no OAuth token endpoint, because signing one needs identity's key and that half
-belongs to another repository.
+Three smaller findings from the same build, all recorded rather than fixed. ~~`devplatform.*` is
+not a registered event topic (`contracts/packages/events/src/index.ts`), so the
+`devplatform.key.revoked` mechanism named by 11:363 cannot be built through `makeEvent`~~ —
+**this went stale and this document was the last place still asserting it.** The topics are
+registered, `contracts` adopted them, and `micro-notify` has a full handler for both: catalogue
+rules under `category: 'api'` at `priority: 'high'`, templates for `api.key_issued` and
+`api.key_revoked`, and a test asserting both are mapped. Notify's `AWAITING_REGISTRATION`
+quarantine held exactly these two topics for about half an hour and is now empty — the quarantine
+pattern working as designed, which is also why nothing announced the change.
+
+What survives is narrower and is a *producer* gap, not a topic gap: the live estate holds **zero
+`inbox` rows on any `devplatform` topic**, against 15,265 in total, so the rules have never been
+exercised by traffic. Beneath that sits a by-design hole worth naming — organisation erasure
+revokes every key as actor `service:identity`, and notify's `forUser` returns `no_recipient` for a
+`service:` actor rather than guessing a victim, so nobody is told. The repair is one producer
+field (`api_keys.created_by`), and it belongs to `micro-devplatform`.
+
+The other two stand: `@cloudsforge/contracts-devplatform` is still uncut, so the scope vocabulary
+lives in the service; and there is no OAuth token endpoint, because signing one needs identity's
+key and that half belongs to another repository.
 
 ### 3.3i An imagined surface, and the first that lied about money
 
