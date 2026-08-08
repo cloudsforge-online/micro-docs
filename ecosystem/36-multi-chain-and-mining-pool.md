@@ -1,0 +1,298 @@
+# 36 — Multi-chain assets, and a mining pool that is actually a mining pool
+
+Written 2026-08-08.
+
+**This is a plan, not a ledger.** [18-build-status](18-build-status.md) is the ledger. Every item
+here is outstanding work unless it says otherwise, and nothing here may be read as a statement that
+something has been done.
+
+Two tracks were commissioned together and are written together because one of them is only honest
+in the light of the other:
+
+1. **Bring Bitcoin, Dogecoin and Ethereum Classic in beside Litecoin**, to full parity — deposit,
+   withdraw, balance, reconcile — and finish Litecoin, which is not finished.
+2. **Let people mine those chains through CloudsForge.** The original framing was "as we allow
+   users to mine EMBER natively in the browser, how do we allow them to mine the others" — and the
+   answer, developed in §5, is that a browser cannot, that the reason is arithmetic rather than
+   effort, and that the thing worth building instead is a real pool for real hardware.
+
+---
+
+## 1. What is already true, measured
+
+Measured on the estate host 2026-08-08 unless stated.
+
+| Chain | Node | State | Estate integration |
+| --- | --- | --- | --- |
+| EMBER | Hearth, in-estate | height 6,777 | complete — it is the estate's own chain |
+| LTC | `litecoind 0.21.5.6`, host process from `/etc/rc.local`, `-datadir=/data/chains/litecoin` | **synced**, 3,156,491 blocks, `initialblockdownload:false` | **deposit only.** See §2 |
+| BTC | `bitcoind 27.0`, host process from `/etc/rc.local`, `-datadir=/data/chains/bitcoin` | **syncing**, 867,270 / 961,634, `verificationprogress` 0.749 | asset code and price sources already exist; **no node wiring at all** |
+| DOGE | not running | datadir staged at `/data/chains/dogecoin` (blocks, chainstate, `dogecoin.conf` present) | **nothing exists** |
+| ETC | not running | datadir staged at `/data/chains/ethereum-classic` → `/data2/chains/ethereum-classic`, geth-family layout (`geth/`, `keystore/`) | **nothing exists** |
+
+The owner's stated sync order is **BTC, then DOGE, then ETC**. That is the operational sequence.
+It is deliberately *not* the code sequence — see §4.
+
+### 1.1 The single source of truth, and the twenty places that copy it
+
+`contracts/packages/chain/src/index.ts` is the source of truth: `ChainFamily` (:24),
+`AssetCode` (:49), `CHAINS: Record<AssetCode, ChainSpec>` (:191), `ON_CHAIN_ASSETS` (:371). Its
+header comment at :327-369 is literally the "how to add an asset" runbook, written from the
+Litecoin experience, and it should be followed rather than improved on.
+
+It is a `link:` dependency resolved at HEAD, so **widening `AssetCode` breaks every consumer's
+typecheck at once.** That is the estate's usual forcing function and it is working as designed, but
+it dictates the order of work in §4: contracts and pricing merge first, consumers second.
+
+The list is nonetheless repeated in about twenty places, each of which must be widened per asset.
+The full enumeration is in the working notes for this document; the load-bearing ones are
+`indexer/src/chains.ts:50-63`, `indexer/src/btcaddress.ts:35`, `custody/src/chains.ts:38-46`,
+`custody/src/hd.ts:66-72` (SLIP-0044), `wallet/src/addresses.ts:73-156`,
+`settlement/src/chains.ts:72-147`, `settlement/src/registry.ts:53-76`, `ledger` migrations
+(`chain_assets`, one new checksummed migration per asset), `pricing/src/sources.ts:106-158` (four
+venue symbol maps), `sdk/packages/sdk/src/chain.ts:63-99` (a deliberate copy, policed by
+`sdk/tools/drift.ts`) and `hub-web/src/lib/money.ts:142` (deliberately hand-maintained, and
+:107-130 explains why).
+
+---
+
+## 2. Litecoin is not finished, and that is the first thing to fix
+
+Litecoin is fully synced and its deposit path works end to end. Two things are missing, and both
+are worse than they sound.
+
+**2.1 No Litecoin withdrawal can be built or broadcast. At all.**
+`deploy/compose/docker-compose.estate.yml:368-385` populates `SETTLEMENT_RPC_URLS` with an `ltc`
+entry *only if* `LTC_RPC_URL` is set. It is not set. So `settlement/src/registry.ts:99` raises
+`NoEndpointError` for every LTC withdrawal, sweep and fee quote, and settlement's own boot line
+reports `{ltc, endpoint:false}`. The estate can take custody of Litecoin and has no tested path to
+send it back.
+
+**2.2 Litecoin deposits credit with no solvency check whatsoever.**
+`deploy/compose/docker-compose.estate.yml:1009` reads `LEDGER_RECONCILE_ASSETS: "SHARD,EMBER"`.
+This is gap G6 in [35-chain-solvency-invariant](35-chain-solvency-invariant.md):129-133. The
+reconciliation machinery exists and is proven — `estate-verify.sh` demonstrates it for EMBER,
+including a deliberate failure injection that freezes the asset and a clean run that lifts the
+freeze — but Litecoin is simply not named, so none of it runs for LTC.
+
+There is a trap here worth stating loudly, because it is the kind that is discovered at the worst
+moment. `indexer/src/custody.ts:133-135`: **naming an asset in `LEDGER_RECONCILE_ASSETS` against a
+build that cannot observe it freezes that asset permanently**, because only a clean *observed* run
+lifts a freeze. So the flip is last, not first, and it is gated on a real observed run.
+
+**2.3 The remaining Litecoin items**, each smaller:
+
+- `WALLET_FEE_QUOTES` carries `LTC: 10000` (`docker-compose.estate.yml:346`) but the comment above
+  it says this is a floor derived from `minrelaytxfee`, not from `estimatesmartfee`, and says
+  "REVISIT once `estimatesmartfee` answers". Now that the node is synced, it answers. Measure it.
+- `ltc:mainnet` is cold-started at record floor 3,155,209, so unclaimed addresses answer
+  `history_unknown` (35:322-326). Settlement never makes the `freshlyDerived` claim, so a pinned
+  treasury needs an operator-supplied `historyFromHeight` (35:328-333).
+- No LTC entry in `LEDGER_ASSET_TOLERANCE`. Deliberate — absence means zero, which is the correct
+  default and should stay zero unless a real drift argues otherwise.
+- `foresight` refuses LTC stakes with a "not yet, and here is what is missing" message
+  (`foresight/src/server.ts:794,846`). The DB rationale row is now stale: LTC *is* in
+  `ON_CHAIN_ASSETS` and *is* priced.
+- No Litecoin testnet3 node — testnet is `-regtest` only.
+
+---
+
+## 3. What each new chain needs
+
+### 3.1 BTC — the cheapest of the three
+
+Bitcoin is already an `AssetCode`, already has a `CHAINS` spec, and is already mapped in all four
+pricing venues. `indexer/nodes/bitcoin.conf` already exists (rpcport 50001, `disablewallet=1`,
+`blockfilterindex=1`, the same posture as Litecoin's). `indexer/src/bitcoin.ts:497 BitcoinWorker` is
+family-dispatched and serves BTC unmodified.
+
+What is missing is **configuration, not code**: `INDEXER_RPC_BTC_MAINNET`, an `INDEXER_CHAINS`
+entry, a start height, a `SETTLEMENT_RPC_URLS.btc` entry, a `WALLET_FEE_QUOTES` figure measured
+from `estimatesmartfee`, a pinned and booked treasury, and finally the `LEDGER_RECONCILE_ASSETS`
+flip. Blocked only on the sync finishing.
+
+### 3.2 DOGE — a UTXO chain that is not Litecoin
+
+Dogecoin is family `bitcoin` and reuses `BitcoinWorker`, but three details differ and each is a
+place a copy-paste from Litecoin produces a wrong address or a wrong key:
+
+- **No segwit, no bech32.** Dogecoin addresses are base58: P2PKH version byte `0x1e` (addresses
+  begin `D`) and P2SH version `0x16`. Litecoin's `ltc1q…` bech32 path must not be reached.
+  `indexer/src/btcaddress.ts:35` types `BtcChain = 'btc' | 'ltc'` and its params table at :97-115
+  is where this lands.
+- **SLIP-0044 coin type 3** (BTC 0, LTC 2). `custody/src/hd.ts:66-72`.
+- **~1 minute blocks**, so a confirmation count copied from Litecoin's 12 would be four times
+  shallower in wall-clock terms than it looks.
+
+Dogecoin also has no `estimatesmartfee` worth trusting at low fee rates and a much higher dust
+threshold; `settlement/src/bitcoin.ts:548` is where the per-chain dust figure goes.
+
+### 3.3 ETC — an EVM chain, and the generic EVM path already exists
+
+This is the good news of the three. `indexer/src/evm.ts:439 EvmWorker` takes `family` as a field and
+already serves both `'evm'` (ETH) and `'ember'` (Hearth); `settlement/src/evm.ts:422 evmChain()` is
+likewise generic and reads the chain id from `eth_chainId` rather than from configuration;
+`custody/src/chains.ts:65 isEvmFamily` and `:77 expectedEvmChainId` enforce the EIP-155 binding.
+[29-native-assets](29-native-assets.md):105-110 records the precedent: a second EVM network is one
+new asset code and one new spec, zero new families.
+
+Two ETC-specific judgements, both of which must be written down in source rather than assumed:
+
+- **Chain ids are 61 (mainnet) and 63 (Mordor testnet).**
+- **Confirmation depth must be much deeper than Ethereum's.** ETC is a low-hashrate proof-of-work
+  chain that has suffered real 51% attacks with reorgs thousands of blocks deep (2020). A depth
+  copied from ETH would be a solvency hole rather than a latency preference. This is the single
+  most consequential number in the whole track.
+- **ETC is legacy gas, not EIP-1559** — it did not adopt London. [35](35-chain-solvency-invariant.md):104-116
+  requires EIP-1559 chains to book gas from the receipt before being reconciled; ETC falls on the
+  other side of that line, which should be recorded as a fact rather than left to be rediscovered.
+
+Also: `indexer/src/custody.ts:432 CHAIN_READ_FAMILIES` reads EVM balances with `eth_getBalance`, so
+ETC is observable for reconciliation **without** any of the UTXO derivation work that Litecoin
+needed. ETC is the least work of the three per unit of capability.
+
+### 3.4 Pricing, which gates everything
+
+`contracts/packages/chain/src/index.ts:346-355` states the rule: **wire and prove the price sources
+before widening `ON_CHAIN_ASSETS`.** `pricing/src/rates.ts:55-59` derives `MARKET_ASSETS` from
+`ON_CHAIN_ASSETS`, and `pricing/src/sources.ts:96` asserts every market asset appears in all four
+venue maps. BTC needs nothing. DOGE and ETC need five entries each, every one of them **measured
+live rather than guessed** — Kraken's legacy X/Z naming is a recorded trap in this file (Litecoin's
+key set is `['XLTCZUSD','LTCUSD']`, and Dogecoin on Kraken is historically `XDG`, not `DOGE`).
+
+---
+
+## 4. Order of work
+
+The code order is not the sync order, because code can land ahead of a node and configuration
+cannot land ahead of one.
+
+1. **Finish Litecoin** (§2). It is the only chain synced today, and it is the template that proves
+   the path. Withdrawal wiring first, reconciliation last and gated on an observed run.
+2. **`pricing` venue maps for DOGE and ETC** (§3.4), verified live. Must merge before 3.
+3. **`contracts`: DOGE and ETC asset codes and specs** (§3.2, §3.3). Merging this reddens every
+   consumer, which is the forcing function working; do not merge it on a Friday.
+4. **The consumer sweep** — indexer, custody, wallet, settlement, ledger, sdk, hub-web,
+   explorer-web, network-site, foresight. Parallelisable by repo once 3 has merged.
+5. **BTC configuration** the moment its sync completes (§3.1).
+6. **DOGE and ETC node provisioning and configuration**, in the owner's stated sync order.
+7. **The pool** (§5), which depends on nodes but not on any of 1-6.
+
+Steps 1-4 are code and can proceed today. Steps 5-6 are blocked on syncs that are hours to days
+away.
+
+---
+
+## 5. Mining: what a browser can and cannot do
+
+### 5.1 The arithmetic, stated once and plainly
+
+The estate's own measured figure for the EMBER browser miner is **225 hashes per second per
+thread** (`network-site/src/content/facts.ts:182-186`), for Homefire — a memory-hard function that
+does roughly 8,450 sequential SHA-256 rounds per attempt (`hearth/docs/mining.md:189-191`). A bare
+SHA-256d loop is far lighter, so a browser tab doing Bitcoin's proof-of-work would reach perhaps
+10⁵-10⁶ hashes per second across all threads.
+
+One current-generation Bitcoin ASIC does about 2×10¹⁴. The Bitcoin network does about 10²¹.
+
+A browser tab is therefore on the order of **10⁻¹⁵ of the Bitcoin network**, and about
+**one two-hundred-millionth of a single ASIC**. Its expected annual yield is a fraction of one
+cent. Scrypt (LTC/DOGE) is the same story six or seven orders of magnitude down from its own ASICs;
+Etchash (ETC) is not merely uncompetitive but impossible, because the DAG is four to five gigabytes
+and no browser will allocate it — the estate already established the two-gibibyte ceiling for its
+own 64 KiB pad at `hearth/docs/pow-parameters.md:111-113`.
+
+**This is not a limitation that effort removes.** Any "browser mining" of these four chains that
+paid users anything meaningful would be paying them out of subsidy, not out of block rewards their
+hashing produced — an engagement grant wearing a pool's clothes.
+[21-engagement-treasury](21-engagement-treasury.md):33-46 already refused exactly that class of
+thing, on honesty grounds, when it rejected a consensus carve-out.
+
+### 5.2 Why EMBER is different, and stays different
+
+Homefire is memory-hard and deliberately ASIC-hostile, which is precisely why a laptop competes for
+an EMBER block and why `hearth/docs/mining.md:263-264` can honestly say "GPUs and ASICs gain little
+to nothing". Browser mining of EMBER is real: measured 2026-08-08, a key generated in the browser
+got a valid template from `https://rpc.cloudsforge.online/mining/template` at height 6,777, and
+`hearth/node/src/chain/header.js:240-270` verifies the returned `powSig` against that same
+`coinbasePub`. **It is the estate's one genuinely distinctive first action and nothing in this
+track may weaken it.** Merge-mining EMBER onto Scrypt was considered and rejected: it would hand
+the chain to Litecoin ASICs, and it would make the apex hero headline — "Mine EMBER on the computer
+you already own", `site/src/content/pages.ts:38`, asserted by a test — false.
+
+### 5.3 What to build instead: a real pool
+
+A pool for real hardware. Miners with ASICs and GPUs point at CloudsForge over Stratum, submit
+shares against a difficulty we set, and are credited in ledger balances they can then spend
+anywhere in the ecosystem. Nothing about it requires a claim that is not true.
+
+**Nothing of this exists today.** Measured across all 66 repositories: zero hits for
+`getblocktemplate`, `submitblock`, `getwork`, `stratum` (the single hit is
+`hearth/node/src/mining.js:12-13` *denying* that it is a stratum server), `auxpow`, `ethash`,
+`randomx`. There is no share concept anywhere — `hearth/node/src/chain/header.js:257` accepts only
+a proof meeting the full block target, so there is no vardiff, no share target, no share
+accounting. And there is no path from hashing to a ledger balance: the only mining credit in the
+estate is direct EVM state (`hearth/node/src/chain/blockchain.js:376-386`) and the only ledger
+credit is a confirmed deposit (`wallet/src/deposits.ts`).
+
+So this is a new repository, `micro-pool`, and the shape is:
+
+| Piece | What it is |
+| --- | --- |
+| Stratum v1 server | TCP; `mining.subscribe` / `authorize` / `set_difficulty` / `notify` / `submit`. v1 rather than v2 because v1 is what deployed hardware speaks |
+| Template source | `getblocktemplate` against our own `bitcoind` / `litecoind` / `dogecoind`, and the EVM work path for ETC. One node per chain, all already on the host |
+| Vardiff | Per-connection difficulty targeting a steady share rate. This is the piece the estate has no precedent for at all |
+| Share validation | Recompute the header, check against the *share* target, and against the block target for a win. Reject stale by job id |
+| Accounting | PPLNS over a sliding window. Shares are a debt record, not money |
+| Payout | Credit the ledger, reusing the `credit_key` idempotency shape from `wallet/src/deposits.ts:580` rather than inventing a second one |
+| Honesty surface | Published pool fee, published payout scheme, per-worker share history a miner can check against their own machine |
+
+Two rules this repository inherits and must not bend. **Found blocks are the pool's revenue and the
+miners' claim on it; the pool's own fee is disclosed on the page, in a number derived at runtime
+from the same constant the accounting uses** — the estate's rule against unbacked numbers (32 §1.1)
+applies here more sharply than anywhere, because this one is about money. And **`network-site` must
+say, in its own voice, that browser mining is EMBER-only and why** — `copy.ts:517-523` already says
+"None exists, and nothing in the protocol prevents one from being built", which is the honest
+sentence to replace when one does exist.
+
+### 5.4 What this track does not claim
+
+It does not claim a browser will ever mine Bitcoin. It does not claim the pool will be competitive
+on fee against established pools on day one. It does not claim any yield figure — there is no
+measured one, and 32 §1 forbids inventing it. And until the pool has found a block, the page must
+say that too.
+
+---
+
+## 6. Risks
+
+- **Naming an asset in `LEDGER_RECONCILE_ASSETS` before it can be observed freezes it permanently**
+  (`indexer/src/custody.ts:133-135`). The flip is the last step of each chain, never the first.
+- **Depositing before withdrawing works** is the shape of defect that costs money rather than
+  trust. It is the state Litecoin is in today (§2.1) and the reason §4 puts withdrawal wiring
+  first.
+- **ETC's confirmation depth** (§3.3) is a solvency parameter dressed as a latency preference.
+- **Dogecoin address handling** (§3.2) is where a Litecoin copy-paste silently produces an
+  unspendable address.
+- **A pool holds other people's expected revenue.** Share accounting that loses shares is
+  indistinguishable, from the miner's side, from a pool that steals them. The share history has to
+  be checkable by the miner against their own machine, which is a product requirement and not a
+  nicety.
+- **Disk.** `/data/chains` already holds Bitcoin, Litecoin and Dogecoin; ETC is symlinked to a
+  second volume. Four archive-ish nodes plus the estate is a capacity question that should be
+  measured before DOGE and ETC are started, not after.
+
+---
+
+## 7. Open decisions
+
+1. **Pool fee.** Not chosen. It is a business decision, it must be a single constant the page
+   derives from, and it should be chosen before the first miner connects rather than after.
+2. **Payout asset.** Credit miners in the coin they mined, or convert to Shards at the pool's
+   quoted rate? The former is honest and simple; the latter is what makes mining feed the
+   ecosystem. Probably the former, with conversion offered rather than imposed.
+3. **Minimum payout and who pays the withdrawal fee.** Every pool has this and every pool's users
+   argue about it. Decide it in the open and publish it.
+4. **Whether the pool mines EMBER too.** It could, and it would give the pool a chain where
+   CloudsForge is not a marginal participant. But it competes directly with the browser miner for
+   the same blocks, which is the one thing §5.2 says not to weaken.
