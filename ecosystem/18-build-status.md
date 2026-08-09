@@ -843,8 +843,8 @@ comment said so.
 **What was true.** The route called `variantFor(features)`, which validates the FEATURE SET and
 never reads the cap. The cap rule lived in `constructorArgs`
 (`mint/src/catalogue.ts`), first reached from `dataFor` inside the **deploy job**
-(`mint/src/families.ts`) — after `POST /v1/tokens/:id/pay` had already debited the
-customer's Shards. So an order for the capped variant with no cap, or a cap on a variant whose
+(`mint/src/families.ts`) — after `POST /v1/tokens/:id/pay` had already taken the customer's
+money. So an order for the capped variant with no cap, or a cap on a variant whose
 contract takes none, was accepted **201**, paid for, and then unbuildable.
 
 **And it did not fail cleanly.** The `ChainError` from `constructorArgs` matches none of

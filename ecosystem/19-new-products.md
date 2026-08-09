@@ -42,7 +42,7 @@ The game is *already accidentally set in the CloudsForge universe*:
 
 | In the game today | In the ecosystem today |
 | --- | --- |
-| The world of Aurea is shattered into floating **shards** | The internal currency is **Shards** |
+| The world of Aurea is shattered into floating **shards** | Nothing. Scenery, and only scenery — see below |
 | The first creature type is **ember**; the starter is Cindercub of *Emberfall Vale* | The chain token is **EMBER**; the chain is **Hearth** |
 | **Aether** — the resonant energy binding the shards | The network the platform runs on |
 
@@ -52,9 +52,17 @@ So the rebrand is a tightening, not a rewrite:
   the game's actual identity and survives untouched).
 - **Kin, Wardens, Resonance, Temperament, Sync** — all kept verbatim. The bond system is the
   product; renaming it would spend recognition to buy nothing.
-- **Lore joins, gameplay does not.** Aurea's shards become shards of the same world the platform's
-  Shards are named for; Aether and the Hearth are one mythology. That is as far as the chain gets
-  into the game: **no gameplay value on-chain, no Kin-as-NFT, no pay-to-win.** Monetisation is
+- **Lore joins, gameplay does not.** Aether and the Hearth are one mythology, and that is as far
+  as the chain gets into the game: **no gameplay value on-chain, no Kin-as-NFT, no pay-to-win.**
+  The row above used to read "the internal currency is **Shards**", and the sentence here used to
+  make the rebrand turn on it — struck 2026-08-07, because the equation was wrong in both
+  directions. In the game, shards are cosmology and a story item (`relic_shard`, `ice_shard` in
+  `emberkin/content/`): the player holds one in the campaign, but nothing is priced in them and
+  nothing pays out in them, so they were never a balance. In the estate, `SHARD` is a **retired**
+  asset (`contracts/packages/chain/src/index.ts`) — not issuable, minted by nothing, and being
+  drained. Reading the pun as a join would have tied a shipping game's fiction to an asset on its
+  way out; the rebrand loses nothing by dropping it, because the ember/Emberfall/EMBER line and
+  the Aether/Hearth line are the ones doing the work. Monetisation is
   what [15](15-monetisation-model.md) already sells for worlds titles — cosmetics and season
   passes through billing entitlements, never stat advantage. The sanctions and parental-controls
   surface of `micro-worlds` applies in full.

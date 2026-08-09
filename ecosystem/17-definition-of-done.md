@@ -232,7 +232,7 @@ evidence that proves it — a demonstration, not an opinion.
 | 3 | One wallet experience — the same receive, send and key screens whichever product you came from | P6 | Every product's wallet link resolves to Hub's wallet. Zero wallet screens outside `hub-web` — verified by route inventory |
 | 4 | One portfolio — a single number that is the truth about what you hold | P6, P7 | Hub's portfolio total equals the ledger's summed liability for that user, checked by a journey that asserts the number, not the HTTP status |
 | 5 | One activity history — every account, money, asset, game and governance event on one timeline | P6 | The feed shows events sourced from **at least six different services**, covering all sixteen categories in [04](04-domain-model.md) §10.1 |
-| 6 | One internal economy — Shards and EMBER spend and earn identically in every product | P10 | A reward earned in a world is spent in Market, in one journey, with both legs visible as ledger postings |
+| 6 | One internal economy — EMBER balances spend and earn identically in every product | P10 | A reward earned in a world is spent in Market, in one journey, with both legs visible as ledger postings |
 | 7 | Assets you create in one product are usable in the others | P10 | A Studio-generated asset is used as a token's brand, listed in Market, and equipped in a world |
 | 8 | One set of notifications, with one preference page | P6, P13 | One preference page governs delivery for every product; a `critical` security notification is delivered **despite** preferences |
 | 9 | One operator view — a support agent can answer any question from one place | P13 | An operator answers "where did this user's money go" from `admin-web` alone, by correlation id, without a `docker logs` |
@@ -241,6 +241,14 @@ evidence that proves it — a demonstration, not an opinion.
 
 A phase that moves none of these eleven does not ship — which is the rule
 [01](01-product-vision.md) §2 already sets and which this scoreboard makes checkable.
+
+Statement 6 dropped "Shards and" on 2026-08-07 (SHARD is retired — `RETIRED_ASSETS`,
+`contracts/packages/chain/src/index.ts`). Its evidence column is deliberately untouched: what
+proves a shared economy is a reward earned in one product being spent in another with both legs
+posted, and that demonstration does not get easier or harder for being denominated in one asset
+instead of two. These statements are published verbatim by `beacon/src/claims.ts` and pinned by
+its test, so this row, [01](01-product-vision.md) §2's row and beacon's string change together or
+not at all.
 
 ---
 

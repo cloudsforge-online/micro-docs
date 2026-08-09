@@ -843,7 +843,7 @@ User-visible functionality. Every feature names the surface it appears on and th
 
 #### FEA-09 · Hub dashboard with per-tile degradation
 
-- **Description** — One aggregated `hub-api` call returning portfolio, Shards, EMBER, per-chain balances, pending deposits, active withdrawals, bots, tokens, listings, rewards, activity, notifications, security alerts and suggested next actions.
+- **Description** — One aggregated `hub-api` call returning portfolio, EMBER, per-chain balances, pending deposits, active withdrawals, bots, tokens, listings, rewards, activity, notifications, security alerts and suggested next actions.
 - **User or operator value** — The single largest usability jump in the programme. Test 4 in [01-product-vision.md](01-product-vision.md) §2 flips.
 - **Repositories affected** — `cloudsforge-hub-api`, `cloudsforge-hub-web`
 - **Dependencies** — ENA-44, ENA-45, EPC-18, EPC-19
@@ -1294,7 +1294,7 @@ User-visible functionality. Every feature names the surface it appears on and th
 
 #### FEA-40 · Community treasuries and governance
 
-- **Description** — Treasuries holding Shards, EMBER and supported assets as ledger sub-accounts, with proposals, discussion, voting under four models, quorum, delegation, timelocks, execution and audit history.
+- **Description** — Treasuries holding EMBER and supported assets as ledger sub-accounts, with proposals, discussion, voting under four models, quorum, delegation, timelocks, execution and audit history.
 - **User or operator value** — Communities can hold and spend money together, with a timelock that gives operators time to respond to a governance exploit.
 - **Repositories affected** — `cloudsforge-community`, `cloudsforge-ledger`, `cloudsforge-hub-web`
 - **Dependencies** — FEA-39, EPC-24

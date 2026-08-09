@@ -703,11 +703,18 @@ notification preferences, organisation and team membership.
 Developer Platform and Community. Navigation state, deep links and return URLs work across all
 of them. Admin appears only when authorised.
 
-**6c — Unified dashboard.** Total portfolio, Shards, EMBER, per-chain balances, pending
+**6c — Unified dashboard.** Total portfolio, EMBER, per-chain balances, pending
 deposits with confirmation progress, active withdrawals, trading bots, recently created tokens,
 marketplace listings, game rewards, recent activity, notifications, security alerts, suggested
 next actions. Served by `hub-api` as one aggregated call that degrades per-tile when an
 upstream is down — a tile that cannot load says so and the rest of the page still renders.
+
+The tile list named Shards ahead of EMBER until 2026-08-07. Naming a retired asset
+(`contracts/packages/chain/src/index.ts`) in the *specification* of the estate's front page would
+have had this phase build a headline balance for something nothing issues. Dropping it from the
+list is not an instruction to hide a residual holding: whatever a user still holds is a ledger
+balance and the dashboard reads balances, so it appears the way any other one does — it just is
+not a tile the phase is scoped to build.
 
 **6d — Wallet experience.** Wallet list with labels, primary designation and lifecycle state.
 Provisioning per chain family. Mainnet/testnet separation, visible and never inferred.
@@ -1052,6 +1059,12 @@ programme began. Game rewards in Shards or EMBER. Token-gated private worlds. Ma
 cosmetics. Creator-generated game assets from Studio. Fair-play and anti-pay-to-win constraints
 enforced by `bound` inventory.
 
+"Game rewards in Shards or EMBER" became "in EMBER" on 2026-08-07, and this one has a build
+consequence rather than being a wording fix: `worlds` and `emberkin` grant against
+SHARD-denominated engagement accounts today (`src/ledgerclient.ts` in each), so the reward asset
+is a change this phase has to *make*, not a sentence it has to match. It is tracked with the rest
+of the wire-and-ledger half of the retirement, not here.
+
 **Forge Network.** EMBER wallet integration in Hub. Explorer on the shared design system, fed
 by the indexer. Node and mining software distribution. Mining dashboard. Network statistics.
 Transaction monitoring. Address pages. Miner information. Testnet faucet (deployed in P3).
@@ -1119,7 +1132,7 @@ have to write.
 Developer accounts, organisations, teams, projects, environments, roles and permissions.
 Credentials: API keys, scoped API keys, service accounts, OAuth clients, webhook secrets,
 rotation, revocation, usage limits. APIs for authentication, user identity, wallet
-provisioning, addresses, transaction intents, payments, Shards, token deployment, asset
+provisioning, addresses, transaction intents, payments, balances, token deployment, asset
 generation, marketplace listings, game entitlements, community membership, notifications and
 webhooks. SDK, CLI, OpenAPI, generated clients, examples, starter applications. Test
 environment with sandbox balances, testnet wallets, a local development stack, a webhook
@@ -1185,7 +1198,7 @@ Communities: public, private, token-gated, game communes, guilds, project and cr
 communities. Membership by open join, invitation, token ownership, marketplace purchase, game
 achievement or administrator approval — with **token-gated membership re-evaluated on a
 schedule**, not granted once. Roles: owner, administrator, moderator, treasurer, member, guest,
-plus custom roles. Community treasury holding Shards, EMBER and supported blockchain assets,
+plus custom roles. Community treasury holding EMBER and supported blockchain assets,
 with spending proposals, approval thresholds, multiple approvers, transaction history, budget
 categories, and marketplace and game revenue routed into it. Governance: proposals, discussion,
 voting, quorum, delegation, token-weighted / one-member-one-vote / reputation-weighted models,

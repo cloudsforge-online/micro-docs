@@ -366,7 +366,7 @@ appears in the user's own security log and activity feed, and in the operator au
 
 | Asset class | Settlement | Why |
 | --- | --- | --- |
-| Fungible tokens held custodially, Shards, EMBER | **Custodial atomic swap in the ledger** — one journal entry debiting buyer and crediting seller, escrow account in between | Instant, free, reversible by an operator during a dispute window, no gas |
+| Fungible tokens held custodially, EMBER | **Custodial atomic swap in the ledger** — one journal entry debiting buyer and crediting seller, escrow account in between | Instant, free, reversible by an operator during a dispute window, no gas |
 | Assets owned by an external wallet | **On-chain**: escrow contract on EVM/Ember, confirmed by the indexer | The platform never holds the key; the user's own wallet is the counterparty |
 | Game items, entitlements, memberships, token-gated content | **Ledger + entitlement grant**, no chain | These are platform-native. Putting them on-chain would be ceremony without benefit |
 | Creator products, service subscriptions | **Billing service**, recurring | Subscriptions are a billing concept, not a marketplace one |
@@ -375,6 +375,14 @@ appears in the user's own security log and activity feed, and in the operator au
 A listing reserves the seller's asset (a ledger reservation, AD-06), a purchase moves reserved
 → escrow → buyer atomically, and fees and royalties are postings in the same entry. Nothing is
 "in flight" without being in an account.
+
+The first row named Shards until 2026-08-07. It is dropped rather than footnoted, because this
+table decides what the market is *built to trade*, and `SHARD` is retired
+(`contracts/packages/chain/src/index.ts`): nothing issues it and the residual balance is being
+drained. Dropping it from the row costs a holder nothing — the mechanism the row describes is an
+ordinary ledger transfer, which stays legal for retired assets precisely so a balance can leave
+(`ledger/src/migrations.ts` refuses retired assets on *acquisition* kinds only). What is gone is
+the instruction to build a shopfront around it.
 
 ### AD-15 · Community treasuries are ledger sub-accounts with an approval policy
 

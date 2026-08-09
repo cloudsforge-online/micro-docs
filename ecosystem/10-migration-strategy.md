@@ -220,8 +220,12 @@ persistent divergence, however quickly it was fixed.
 `wallet` serves balances from the ledger. Pay's columns become write-only shadows. **Dual write
 does not stop.**
 
-The cutover is progressive, by asset, smallest exposure first: Shards last, because Shards is
-the largest liability and the most-read balance. Each asset moves behind
+The cutover is progressive, by asset, smallest exposure first — order by liability and by read
+volume, largest last, and re-derive that order from the census rather than from this sentence.
+It named Shards as the last asset until 2026-08-07; SHARD has since been retired
+(`contracts/packages/chain/src/index.ts`) and is being drained, so what was the largest liability
+is a shrinking one and hard-coding its position here would fix an ordering that the ledger can
+answer better on the day. Each asset moves behind
 `p04.wallet.ledger_reads:<asset>`, soaks for 48 hours, and only then does the next one move.
 
 Shadow reads precede each flip: for one week per asset, `wallet` fetches from both and returns

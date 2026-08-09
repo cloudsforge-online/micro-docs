@@ -177,7 +177,12 @@ horizontal bar, not a pie. Value over 24h/7d/30d/1y as a single-series area char
 
 **Invariant behind it.** The number comes from `ledger`'s `balances` projection, rebuildable from
 the journal by replay and compared nightly against a shadow rebuild
-([04](04-domain-model.md) §2.3). Today `wallets.shards` *is* the truth and nothing can check it.
+([04](04-domain-model.md) §2.3). This used to end "Today `wallets.shards` *is* the truth and
+nothing can check it", and both halves have since stopped being true: the Pay table went with the
+pre-migration monorepo, and `ledger/src/reconcile.ts` is the check that did not exist. What a run
+can *say* still depends on the asset — a chain-backed balance is compared against the indexer's
+confirmed total, while an administered one has only the ledger's own liability sum to compare
+against, which is a weaker statement and is recorded as one.
 
 **Phase.** P4 (ledger), P6 (Hub).
 

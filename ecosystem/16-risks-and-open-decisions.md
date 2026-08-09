@@ -21,15 +21,23 @@ one-engineer estate every role is currently the same person, which is itself R-4
 
 | ID | Risk | Cat | L | I | Phase | Mitigation | Owner | Early warning |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| R-01 | **The ledger migration moves a balance incorrectly.** A user's Shards or coin balance is wrong after cutover, and nobody notices until they withdraw | Financial | M | **H** | P4 | Exact-match backfill against P0's signed census; dual write with a five-minute comparator; two weeks at zero divergence before read cutover; dual write retained *past* cutover; per-asset withdrawal freeze on drift | Money lead | Any non-zero comparator result. One divergence is the signal — not a trend |
-| R-02 | Backfill reproduces the census "within tolerance" rather than exactly, and the tolerance hides a real error | Financial | M | **H** | P4 | The exit criterion is *exactly*, not within tolerance. A single-Shard mismatch blocks the phase | Money lead | Anyone proposing a tolerance for the backfill |
+| R-01 | **The ledger migration moves a balance incorrectly.** A user's balance in some asset is wrong after cutover, and nobody notices until they withdraw | Financial | M | **H** | P4 | Exact-match backfill against P0's signed census; dual write with a five-minute comparator; two weeks at zero divergence before read cutover; dual write retained *past* cutover; per-asset withdrawal freeze on drift | Money lead | Any non-zero comparator result. One divergence is the signal — not a trend |
+| R-02 | Backfill reproduces the census "within tolerance" rather than exactly, and the tolerance hides a real error | Financial | M | **H** | P4 | The exit criterion is *exactly*, not within tolerance. A one-minor-unit mismatch blocks the phase | Money lead | Anyone proposing a tolerance for the backfill |
 | R-03 | The divergence comparator itself is broken and reports zero because it is not running | Financial | L | **H** | P4 | The comparator emits a heartbeat metric; absence of results alerts, not just non-zero results | Money lead | Comparator run count flat for one hour |
 | R-04 | The trial-balance deferred constraint is too slow at volume and is relaxed "temporarily" | Technical | L | H | P4 | It is a database constraint, not application code, and its removal requires a migration that fails review | Money lead | Any PR touching the constraint trigger |
-| R-05 | **Shard float coverage falls below 100%** — outstanding Shard liability exceeds custody holdings | Financial | M | **H** | P7 | Reconciliation invariant ([04](04-domain-model.md) §2.4); coverage ratio on the Business dashboard; issuance stops before redemption does | Money lead | Coverage ratio below 105% |
+| R-05 | **Custodial float coverage falls below 100%** — outstanding user liability in an asset exceeds the custody holdings backing it | Financial | M | **H** | P7 | Reconciliation invariant ([04](04-domain-model.md) §2.4); coverage ratio on the Business dashboard; issuance stops before redemption does | Money lead | Coverage ratio below 105% |
 | R-06 | `convertCoinToEmber` is re-enabled before the reserve check exists | Financial | M | **H** | P1→P7 | Disabled in P1; re-enabled in P7 only behind reconciliation ([06](06-ecosystem-workflow.md) P1 item 12) | Money lead | Custodial EMBER liability rising with no matching custody asset movement |
 | R-07 | The split fragments a transaction that used to be atomic — a debit lands and its business effect does not | Technical | M | H | P4 | A debit and its effect are never in two services: the ledger posting *is* the transaction, the product consumes the event | Architect | Any entry with no corresponding domain record after the reconciliation window |
 | R-08 | **No refund path exists anywhere** (`/internal/credit` has no caller), so the undelivered-SKU remediation cannot execute | Financial | **H** | M | P1 | Refund path is built in P1 as the first item, before the withdrawals; completed in P7 | Money lead | It is already materialised. Track as a P1 blocker |
 | R-09 | Revenue by product stays underivable because a service charges through a path that records no source | Financial | M | M | P4 | Every posting records `originating_service`; the omnibus `/internal/*` surface is retired | Money lead | Any revenue entry with a null or generic source |
+
+**R-01, R-02 and R-05 were de-Sharded on 2026-08-07 — generalised, not narrowed.** They named
+Shards because Shards was the largest balance when they were written; SHARD is now retired
+(`contracts/packages/chain/src/index.ts`) and none of the three risks was ever about that asset
+in particular. R-05 is the one worth reading twice: retiring an asset *shrinks* a float-coverage
+risk, because nothing issues new liability against the same custody, but it does not close it —
+the residual balance is still owed to whoever holds it, and it is still redeemable. The mitigation
+is unchanged and the early warning is unchanged.
 
 ### 1.2 Topology and delivery
 
@@ -171,9 +179,9 @@ does not have.
 nothing in the current design requires it. **Resolved by:** whether users are actually blocked
 from funding accounts, measured as drop-off at the deposit step in the P13 funnel.
 **Gate:** P13. **Default: no fiat, permanently.** The invoice and provider stack was deleted, not
-deferred — `PAY_PROVIDER` defaulted to `'mock'` and `POST /invoices/:id/mock-pay` was a live
-free-Shards hole. Shards are funded by on-chain deposit only. Reversing this is a new
-programme, not a feature.
+deferred — `PAY_PROVIDER` defaulted to `'mock'` and `POST /invoices/:id/mock-pay` was a live hole
+that minted a spendable balance out of nothing. A custodial balance is funded by on-chain deposit
+only. Reversing this is a new programme, not a feature.
 
 ### 2.6 Is KYC/AML required, and at what threshold?
 

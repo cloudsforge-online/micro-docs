@@ -9,6 +9,16 @@
 > `TD-01`–`TD-20` defect ids are cited from 37 places outside `docs/`. Read it as **history — the
 > problem statement the estate was built to answer** — never as a current fact.
 >
+> **Every "Shards" figure below is a historical price, not a current one.** The Shard was
+> `forge-pay`'s internal unit at one hundred to the dollar; the estate's successor asset registry
+> retires it (`SHARD` in `RETIRED_ASSETS`, `contracts/packages/chain/src/index.ts`), nothing issues
+> it, and a residual balance is being drained. The prices, the peg arithmetic in §6 and the
+> `wallets.shards` column are left spelled as they were on purpose: this document's job is to
+> record what the pre-migration system did, and re-denominating a defect report to the unit that
+> replaced it would make the defects unrecognisable to the 37 places outside `docs/` that cite
+> their ids. What the estate charges and settles in now is
+> [15-monetisation-model](15-monetisation-model.md) §3 and §5 — USD prices, EMBER settlement.
+>
 > For what exists now: [34-service-catalogue](34-service-catalogue.md).
 > For what is done: [18-build-status](18-build-status.md).
 > For what is next: [33-roadmap-index-and-next-sessions](33-roadmap-index-and-next-sessions.md).
