@@ -51,7 +51,7 @@ true. Today, three are.
 | 3 | One wallet experience — the same receive, send and key screens whichever product you came from. | False — three different "wallet" concepts |
 | 4 | One portfolio — a single number that is the truth about what you hold. | False — nothing aggregates |
 | 5 | One activity history — every account, money, asset, game and governance event on one timeline. | False — no cross-product feed exists |
-| 6 | One internal economy — Shards and EMBER spend and earn identically in every product. | Partly — Shards are universal; nothing earns them |
+| 6 | One internal economy — EMBER balances spend and earn identically in every product. | False — EMBER settles what is bought, but no product earns it yet |
 | 7 | Assets you create in one product are usable in the others. | False |
 | 8 | One set of notifications, with one preference page. | False |
 | 9 | One operator view — a support agent can answer any question from one place. | False |
@@ -60,6 +60,16 @@ true. Today, three are.
 
 Every phase in [06-ecosystem-workflow.md](06-ecosystem-workflow.md) is justified by which of
 these eleven it moves from false to true. A phase that moves none of them does not ship.
+
+**Statement 6 was re-worded on 2026-08-07**, from "Shards and EMBER spend and earn identically
+in every product". SHARD is retired (`contracts/packages/chain/src/index.ts`): nothing issues
+it, the residual balance is being drained, and a statement of what the platform *intends to be*
+cannot be half-denominated in an asset that is on its way out. The verdict moved with the
+wording rather than surviving it — "Shards are universal" was the whole basis for *Partly*, and
+once the universal half is retired what is left is a settlement asset with no earning path in
+any product. Anything that changes here changes in two places: `beacon/src/claims.ts` publishes
+this table's statements verbatim and `beacon/src/claims.test.ts` pins them, so the sentence
+above and the sentence beacon serves must stay character-identical.
 
 ## 3. The products
 
@@ -75,7 +85,7 @@ something a person chooses, it is something they are given.
 | **Forge Market** | Sell | Discovery, listings, auctions, offers, escrow, creator and project profiles. | New |
 | **Forge Trade** | Trade | Backtesting, strategy catalogue, paper and live bots, performance reporting. | `crucible` |
 | **Forge Worlds** | Play | The game platform. *Ninety Days After* is its first title, not its definition. | `ninety-days-after`, generalised |
-| **Forge Pay** | Spend | Wallet, deposits, withdrawals, conversions, Shards. Presented **inside Forge Hub**, not as a separate destination. | `forge-pay`, decomposed |
+| **Forge Pay** | Spend | Wallet, deposits, withdrawals, conversions, EMBER balances. Presented **inside Forge Hub**, not as a separate destination. | `forge-pay`, decomposed |
 | **Developer Platform** | Build | Projects, API keys, webhooks, SDK, CLI, sandbox, application directory. | New |
 
 **Spine, never a product:** identity, ledger, custody, indexer, policy, activity,

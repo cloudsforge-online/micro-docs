@@ -262,7 +262,7 @@ The reference layout for the control centre. Regions, not pixels.
 │  ┌──────────────────────────────┐  ┌────────────────────────────────────┐  │
 │  │ £12,480.22          ▲ 2.4%   │  │ ▓▓▓▓▓▓▓▓░░░░  EMBER      42%      │  │
 │  │ ╱╲    ╱╲                     │  │ ▓▓▓▓▓░░░░░░░  ETH        26%      │  │
-│  │╱  ╲__╱  ╲___╱╲__             │  │ ▓▓▓░░░░░░░░░  Shards     18%      │  │
+│  │╱  ╲__╱  ╲___╱╲__             │  │ ▓▓▓░░░░░░░░░  SOL        18%      │  │
 │  │  24h  7d  30d  1y            │  │ ▓▓░░░░░░░░░░  BTC        14%      │  │
 │  └──────────────────────────────┘  └────────────────────────────────────┘  │
 │   area, one series, no legend        sorted bars, direct-labelled, no pie   │
@@ -271,7 +271,7 @@ The reference layout for the control centre. Regions, not pixels.
 │  ┌──────────────┐┌──────────────┐┌──────────────┐┌──────────────┐          │
 │  │ ⏳ Deposit   ││ ⚠ 2FA is     ││ ▲ Bot paused ││ ◇ Offer on   │          │
 │  │ 41/60 conf   ││ not enabled  ││ risk limit   ││ your listing │          │
-│  │ ~9 min       ││ Enable →     ││ Review →     ││ 240 SHARD    │          │
+│  │ ~9 min       ││ Enable →     ││ Review →     ││ 240 EMBER    │          │
 │  └──────────────┘└──────────────┘└──────────────┘└──────────────┘          │
 │   pending          security         trade           market                 │
 │                                                                            │
@@ -298,6 +298,14 @@ The reference layout for the control centre. Regions, not pixels.
    shows the last four.
 5. **Every tile degrades alone.** The dashboard fans out to ten services; one slow upstream must
    cost one tile, not the page. This is an exit criterion of Phase 6.
+
+The allocation bar showed `Shards 18%` and the offer card `240 SHARD` until 2026-08-07. Both were
+replaced rather than deleted, because the point of a reference layout is the *shape* — four
+allocation rows, a two-line offer card — and dropping a row would have quietly changed the shape
+while fixing the copy. The asset codes here are illustrative and always were; what makes them
+worth correcting is that a wireframe is what a designer copies, and copying a retired asset
+(`RETIRED_ASSETS`, `contracts/packages/chain/src/index.ts`) into a new screen is how a dead
+currency gets a second life. Percentages still total 100.
 6. **No pie chart.** Allocation is sorted horizontal bars with direct labels, folding to "Other"
    past eight assets.
 

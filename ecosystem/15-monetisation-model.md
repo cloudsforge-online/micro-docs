@@ -74,20 +74,26 @@ Anything that fits none of these four is not a product, it is a toll.
 
 ### 3.1 Summary
 
+**Every price in this document is stated in USD.** It was stated in Shards until 2026-08-07, and
+the conversion is exact rather than a re-pricing: the documented peg was 100 Shards to the dollar
+and `SHARD` carries `decimals: 0`, so one Shard was one US cent and every figure below is the
+same money it always was. §5 is the account of why the unit changed and what settles a purchase
+now.
+
 | # | Source | Model | Who pays | Indicative price | Phase | Trust risk |
 | --- | --- | --- | --- | --- | --- | --- |
-| R1 | Token deployment | Fixed per-tier fee | Creator | 1,500 / 4,000 / 9,000 Shards | Live; extended P8 | Low |
-| R2 | Asset generation credits | Prepaid credits, consumed per image | Creator | 5 Shards per standard image | P8 | Medium — cost is opaque to the buyer |
+| R1 | Token deployment | Fixed per-tier fee | Creator | $14.99 / $39.99 / $89.99 | Live; extended P8 | Low |
+| R2 | Asset generation credits | Prepaid credits, consumed per image | Creator | $0.05 per standard image | P8 | Medium — cost is opaque to the buyer |
 | R3 | Marketplace take rate | % of sale, custodial and on-chain | Seller | 250 bps | P9 | High — a fee on a fraudulent sale is complicity |
 | R4 | Creator royalties | % of resale, paid **to** the creator | Buyer (via sale price) | 0–1,000 bps, creator-set | P9 | Medium — unenforceable off-platform |
-| R5 | Verified-project service | One-off review fee | Project team | 5,000 Shards | P9 | **Highest** — sells the appearance of endorsement |
-| R6 | Trading performance fee | 15% of gains above a high-water mark | Live-bot operator | 1,500 bps, 5-Shard floor | Built, disabled; live P10 | Medium |
-| R7 | Conversion spread | Basis points both ways on coin↔Shard | Converter | 200 bps | Live | Medium — invisible unless quoted |
-| R8 | Private worlds | Per-world rental, time-boxed | Host | 1,800 / 2,500 Shards | Sold, **undelivered**; P10 | **Currently critical** — §9 |
-| R9 | Season pass | Per-season, cosmetic track | Player | 500 Shards | Sold, partly undelivered; P10 | Medium |
-| R10 | Cosmetics | Per-item | Player | 120–600 Shards | Live, partly undelivered | Low once §9 is done |
+| R5 | Verified-project service | One-off review fee | Project team | $50 | P9 | **Highest** — sells the appearance of endorsement |
+| R6 | Trading performance fee | 15% of gains above a high-water mark | Live-bot operator | 1,500 bps, 5-cent floor | Built, disabled; live P10 | Medium |
+| R7 | Conversion spread | Basis points both ways on a conversion | Converter | 200 bps | Live | Medium — invisible unless quoted |
+| R8 | Private worlds | Per-world rental, time-boxed | Host | $18 / $25 | Sold, **undelivered**; P10 | **Currently critical** — §9 |
+| R9 | Season pass | Per-season, cosmetic track | Player | $5 | Sold, partly undelivered; P10 | Medium |
+| R10 | Cosmetics | Per-item | Player | $1.20–$6.00 | Live, partly undelivered | Low once §9 is done |
 | R11 | Developer plans | Tiered subscription + metered overage | Developer | Free / $29 / $199 per month | P11 | Low |
-| R12 | Community plans | Per-community subscription | Community treasury | 2,000 Shards per month | P12 | Medium |
+| R12 | Community plans | Per-community subscription | Community treasury | $20 per month | P12 | Medium |
 | R13 | Premium analytics | Add-on subscription | Creator, project, developer | $19 per month | P13 | Medium — must never be user-level data |
 | R14 | Platform subscription (Forge Plus) | Monthly bundle | Enthusiast | $9 per month | P13, **conditional** | High — bundles drift into paywalling the spine |
 
@@ -99,36 +105,44 @@ wallet is the contract owner and the platform's deployer key only pays gas.
 **Pricing today**, verbatim from `shared-libs/packages/shared/src/forgemint.ts`:
 
 **Pricing basis, decided 2026-08-04.** These tiers keep their **stated USD** and change unit: the
-Shard column is historical, converted at the documented 100-Shards-to-the-dollar peg. So `Fixed`
+Shard figures were historical, converted at the documented 100-Shards-to-the-dollar peg. So `Fixed`
 remains $14.99, `Mintable` $39.99, `Foundry` $89.99, and the amount of EMBER that buys is whatever
 those dollars buy at settlement.
 
-**The numbers below have not moved yet, and this is deliberate.** `micro-billing` still prices every
-row in `SHARD` — measured, not assumed: its `prices` table holds `SHARD` amounts of 250, 400, 500,
-750 and 1000. Rewriting this table to EMBER before the service changes would make the document
-disagree with the code, which is the failure the estate's claims checkers exist to catch. The unit
-here changes when billing's does, in the same change.
+**The service has now moved, and this table follows it.** This paragraph used to say the numbers
+had deliberately not moved because `micro-billing` still held its `prices` rows in `SHARD`. That
+stopped being true: `billing/src/migrations.ts` (`retire_shard_prices`) re-denominated the
+catalogue in USD cents, and `billing/src/env.ts` now holds `priceAsset: 'USD'` and
+`settlementAsset: 'EMBER'` as literals rather than variables. `micro-mint` made the same move in
+its own migration and **removed** `priceShards` from the wire rather than re-basing it, so a client
+reading the old field gets `undefined` instead of cents silently relabelled. The document and the
+code agree again, which is the state this paragraph existed to protect.
 
-There is also no EMBER/USD rate to convert *at* — the conclusion is unchanged but its reason is
-now a different one. Mainnet went live on 2026-08-05 (chain id 7411), so "a coin with no mainnet
-has no price", which is what stood here, is no longer the argument. What makes the price absent is
-that there is **no market, no listing and no liquidity**: a chain that answers is not a venue that
-quotes. So the USD figure is still the durable one and the EMBER amount is still a settlement-time
-question rather than a table entry.
+There is still no EMBER/USD rate to convert *at*, and the reason is not the one that used to stand
+here. Mainnet went live on 2026-08-05 (chain id 7411), so "a coin with no mainnet has no price" is
+no longer the argument. What makes the price absent is that there is **no market, no listing and no
+liquidity**: a chain that answers is not a venue that quotes. So the USD figure is the durable one
+and the EMBER amount is a settlement-time question rather than a table entry.
 
-| Tier | Shards | Stated USD | USD at the 100:1 peg | Features |
-| --- | --- | --- | --- | --- |
-| Fixed | 1,500 | $14.99 | $15.00 | Fixed supply, ERC-20, one EVM chain |
-| Forge | 4,000 | $39.99 | $40.00 | Mint, burn, ownable |
-| Foundry | 9,000 | $89.99 | $90.00 | Mint/burn/pausable/capped, EVM or Solana |
+| Tier | Price | Features |
+| --- | --- | --- |
+| Fixed | $14.99 | Fixed supply, ERC-20, one EVM chain |
+| Forge | $39.99 | Mint, burn, ownable |
+| Foundry | $89.99 | Mint/burn/pausable/capped, EVM or Solana |
+
+The peg-derived figures these tiers were carried at — $15.00, $40.00 and $90.00 — differed from the
+stated USD by a cent, which is the two-numbers-that-disagree problem §3.8 describes at much larger
+scale. One price now, and it is the stated one.
 
 **Rationale.** Deployment is category 1 work: it consumes gas the platform pre-funds, plus a
 contract the platform wrote, audited and maintains. Fixed per-tier pricing beats a percentage
 because there is nothing to take a percentage *of* — a token has no value at deployment.
 
-**Recommended changes.** Keep the tiers. Make the Shard price the *only* price, with USD derived
-from the peg for display, so the catalogue stops carrying two numbers that disagree by a cent.
-Add a **mainnet gas surcharge quoted at order time**: the tier price was set against testnet
+**Recommended changes.** Keep the tiers. This bullet used to ask for "the Shard price as the *only*
+price, with USD derived from the peg" — the one-price principle was right and the unit it named is
+retired, so it inverts: **the USD price is the only price**, and what a purchase settles in is a
+rate read at payment rather than a second catalogue number. That is the shape billing and mint both
+took. Add a **mainnet gas surcharge quoted at order time**: the tier price was set against testnet
 reality (`FORGE_MINT_MAINNET_ENABLED` is off by default with an allowlist,
 `forge-mint/services/forge-mint/src/env.ts,119`), and a $90 Foundry deploy on Ethereum
 mainnet during congestion can cost more in gas than the tier charges in total. The surcharge is
@@ -152,7 +166,7 @@ published rates the CLI already uses (`asset-forge/src/model.ts`) are, for `gpt-
 1024²: **$0.011 low, $0.042 medium, $0.167 high**. The CLI's guard is a `$2` default spend limit
 and a TTY prompt (`asset-forge/src/generate.ts`), which is not a service-grade control.
 
-Recommendation: **5 Shards (5 cents) per standard image, 20 Shards for high quality**, sold in
+Recommendation: **5 cents per standard image, 20 cents for high quality**, sold in
 credit packs, with a free allocation of 10 standard images per account per month so a first
 brand kit costs nothing. That is roughly a 20% gross margin at medium quality and a slight loss
 at high quality — deliberately, because high quality is where the output is good enough to make
@@ -192,7 +206,7 @@ platform profits from its own moderation failure.
 ([04](04-domain-model.md) §6.3): team identity checked, contract source verified against the
 deployed bytecode, authorities and supply concentration documented, links confirmed.
 
-**Price: 5,000 Shards ($50) one-off**, plus 2,000 Shards for a re-review after a contract change.
+**Price: $50 one-off**, plus $20 for a re-review after a contract change.
 
 **This is the single most dangerous SKU in the model** and it is included only with the
 following constraint written into the product: **verification is a statement about identity and
@@ -215,8 +229,9 @@ has not exceeded the mark (`performanceFee()`).
 
 **This is the best-designed price in the estate and it should be copied, not changed.** The
 high-water mark means the same gain is never billed twice and a recovery from a drawdown is
-billed nothing. The 5-Shard floor means the platform does not bill 3 cents and spend more than
-that recording it. Rounding is *down*, deliberately, "with an integer currency somebody has to
+billed nothing. The five-cent floor — `MIN_FEE_SHARDS` is the constant's name in the source it is
+quoted from, and one Shard was one cent — means the platform does not bill 3 cents and spend more
+than that recording it. Rounding is *down*, deliberately, "with an integer currency somebody has to
 eat the fraction, and it should be the house".
 
 **It earns nothing today.** `CRUCIBLE_LIVE_ENABLED` defaults to `false`
@@ -225,8 +240,7 @@ has one test file ([00](00-current-state.md) §3.9), but it means Forge Trade's 
 **zero until P10**, and any plan that counts it before then is counting a flag.
 
 **Limits stay as they are** (`CRUCIBLE_LIMITS`): 200 backtests per day, 10 paper
-bots, 5 live bots, minimum live allocation 1,000 Shards ($10) because below that the fee floor
-dominates.
+bots, 5 live bots, minimum live allocation $10 because below that the fee floor dominates.
 
 **Trust risk: medium.** The fee settles against Pay's price oracle, not an exchange
 ([01](01-product-vision.md) §6). Every assessment shows equity, the high-water mark, the gain
@@ -236,8 +250,14 @@ strategy that only works for free does not work" — is a commercial asset and s
 ### 3.7 R7 · Conversion spread
 
 **What it is.** `PAY_CONVERSION_SPREAD_BPS`, default **200** (`forge-pay/services/pay/src/env.ts`),
-applied in both directions on coin↔Shard conversion
-(`forge-pay/services/pay/src/pricing.ts`).
+applied in both directions on a conversion (`forge-pay/services/pay/src/pricing.ts`).
+
+This said "on coin↔Shard conversion", which described the only conversion the legacy service had.
+`micro-wallet`'s `convert` route is asset-to-asset: a coin-to-coin conversion is quoted through
+both assets' rates, and the coin↔SHARD legs remain reachable **so that a holder can get out**
+(`wallet/src/money.ts`). Nothing sells a new thing for Shards — the ledger refuses a retired asset
+on an acquisition kind, `purchase` first among them (`ledger/src/migrations.ts`) — so the spread's
+subject is conversion in general, not one administered pair.
 
 **Why this is not monetising the spine.** Holding is free; moving is free; *converting* is a
 position the platform takes, carrying price risk on a real asset it must hold. 200 bps is the
@@ -254,28 +274,30 @@ makes the real carrying cost measurable for the first time.
 All three exist and all three are partly undelivered. §9 is the remediation; the model is here.
 
 **Private worlds — access, priced by capacity and duration.** Today:
-`private_skirmish` 1,800 Shards / 30 days / 12 players, `private_saga` 2,500 Shards / 90 days /
-40 players (`shared-libs/packages/shared/src/pay.ts`, `PRIVATE_WORLD_OFFERS`). A private world
+`private_skirmish` $18 / 30 days / 12 players, `private_saga` $25 / 90 days / 40 players
+(`shared-libs/packages/shared/src/pay.ts`, `PRIVATE_WORLD_OFFERS`). A private world
 is a genuinely reserved simulation: its own tick, its own stock, its own seed. Category 3, and a
 correct thing to charge for — *once something creates it*.
 
-**Season pass — 500 Shards, a cosmetic track, time-boxed.** `SEASON_PASS.priceShards = 500`,
-unlocking `frame_ember`, `crest_phoenix` and `flair_founder`. The pass model is right (it funds
-a season's content and expires with it); the implementation is not (it unlocks all three ids
-wholesale at purchase, with no progression track, and two of the three are cosmetic kinds
-nothing draws).
+**Season pass — $5, a cosmetic track, time-boxed.** Held in the source as
+`SEASON_PASS.priceShards = 500`, unlocking `frame_ember`, `crest_phoenix` and `flair_founder`. The
+pass model is right (it funds a season's content and expires with it); the implementation is not
+(it unlocks all three ids wholesale at purchase, with no progression track, and two of the three
+are cosmetic kinds nothing draws).
 
-**Cosmetics — 14 items, 120–600 Shards.** Zero marginal cost, zero gameplay effect.
+**Cosmetics — 14 items, $1.20–$6.00.** Zero marginal cost, zero gameplay effect.
 `@cloudsforge/shared`'s catalogue comment states the rule already: "free-to-play, NEVER
 pay-to-win… No AP, resources, XP, or combat power is ever sold". That rule is upheld in schema
 by `inventory_item.bound` ([04](04-domain-model.md) §7.3).
 
-**A pricing correction all three need.** The Shard and USD prices in these catalogues do not
-agree with the 100:1 peg: the pass is 500 Shards but declares `priceUsd: 4.99`; the private
-worlds are 1,800 and 2,500 Shards but declare `$14.99` and `$19.99` — that is $18.00 and $25.00
-at the peg, a 17% and 20% discrepancy. **One price, in Shards, with USD derived from the peg for
-display.** Two hand-maintained prices is how a catalogue tells two different customers two
-different numbers.
+**A pricing correction all three need, and it did not go away with the unit.** These catalogues
+carry two hand-maintained prices that disagree: the pass charges 500 minor units but declares
+`priceUsd: 4.99`; the private worlds charge 1,800 and 2,500 but declare `$14.99` and `$19.99` —
+$18.00 and $25.00 at the peg, a 17% and 20% discrepancy. The prices above are the **charged**
+figures, because what a customer was actually debited is the truthful one. **One price, in USD, and
+what it settles in is a rate read at payment.** Two hand-maintained prices is how a catalogue tells
+two different customers two different numbers, and re-denominating the catalogue does not fix that
+on its own — it only removes the excuse.
 
 ### 3.9 R11 · Developer plans
 
@@ -296,8 +318,8 @@ key rate-limits and the dashboard says why.
 
 ### 3.10 R12 · Community plans, R13 · premium analytics, R14 · Forge Plus
 
-**Communities** are free to create, free to join, free to govern. A plan (2,000 Shards/month,
-paid from the community treasury) buys capacity, not governance: more members, custom roles,
+**Communities** are free to create, free to join, free to govern. A plan ($20/month, paid from the
+community treasury) buys capacity, not governance: more members, custom roles,
 private channels, a verified community page. **Governance is never a paid feature** — a
 community that cannot vote until it pays is not a community.
 
@@ -379,55 +401,82 @@ before it is trusted.
 
 ---
 
-## 5. The Shards model
+## 5. The unit of account
 
-**What a Shard is.** A platform-internal accounting unit, pegged at **100 Shards = 1 USD** —
-`shardsPerUsdScaled = 100n * RATE_SCALE` (`forge-pay/services/pay/src/pricing.ts`). A Shard
-is one US cent. The same constant anchors Crucible's paper trading (`SHARDS_PER_USD = 100`).
+This section was called "The Shards model" and described an administered platform currency as the
+estate's unit. **It is not, any more.** A price is durable in **USD**, held as cents; a purchase
+**settles in EMBER**, at a rate read at payment. SHARD is retired: it is in `RETIRED_ASSETS`, and
+`IssuableAssetCode` — `Exclude<AssetCode, 'SHARD'>` — makes putting it back into a price or a
+settlement a **compile** error rather than a runtime one
+(`contracts/packages/chain/src/index.ts`). The ledger enforces the same rule from underneath: a
+retired asset is refused on every acquisition entry kind, `purchase` first among them
+(`ledger/src/migrations.ts`).
 
-**Why a platform currency at all**, when it could all be priced in a coin:
+**What a Shard was.** A platform-internal accounting unit pegged at 100 Shards to the dollar, with
+`decimals: 0` — one Shard was exactly one US cent. That peg is why every price in this document
+could be re-denominated to USD without changing a single amount.
 
-1. **Prices must be stable and comparable.** A cosmetic that costs 150 Shards costs $1.50 today
-   and $1.50 next month. Priced in EMBER it costs a different amount every hour, and every
-   catalogue is a live re-pricing exercise.
-2. **Integer arithmetic, no floats.** A Shard is the smallest unit and every price is an
-   integer, which is what makes the fee floor, the round-down rule and the double-entry
-   invariant expressible without floating-point error.
-3. **One internal economy.** Test 6 in [01](01-product-vision.md) §2 requires that value earned
-   in a world spends in Market and funds a bot. That requires one unit that every product
-   understands.
+**Why the three arguments for a platform currency no longer land where they did:**
 
-**How Shards are earned.** By on-chain deposit and conversion — and *only* that, today. There is
+1. **Prices must be stable and comparable.** Still true, and it is now the argument for pricing in
+   USD directly. A cosmetic that costs $1.50 costs $1.50 next month. The Shard never added
+   anything here that the dollar it was pegged to did not already supply.
+2. **Integer arithmetic, no floats.** Still true, and unaffected: USD is held as integer cents, and
+   every chain asset is a smallest-unit integer ([04](04-domain-model.md) preamble). The fee floor,
+   the round-down rule and the double-entry invariant are as expressible as they were.
+3. **One internal economy.** Test 6 in [01](01-product-vision.md) §2 requires that value earned in
+   a world spends in Market and funds a bot. That still requires one unit every product
+   understands — but it must be one the platform **cannot issue at will**, which is precisely what
+   the Shard was and why it went. That unit is EMBER.
+
+**Why the Shard had to go, in one sentence.** It sat outside the estate's central guarantee — *no
+balance may exist that the chain does not back* — and the reconciliation record proves the point
+rather than asserting it: an asset with no chain behind it can only be reconciled with
+`observed_source = 'liability_sum'`, which compares the ledger's custody total against the ledger's
+own liability total (`ledger/src/reconcile.ts`). That is a real check and it is the *only* one
+available for such an asset. It can tell you the books are internally consistent. It can never tell
+you the money is there.
+
+**What is left of it, and what must not happen to that.** A residual SHARD balance is outstanding
+and is being drained. **No figure is quoted here on purpose**: several repositories hard-code a
+total, they disagree with each other, and the ledger is the only place the number is true. Every
+route *out* stays legal — withdrawal, transfer, conversion to a chain asset — because migration 13
+leaves them so, and because removing them would convert a wind-down into a freeze. What has stopped
+is **selling anything new for Shards**.
+
+**How a customer funds a purchase.** By on-chain deposit and conversion — and *only* that. There is
 no fiat rail: the invoice and provider stack was deleted rather than configured, because
-`PAY_PROVIDER` defaulted to `'mock'` and `POST /invoices/:id/mock-pay` was an unlimited
-free-Shards hole (`shared-libs/packages/shared/src/pay.ts`, the retirement comment). **Do not
-restore it.** From P9 and P10, Shards are additionally earned by marketplace sales and game
-rewards — both ledger postings against capped budgets, never mints.
+`PAY_PROVIDER` defaulted to `'mock'` and `POST /invoices/:id/mock-pay` was an unlimited free-balance
+hole (`shared-libs/packages/shared/src/pay.ts`, the retirement comment). **Do not restore it.**
+`micro-wallet`'s conversion is asset-to-asset and quotes through both sides' rates, so no supported
+coin is a dead end and nothing obliges a customer to buy EMBER on a market that does not yet exist
+(`wallet/src/money.ts`). From P9 and P10, balances are additionally earned by marketplace sales and
+game rewards — both ledger postings against capped budgets, never mints.
 
-**How Shards are spent.** Every SKU in §3 priced in Shards, plus conversion back to a coin.
+**The float risk, stated plainly, and it did not retire with the Shard.** Any custodial balance is a
+**liability** — a promise to redeem. If a customer converts into an asset the platform holds and
+that asset falls, the platform holds a depreciated position against an undiminished liability. That
+is why the 200 bps spread exists, and it is bounded by three things:
 
-**The float risk, stated plainly.** Outstanding Shards are a **liability** — a promise to
-redeem at 100:1. If a customer converts EMBER to Shards and EMBER then falls, the platform holds
-a depreciated asset against an undiminished liability. That is why the 200 bps spread exists,
-and it is bounded by three things:
-
-- Shards are backed by the coin holdings that funded them, held in custody, and the
-  **reconciliation invariant** ([04](04-domain-model.md) §2.4) makes the backing checkable: Σ
-  user liabilities = Σ custody assets = indexer-observed on-chain holdings, within a per-chain
-  tolerance. Drift beyond tolerance freezes withdrawals for that asset and pages.
+- Balances are backed by the holdings that funded them, held in custody, and the **reconciliation
+  invariant** ([04](04-domain-model.md) §2.4) makes the backing checkable: Σ user liabilities = Σ
+  custody assets = indexer-observed on-chain holdings, within a per-chain tolerance. Drift beyond
+  tolerance freezes withdrawals for that asset and pages. **This is the check the Shard could never
+  have**, which is the whole of the argument above.
 - `convertCoinToEmber` — which today credits custodial EMBER with **no on-chain movement and no
   reserve check** ([00](00-current-state.md) §3.2) — is disabled in P1 and re-enabled in P7 only
   behind a real reserve check. That is the float risk in its purest form and it is currently
   unbounded.
-- A **float report** in the Business dashboard: total Shard liability, total custody assets by
-  coin, and the coverage ratio. If coverage falls below 100%, Shard issuance stops before
-  redemption does.
+- A **float report** in the Business dashboard: total liability by asset, total custody assets by
+  coin, and the coverage ratio. If coverage falls below 100%, issuance stops before redemption
+  does.
 
-**In the ledger.** Shards are `asset_code = SHARD` on `liability` accounts with subject
-`user:<id>` ([04](04-domain-model.md) §2.1). Platform revenue is a `revenue` account. Every
-purchase is one balanced entry: debit the user's SHARD liability, credit `platform` revenue. The
-account key `(subject, asset_code, purpose)` is what lets a user balance, an escrow and a
-revenue line coexist with no special case.
+**In the ledger.** A customer balance is a `liability` account with subject `user:<id>`
+([04](04-domain-model.md) §2.1); platform revenue is a `revenue` account. Every purchase is one
+balanced entry: debit the user's EMBER liability, credit `platform` revenue. The account key
+`(subject, asset_code, purpose)` is what lets a user balance, an escrow and a revenue line coexist
+with no special case — and it is also what lets the outstanding SHARD accounts keep existing,
+addressable and drainable, alongside the live ones.
 
 ---
 
@@ -443,23 +492,31 @@ Decided in [06](06-ecosystem-workflow.md) P10 and restated here as the commercia
 | Settlement asset | A marketplace listing may be denominated in EMBER and settle in it | P9 |
 | Treasury denomination | Community treasuries hold EMBER as a ledger sub-account (AD-15) | P12 |
 | Governance weight | Token-weighted voting at a snapshot block, in EMBER-denominated communities only | P12 |
-| Game reward | Worlds pay rewards in Shards or EMBER, from a capped budget | P10 |
+| Game reward | Worlds pay rewards in EMBER, from a capped budget | P10 |
 | Developer incentive | Grants and revenue share to directory applications | P11 |
 
+The game-reward row is the *target*, not the present tense: `worlds` and `emberkin` still debit
+engagement accounts denominated in the retired asset, which is tracked separately and is not closed
+by re-denominating a document.
+
 **What EMBER is not.** It is **not** a governance token for CloudsForge itself — a platform
-holding customer money does not put custody policy to a vote — and it is **not** required to use
-CloudsForge. Not one SKU in §3 is EMBER-only; every one is priced in Shards, and Shards are
-funded by any supported coin.
+holding customer money does not put custody policy to a vote — and it is **not** something a
+customer has to go and buy. Not one SKU in §3 is quoted in EMBER: every price is stated in USD, and
+what settles it is reached by converting any supported coin at the platform's own rate
+(`wallet/src/money.ts`). The obligation this removes is the one that matters — nobody has to form a
+view on EMBER's price in order to buy a cosmetic.
 
 **Why that constraint is commercial, not merely principled.** Requiring EMBER makes every user a
 speculator, every price a function of a thin market, and the platform's revenue a leveraged bet
 on its own token. It converts a product problem into a token-price problem, which is the failure
 mode of most crypto platforms: the product stops being the thing that has to work.
 
-**The honest position on EMBER's value.** Hearth mainnet is not launched
-([02](02-target-architecture.md) §7.6). Everything EMBER-denominated is testnet, and nothing in
-this model assumes a mainnet date or an EMBER price. The supply and emission chart stays
-labelled "modelled — not a promise", as the site already does.
+**The honest position on EMBER's value.** Hearth mainnet went live on 2026-08-05 (chain id 7411);
+this paragraph said it was not launched, and that is the one fact here that has moved. What has
+**not** moved is the conclusion: there is no market, no listing and no liquidity, so there is no
+EMBER price, and nothing in this model assumes one. A chain that answers is not a venue that
+quotes. The supply and emission chart stays labelled "modelled — not a promise", as the site
+already does.
 
 ---
 
@@ -472,7 +529,7 @@ balance and `ledger` never knows what a cosmetic costs
 | Billing concept | Owned by | Ledger entry kind ([04](04-domain-model.md) §2.2) | Notes |
 | --- | --- | --- | --- |
 | Product, price | `billing` | — | Catalogue only; no postings |
-| One-off purchase | `billing` | `purchase` | Debit user SHARD liability, credit platform revenue |
+| One-off purchase | `billing` | `purchase` | Priced in USD cents; debit the user's EMBER liability, credit platform revenue |
 | Entitlement grant | `billing` | — | Emits `billing.entitlement.granted`; the delivering service subscribes |
 | Subscription charge | `billing` | `subscription_charge` | Recurring, per period, idempotent on `(subscription_id, period)` |
 | Usage-based billing | `billing` | `fee_charged` | `usage_record` rows aggregated per period, then one entry |
@@ -528,29 +585,28 @@ Every number here is a proposal with a reason, not a default.
 | Deposit, any chain | 0 | — | Charging to receive money is charging to fund us |
 | Withdrawal | Network cost only | Quoted, locked, difference refunded | §4.1 |
 | Internal transfer | 0 | — | A ledger posting |
-| Coin → Shard conversion | 200 bps | Existing default | Price risk on a position we take |
-| Shard → coin conversion | 200 bps | Existing default | Same, symmetric |
-| Token deploy — Fixed | 1,500 Shards | Existing | Fixed-supply ERC-20 |
-| Token deploy — Forge | 4,000 Shards | Existing | Mint/burn/ownable |
-| Token deploy — Foundry | 9,000 Shards | Existing | Full features, EVM or SPL |
+| Conversion, either direction | 200 bps | Existing default | Price risk on a position we take; symmetric by design |
+| Token deploy — Fixed | $14.99 | Existing | Fixed-supply ERC-20 |
+| Token deploy — Forge | $39.99 | Existing | Mint/burn/ownable |
+| Token deploy — Foundry | $89.99 | Existing | Full features, EVM or SPL |
 | Mainnet gas surcharge | Quoted at order | New, P8 | A $90 tier cannot absorb a $200 gas spike |
-| Asset generation — standard | 5 Shards/image | New, P8 | ~$0.042 cost at medium quality |
-| Asset generation — high | 20 Shards/image | New, P8 | $0.167 cost; margin is thin on purpose |
+| Asset generation — standard | $0.05/image | New, P8 | ~$0.042 cost at medium quality |
+| Asset generation — high | $0.20/image | New, P8 | $0.167 cost; margin is thin on purpose |
 | Free generation allowance | 10 images/month | New, P8 | A first brand kit costs nothing |
 | Marketplace take | 250 bps | New, P9 | Below market; liquidity beats take rate |
 | Creator royalty | 0–1,000 bps | Creator-set, P9 | Platform takes no cut of it |
-| Verified project | 5,000 Shards | New, P9 | Reviewer time; §3.5 constraints apply |
+| Verified project | $50 | New, P9 | Reviewer time; §3.5 constraints apply |
 | Trading performance fee | 1,500 bps above HWM | Existing | Only on gains, never twice |
-| Minimum fee | 5 Shards | Existing | Below this the accounting costs more |
-| Minimum live allocation | 1,000 Shards | Existing | Below this the floor dominates |
-| Private world — 30 days, 12 players | 1,800 Shards | Existing | Reserved simulation capacity |
-| Private world — 90 days, 40 players | 2,500 Shards | Existing | Same, longer and larger |
-| Season pass | 500 Shards | Existing | One season, cosmetic track |
-| Cosmetics | 120–600 Shards | Existing | Rarity-banded, zero gameplay effect |
+| Minimum fee | $0.05 | Existing | Below this the accounting costs more |
+| Minimum live allocation | $10 | Existing | Below this the floor dominates |
+| Private world — 30 days, 12 players | $18 | Existing | Reserved simulation capacity |
+| Private world — 90 days, 40 players | $25 | Existing | Same, longer and larger |
+| Season pass | $5 | Existing | One season, cosmetic track |
+| Cosmetics | $1.20–$6.00 | Existing | Rarity-banded, zero gameplay effect |
 | Developer — Free | $0 | New, P11 | 10,000 calls; hard stop, never a bill |
 | Developer — Builder | $29/month | New, P11 | 500,000 calls, $0.50/10k overage |
 | Developer — Scale | $199/month | New, P11 | 5,000,000 calls, $0.30/10k overage |
-| Community plan | 2,000 Shards/month | New, P12 | Capacity only; governance never paid |
+| Community plan | $20/month | New, P12 | Capacity only; governance never paid |
 | Premium analytics | $19/month | New, P13 | Own data only, AD-21 bound |
 | Refunds | Fee reversed in full | New, P7 | Never profit from a reversal |
 | Chargeback / dispute | 0 | — | No fiat rail, so no chargeback concept |
@@ -566,10 +622,10 @@ charged (`ninety-days-after/apps/game/src/lib/shop.ts`, "WHAT THIS FILE CANNOT D
 
 | # | SKU | Price | State today | Action | Phase | Reasoning |
 | --- | --- | --- | --- | --- | --- | --- |
-| 1 | Private worlds ×2 | 1,800 / 2,500 Shards | Charged; nothing provisions; `ownOnce: false` so repeat-chargeable | **Refund every entitlement, remove the routes** | P1; re-sell in P10 | The world type does not exist. A refund is honest where a promise is not |
-| 2 | Convenience items ×4 | 120–200 Shards | Charged; the feature each names does not exist | **Refund and withdraw from the API** | P1 | There are no presets to add slots to, no extra charts, no extra filters, no longer history |
-| 3 | Cosmetics of three undrawable kinds — `map_banner`, `commune_crest`, `herald_flair` | 150–600 Shards | Charged; no renderer, and the game service refuses to equip them | **Refund and withdraw from the API** | P1; deliver in P10 | Six of the fourteen catalogue items. Buying one buys a row |
-| 4 | Season pass | 500 Shards | Sold; unlocks 3 ids wholesale; 2 of the 3 are undrawable kinds; no progression track | **Keep selling, deliver in P10** | P1 corrects the copy | The pass delivers *something* (`frame_ember` renders). Correct the description to name only what exists, then build the track |
+| 1 | Private worlds ×2 | $18 / $25 | Charged; nothing provisions; `ownOnce: false` so repeat-chargeable | **Refund every entitlement, remove the routes** | P1; re-sell in P10 | The world type does not exist. A refund is honest where a promise is not |
+| 2 | Convenience items ×4 | $1.20–$2.00 | Charged; the feature each names does not exist | **Refund and withdraw from the API** | P1 | There are no presets to add slots to, no extra charts, no extra filters, no longer history |
+| 3 | Cosmetics of three undrawable kinds — `map_banner`, `commune_crest`, `herald_flair` | $1.50–$6.00 | Charged; no renderer, and the game service refuses to equip them | **Refund and withdraw from the API** | P1; deliver in P10 | Six of the fourteen catalogue items. Buying one buys a row |
+| 4 | Season pass | $5 | Sold; unlocks 3 ids wholesale; 2 of the 3 are undrawable kinds; no progression track | **Keep selling, deliver in P10** | P1 corrects the copy | The pass delivers *something* (`frame_ember` renders). Correct the description to name only what exists, then build the track |
 | 5 | ForgeMint "verified metadata" and "liquidity-lock helper" | Bundled | **Already withdrawn** — `shared-libs` commit `620230c` | None | Done | Supersedes [00](00-current-state.md) §3.8 item 4 |
 | 6 | Game `tokens` currency | Earned, not sold | No sink; `resolve.ts` notes the tick never awards them | **Deliver a sink in P10, or remove the currency** | P10 | Not a refund case — nobody paid — but an unspendable currency is a broken promise of the same kind |
 | 7 | Crucible live trading | 15% of gains | Earns nothing: `CRUCIBLE_LIVE_ENABLED=false` | **Keep off until P10** | P10 | Not a defect. Correct caution for an engine with one test file |
@@ -603,9 +659,9 @@ a browser bundle cannot stop a charge.
   data that would be saleable does not exist in the system that would sell it.
 - **A token sale for CloudsForge equity or governance.** [01](01-product-vision.md) §6 rejects
   it and P12 restates it: platform governance is not tokenised.
-- **Fiat and mock payment providers.** Deleted, not deferred. The invoice path was a live
-  free-Shards hole and the retirement comment in `pay.ts` is explicit that "re-publishing the
-  type is the first step of rebuilding that hole".
+- **Fiat and mock payment providers.** Deleted, not deferred. The invoice path minted balance out
+  of nothing, and the retirement comment in `pay.ts` is explicit that "re-publishing the type is
+  the first step of rebuilding that hole".
 - **Loot boxes and randomised paid rewards.** Not in the catalogue, not proposed. They are a
   regulatory liability in several jurisdictions and they are pay-to-win with a probability
   distribution in front.
@@ -636,11 +692,10 @@ chain families with failover (P5), Postgres per service across ~24 services, the
 generated assets and indexer transaction bodies, and a staging environment that
 [02](02-target-architecture.md) §7.2 makes mandatory rather than optional.
 
-**Where margin actually comes from.** Not from any single fee, but from the *loop*: a
-platform-currency economy where the marginal cost of an internal transaction is a database
-write. Deposits cost gas we do not pay; conversions carry a spread; everything a user then does
-with Shards — deploy, generate, buy, sell, trade, host — is served at near-zero marginal cost
-against a price denominated in cents. The expensive lines (gas, generation) are the *entry* to
+**Where margin actually comes from.** Not from any single fee, but from the *loop*: an internal
+ledger where the marginal cost of a transaction is a database write. Deposits cost gas we do not
+pay; conversions carry a spread; everything a user then does with a balance — deploy, generate,
+buy, sell, trade, host — is served at near-zero marginal cost against a price denominated in cents. The expensive lines (gas, generation) are the *entry* to
 that loop and should be priced near cost to widen it; the cheap lines (marketplace, performance
 fees, passes, plans) are where margin lives.
 
@@ -650,7 +705,10 @@ fees, passes, plans) are where margin lives.
    Business dashboard as deployment margin per chain.
 2. **Generation cost runs away on a free tier.** Mitigated by hard per-account caps in `billing`
    and a spend dashboard ([06](06-ecosystem-workflow.md) P8 risk).
-3. **Shard float coverage falls below 100%.** Mitigated by reconciliation, the coverage ratio
+3. **Custodial float coverage falls below 100%.** Mitigated by reconciliation, the coverage ratio
    report, and stopping issuance before redemption. This is the only one of the three that is an
    existential failure rather than a margin failure, and it is why
-   [04](04-domain-model.md) §2.4's invariant is the thing the whole platform rests on.
+   [04](04-domain-model.md) §2.4's invariant is the thing the whole platform rests on. Retiring the
+   Shard narrowed this risk rather than removing it: what changed is that every unit now in scope
+   is one an indexer can be asked about, so the coverage ratio is a measurement instead of a
+   restatement of the ledger's own opinion (§5).

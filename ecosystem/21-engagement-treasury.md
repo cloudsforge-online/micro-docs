@@ -23,13 +23,17 @@ empty room lacks.** Someone must move first, and the only party with a reason to
 
 ## 2. Do we need the bucket at all? (the owner's question 2, answered first)
 
-**Yes — bounded, disclosed, and denominated in Shards.** The alternative is argued and refused:
+**Yes — bounded, disclosed, and denominated in EMBER.** This said "denominated in Shards" until
+2026-08-07, which §5's house-seed bullet had already contradicted in practice: SHARD is retired
+(`contracts/packages/chain/src/index.ts`), nothing issues it, and a programme designed to *start*
+in 2026 cannot be designed in an asset the estate is winding down. The alternative is argued and
+refused:
 
 - *"Let organic growth do it"* fails on arithmetic, not on optimism. A parimutuel needs a
   counterparty **by definition**; no amount of patience makes one bettor into two. The first
   hundred users decide whether the rooms feel alive, and they arrive one at a time.
 - *"Fake it"* — synthetic bids, ghost bettors, invisible house positions — is refused outright.
-  It is the one form of this that costs nothing and it is fraud. Every Shard the platform puts
+  It is the one form of this that costs nothing and it is fraud. Every unit the platform puts
   into a room below is **labelled as the platform's**, on the surface where users see it.
 
 What makes the bucket safe is what makes everything here safe: it is **ledger accounts, not a
@@ -58,8 +62,12 @@ rejected.** Reasons, in order of weight:
 - The platform runs ordinary CPU miners under the same rules as everyone (`hearth`'s whole
   thesis). Their coinbase addresses are **published** on the network site — the platform's mining
   is disclosed, not discovered.
-- Mined EMBER flows through the front door like anyone's: deposit → indexer confirmation →
-  conversion to Shards — landing in **one ledger account: `platform:engagement-treasury`**.
+- Mined EMBER flows through the front door like anyone's: deposit → indexer confirmation —
+  landing as EMBER in **one ledger account: `platform:engagement-treasury`**. The conversion step
+  this bullet used to name ("→ conversion to Shards") is deleted rather than re-pointed: it was
+  the only thing in the funding leg that turned a chain-backed asset into an administered one, and
+  removing it is what lets §4's promise — an auditor reconstructs the programme from the ledger
+  alone — rest on a balance the chain can be asked about.
 - Second leg, for sustainability once volume exists: **a fee recycle**. A configured percentage
   of platform fee revenue (billing) posts to the same treasury account each period, so the
   engagement budget eventually funds itself from the activity it seeded. The percentage is an
@@ -152,7 +160,7 @@ Three new `admin-api` actions, in the existing catalogue/approval shape:
 that screen ships, the actions are fully operable through the existing actions catalogue — the
 panel is a view, never the mechanism.
 
-## 7. What must be proven by test, before any Shard moves
+## 7. What must be proven by test, before any engagement money moves
 
 1. A house stake after market open is **unrepresentable** (trigger, fire-tested).
 2. House seeding is symmetric by construction — a lopsided seed refuses at the schema.
