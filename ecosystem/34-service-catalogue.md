@@ -33,33 +33,42 @@ repository in the GitHub organisation `cloudsforge-online`, named `micro-<dir>` 
 exception, `hearth`, which is `cloudsforge-online/hearth` because it is the chain rather than a
 micro-service.
 
-There are 67 directories under the estate root. One of them, `kindred-upstream`, is not a
-CloudsForge repository at all: its remote is `github.com/savvaniss/kindred-resonance`, and it is a
-frozen ancestor kept for the behavioural port that produced `emberkin`. That leaves **66
-CloudsForge repositories**, and they partition cleanly into five planes:
+There are 69 directories under the estate root, counted 2026-08-09. One of them,
+`kindred-upstream`, is not a CloudsForge repository at all: its remote is
+`github.com/savvaniss/kindred-resonance`, and it is a frozen ancestor kept for the behavioural port
+that produced `emberkin`. That leaves **68 CloudsForge repositories**, and they partition cleanly
+into five planes:
 
 | Plane | Repositories | What it owns |
 | --- | --- | --- |
-| Money, chain and markets | 17 | The chain, the keys, the value, and every surface that asks for money |
+| Money, chain and markets | 18 | The chain, the keys, the value, and every surface that asks for money |
 | Identity, platform and developer | 15 | Who you are, what you may do, what happened, and the shared substrate |
 | Worlds, games and content | 6 | The title spine, four game services, and the image origin |
-| Frontends, design system and brand | 24 | Seventeen browser bundles, two spines, five asset repositories |
+| Frontends, design system and brand | 25 | Eighteen browser bundles, two spines, five asset repositories |
 | Deployment, operations and documentation | 4 | The compose topology, the watchers, and the memory |
+
+Two of those 68 arrived after the sweep this document was written from, and are the only entries
+below that sweep did not produce: `pool` and `pool-web`, added to `org/tools/registry.ts` by
+micro-org#282, merged 2026-08-09. Both are described from their source and their own test suites
+rather than from a live HTTP measurement, because neither is running — §2.5 says why, and the
+`pool-web` row in §5 says the same for its console.
 
 The estate is live. Mainnet surfaces answer at `<surface>.cloudsforge.online` (chain 7411),
 testnet at `<surface>-testnet.cloudsforge.online` (chain 7412), with apexes at
 `cloudsforge.online` and `testnet.cloudsforge.online`. The earlier two-label
 `<surface>.testnet.cloudsforge.online` scheme is dead — Cloudflare's Universal SSL does not cover
 a two-label wildcard, and the paid certificate that would was refused (18-build-status.md §0).
-The registry of every hostname is one file, `ui/packages/ui/src/surfaces.ts`, which carries 33
+The registry of every hostname is one file, `ui/packages/ui/src/surfaces.ts`, which carries 29
 `subdomain:` rows and is read by deploy scripts to check the gateway rather than by humans to
-remember.
+remember. That count is `SURFACES.length` evaluated on 2026-08-09, not a grep: a grep for
+`subdomain:` in that file answers 34, because it also finds the field's own type declaration and the
+two label helpers at the bottom. The 33 this document previously carried was the grep, one row ago.
 
 ---
 
 ## 2. Money, chain and markets
 
-Seventeen repositories. This plane is a deliberate separation of powers, and the separation is the
+Eighteen repositories. This plane is a deliberate separation of powers, and the separation is the
 design. Hearth is the base: a from-scratch proof-of-work L1 running mainnet 7411 and testnet 7412,
 whose only issuance is a mined block, and whose `eth_*` RPC every other repository here speaks.
 `micro-indexer` is the single reader of that chain (and of Litecoin) — it replaced balance-probing
@@ -76,9 +85,12 @@ confirmation-tracked bytes and holds one in-flight transaction per chain by part
 for the rest of the estate. `micro-pricing` is the oracle joining the two. `micro-market`,
 `micro-mint`, `micro-trade` and `micro-foresight` are the four demand surfaces — listings, token
 launches, bots, parimutuel markets — each of which records intent while the ledger records value.
-`micro-faucet` is testnet's on-ramp. The three self-custody shells (desktop, extension, mobile)
-and their shared `hearth-wallet-core` sit deliberately outside all of it: same chain, no
-CloudsForge service on any path.
+`micro-faucet` is testnet's on-ramp. `micro-pool` is the newest and the only one whose users bring
+hardware rather than a browser: a Stratum v1 mining pool for the Bitcoin-family chains the estate
+already runs nodes for, which records what a miner is owed and — deliberately, and stated in its own
+first screen — pays nobody. The three self-custody shells (desktop, extension, mobile) and their
+shared `hearth-wallet-core` sit deliberately outside all of it: same chain, no CloudsForge service
+on any path.
 
 What genuinely works is more than it looks. The invariants are in Postgres, not in handlers:
 `orders_one_settlement_artefact = 1`, `tokens_paid_before_broadcast`, `outbound_in_flight_uniq`,
@@ -117,6 +129,7 @@ moving through it.
 | `trade` | Strategy catalogue, deterministic backtests, paper and live bots | 14 routes: strategies, capabilities, series, backtests, bots, event inbox | Yes — public on `trade.<apex>/v1` |
 | `foresight` | Hearth-native parimutuel markets; never custodies stake | 29 unversioned routes: markets, stakes, ideas, resolution, images | Yes — public on `foresight.<apex>` and `api.<apex>` |
 | `faucet` | Testnet EMBER on-ramp; testnet-only in the type system | 6 routes: terms, drips, poll, CORS preflight | Yes — testnet only, served at `network-testnet.<apex>/faucet` |
+| `pool` | Stratum v1 mining pool for BTC and LTC; records a PPLNS debt, credits nobody | 7 anonymous HTTP routes (`/v1/pool`, `/blocks`, `/workers`, `/shares`, plus the three probes) and a raw-TCP stratum listener | No — behind compose profile `pool`, and refuses to start without a fee and a payout address |
 | `hearth-wallet-core` | The one signing core for the three self-custody shells | One package, ~130 exports: BIP-39/32/44, secp256k1, keccak, RLP, EIP-155/1559/712, keystore | No — library, unpublished |
 | `wallet-desktop` | Tauri self-custody wallet that bundles a Hearth node | 7 in-app views; Rust commands for node start/stop/logs/provenance | No — builds `.dmg`/`.msi`/`.deb` in CI, nothing released |
 | `wallet-extension` | MV3 self-custody wallet, Chrome and Firefox from one source | 3 pages, 8 popup tabs, EIP-1193 + EIP-6963 dapp surface | No — not published to any store |
@@ -239,6 +252,94 @@ removed with the reason recorded at :1388-1412. Chain configuration is in
 `PathPrefix('/v1')` router with no rewrite (`deploy/gateway/dynamic/estate-web.yml:424-429`).
 Measured: 200 on mainnet, testnet and LTC status; `/metrics` and `/readyz` 404 through the
 gateway, so the unauthenticated metrics endpoint is in-network only.
+
+### 2.5 `pool` — the mining pool that records a debt and pays nobody
+
+**Purpose.** A Stratum v1 mining pool for the Bitcoin-family chains the estate already runs its own
+nodes for, implementing §5 of
+[36-multi-chain-and-mining-pool.md](36-multi-chain-and-mining-pool.md). It builds block templates
+with `getblocktemplate`, hands work to real hardware over raw TCP, judges the shares that come back
+against a per-connection target, submits the blocks, and records who is owed what under PPLNS. The
+last clause is the whole boundary: **it records a debt and it does not pay one.** `pool/src/payouts.ts`
+is a named, typed seam that throws, there is no payouts table in the schema, `/v1/pool` carries
+`payoutsImplemented: false` as a response field rather than a README sentence, and the boot log line
+says the same thing on every boot. That is the estate's usual posture — a named hole rather than a
+plausible screen — applied to the one product where the alternative would be a service that appears
+to pay.
+
+**Surface.** Two listeners, and they are deliberately not alike.
+
+The HTTP surface is seven routes in one `buildRoutes()` table in `pool/src/server.ts`: `/livez`,
+`/readyz`, `/metrics`, and `GET /v1/pool`, `/v1/pool/blocks`, `/v1/pool/workers`,
+`/v1/pool/shares`. There is no POST, PUT or DELETE anywhere on that port, and no bearer token on any
+route — `pool/src/env.ts` declares no `IDENTITY_JWKS_URL` and says why: the only identity a miner
+has here is the stratum username they typed into their own firmware, and 36 §6 makes a miner's
+ability to check their own share history a product requirement. So `account` is a query parameter
+rather than an authenticated subject, anybody may read anybody's shares, and every list clamps its
+`limit` rather than trusting it. `/v1/pool/shares` returns the job id, the difficulty a share was
+credited at *and* the difficulty it actually achieved, which is what makes it reconcilable line for
+line against a miner's own log; a count would be checkable against nothing.
+
+The mining surface is plain TCP, newline-delimited JSON-RPC, on its own port — 3334 for LTC and 3333
+for BTC by default. `pool/src/stratum.ts` owns the socket and the framing (a line cap, a handshake
+timeout, a write-buffer ceiling, because each of those is otherwise free for an attacker) and
+`pool/src/session.ts` owns the per-connection state machine with no socket in it. Behind them:
+`template.ts` polls `getblocktemplate` with longpoll where the node offers it, `coinbase.ts`,
+`merkle.ts` and `bytes.ts` assemble the block, `mweb.ts` handles Litecoin's HogEx — the MimbleWimble
+integrating transaction that must be the final transaction or the node cannot deserialise the block
+at all, and which is detected by parsing rather than by trusting template order — `pow.ts` dispatches
+SHA-256d for BTC and scrypt for LTC, `validate.ts` reconstructs the header and returns one of three
+verdicts with the numeric error code miner firmware prints, `vardiff.ts` retargets each connection,
+`pplns.ts` does the accounting and `blocks.ts` the seconds after a share turns out to be a block.
+The schema is two migrations and three tables — `pool_workers`, `pool_shares`, `pool_blocks` —
+and one leased job, `pool.prune-shares`, keyed on `chain:<chain>` because the contended resource is
+one chain's share table.
+
+**Invariants.** Every difficulty is stored as an integer `difficulty × 10^8` bigint and never as a
+float, because share weights are summed over hundreds of thousands of rows to divide a block reward
+and `double precision` sums are not associative; the PPLNS split is largest-remainder, so the parts
+sum to exactly the amount being allocated. `POOL_FEE_BASIS_POINTS` is required with **no default
+anywhere in the repository** — `env.ts` gives it its own `requiredInteger` helper, used for nothing
+else — because 36 §7.1 records that the fee has not been chosen, and a default would answer an open
+product question by omission. DOGE, ETC and EMBER are refused *by name* in `REFUSED_CHAINS` rather
+than merely absent, each with its reason, so that adding a row cannot look like a one-line change:
+Dogecoin is merge-mined under AuxPoW and ordinary scrypt work against it would validate perfectly
+against the pool's own target and produce a block the network discards. Stratum ports open only
+after each chain has checked the node's reported network, had the node validate the payout address,
+and fetched one template — and on the way down they close first. A node that answers wrongly is
+fatal; a node that does not answer is retried, because those are different faults. A found block is
+submitted before anything is written and then recorded synchronously, including the node's rejection
+string verbatim; ordinary shares are buffered and flushed on a timer, and the cost of that — a hard
+kill loses up to one flush interval — is stated in the file rather than hidden. `poolPayoutCreditKey`
+is written and tested now, called by nothing, so that whoever implements crediting cannot invent a
+second idempotency key alongside the one `wallet/src/deposits.ts` already established.
+
+**Deployed state.** **Not deployed, and it could not start if it were.** Its compose block exists
+only on an unmerged branch (micro-deploy#15, open on 2026-08-09), behind `profiles: ["pool"]`, so a
+plain `up` brings up no pool; bringing it up takes `COMPOSE_PROFILES=pool`. Two required values do
+not exist yet, and both are decisions rather than oversights. `POOL_LTC_PAYOUT_ADDRESS` needs a
+custody key with a `pool` purpose that custody does not have — micro-custody#4 is open and unmerged
+— and the existing `treasury` purpose must not be borrowed, because a treasury-purpose key on
+ltc/mainnet is a rotation candidate for settlement's pinned treasury and every block the pool had
+mined to it would become unbooked custody inflow. `POOL_FEE_BASIS_POINTS` is the unmade product
+decision above, and `requiredInteger` means the service exits at import without it. So does
+`pool-migrate`, which imports the same eager `env.ts`, so the database is not created either.
+`POOL_CHAINS` defaults to `ltc` alone, and that default is a measurement rather than a preference:
+the compose block records litecoind synced and bitcoind still in initial block download on
+2026-08-09, and `getblocktemplate` against a node in IBD returns work for a tip no other miner has
+seen. That figure is read from the deploy branch, not taken here — this document did not touch the
+host. Stratum is raw TCP, so neither Traefik nor the Cloudflare Tunnel can carry it: the port is
+published directly by the container and binds loopback unless an operator widens it on purpose, and
+`pool.<apex>` will therefore serve the page that describes the connection and never the connection
+itself.
+
+The limit of the evidence here is worth stating, because it is unusually sharp. Its own suite ran
+333 tests on 2026-08-09: 306 passed, 0 failed, 27 skipped — 24 in `store.test.ts` which need a real
+Postgres (`POOL_TEST_DATABASE_URL`), and 3 in `regtest.test.ts` which need a real `litecoind` in
+`-regtest` (`POOL_REGTEST_NODE_URL`). One of those three is "the pool mines a block a real litecoind
+accepts". So what is green in a bare checkout is the arithmetic, the byte layout and the protocol
+behaviour; the single assertion that this repository produces a block a node will take is among the
+ones that did not run.
 
 ---
 
@@ -521,19 +622,20 @@ resolve and answer 200.
 
 ## 5. Frontends, design system and brand
 
-Twenty-four repositories, seven of which are not surfaces at all. (The plane's own narrative
+Twenty-five repositories, seven of which are not surfaces at all. (The plane's own narrative
 counts "twenty", treating the five asset repositories as one group; the count here is the number
-of git repositories.) Seventeen are browser bundles. `ui` is the plane's spine: one unpublished
+of git repositories.) Eighteen are browser bundles. `ui` is the plane's spine: one unpublished
 package holding the surface registry, the tokens, three typefaces, the chrome and the
-SEO/sitemap/consent helpers — 254 tests, `dist/` committed and byte-verified, and a registry whose
-`servesUi` column was measured against the wire rather than reasoned about. `web-template` is the
-second spine: not a package but a copy-source, and `src/lib/obs.ts` is byte-identical in all
-sixteen consumers that carry it. The five asset repositories are the third: 957 assets with exact
+SEO/sitemap/consent helpers — 276 tests, all green on 2026-08-09, `dist/` committed and
+byte-verified, and a registry whose `servesUi` column was measured against the wire rather than
+reasoned about. `web-template` is the second spine: not a package but a copy-source, and
+`src/lib/obs.ts` is byte-identical — one sha256 across all of them, checked 2026-08-09 — in the
+eighteen consumers that carry it. The five asset repositories are the third: 957 assets with exact
 manifest/disk parity and provenance per entry, delivered either by bind mount
 (`/world-assets/SET.json`, 392 of 392 live) or by copy into each bundle's `public/`. Everything
 else is a thin SPA over exactly one service — admin-web over admin-api, explorer-web over indexer,
-beacon-web and status-web over the two halves of Beacon, market/mint/trade/devportal/hub over their
-own, and four game clients over four Worlds services.
+beacon-web and status-web over the two halves of Beacon, pool-web over the pool,
+market/mint/trade/devportal/hub over their own, and four game clients over four Worlds services.
 
 What genuinely works is measurable. Every one of the sixteen UI hostnames plus both apexes answers
 200; every `servesUi: false` row answers 404; an unknown path answers a real 404 on every surface,
@@ -548,7 +650,9 @@ The seams are all in how the spines propagate. Both spread by copy, not by versi
 twenty repositories through a symlink with no version gate, `web-template` through `git clone`. So
 a fix travels badly — the `useResource` deps fix was made in nine consumers and never returned to
 the template — and a defect travels perfectly. The `$scheme://$host` sitemap is that defect,
-sitting identically in fourteen nginx files and locked in by each repository's own passing test.
+sitting identically in fifteen nginx files on 2026-08-09 — the newest of them `pool-web`'s, which
+inherited it from the template two days after this document first recorded it — and locked in by
+each repository's own passing test.
 
 The second seam is that the field a bundle uses to decide its own gate is the same field that
 invites crawlers, and on two surfaces it disagrees with the service. The third is more
@@ -569,12 +673,13 @@ stale artefact, not a deployment gap.
 | Repo | What it is for | What it exposes | Deployed? |
 | --- | --- | --- | --- |
 | `ui` | The single source of visual and structural truth; the surface registry | `@cloudsforge/ui` with 9 export subpaths: chrome, surfaces, seo, sitemap, consent, charts, cite, test-loader, CSS | No — ships inside every frontend image |
-| `web-template` | The scaffold every SPA is cut from; a defect here ships seventeen times | No exports; a fixed file set copied by `git clone` | No — image built in CI only |
+| `web-template` | The scaffold every SPA is cut from; a defect here ships eighteen times | No exports; a fixed file set copied by `git clone` | No — image built in CI only |
 | `site` | The marketing site and the estate's apex | 9 addresses: home, products (7 slugs), platform, build, about, legal | Yes — both apexes |
 | `hub-web` | Forge Hub: the one signed-in surface, and the estate's only sign-in | 8 routes plus 6 ungated `account/*` addresses | Yes — `hub.<apex>` |
 | `admin-web` | The operator console; renders what admin-api enforces | 11 routes plus the nested `/foresight` section | Yes — `admin.<apex>` |
 | `explorer-web` | The block explorer; the estate's most linkable public artefact | 7 routes over indexer's anonymous reads | Yes — `explorer.<apex>` |
 | `network-site` | The chain's front door; hosts the testnet faucet form | 5 routes: `/`, `/chain`, `/mine`, `/node`, `/faucet`; in-browser miner | Yes — `network.<apex>` |
+| `pool-web` | The mining pool's console; an instrument panel, not a product page | 3 routes: `/`, `/workers` (and `/workers/:chain/:account`), `/blocks`; no account menu, no sign-in | No — its compose service carries no profile, but that compose is micro-deploy#15, open |
 | `market-web` | Forge Market's front door | 6 routes: browse, listing, collections, sell, orders, fees | Yes — `market.<apex>` |
 | `mint-web` | Forge Create: order, pay, deploy, project page | 6 routes incl. the public `/projects/:id` | Yes — `create.<apex>` |
 | `trade-web` | Forge Trade: strategies, backtests, bots | 7 routes; everything but `/` is gated | Yes — `trade.<apex>` |
@@ -611,7 +716,10 @@ accents in one package, product list in another — had already drifted.
 - `./surfaces` (`src/surfaces.ts`, 1,121 lines) — `SURFACES`, the registry itself, plus
   `surface()`, `PRODUCTS`, `SWITCHER_SURFACES`, `FOOTER_GROUPS`, `KNOWN_SUBS:1018`,
   `ENV_LABELS:1065`, `splitEnvLabel():1101`, `envLabel():1118`, `PRODUCT_ACCENTS`,
-  `RETIRED_ACCENTS`. The file carries 33 `subdomain:` rows.
+  `RETIRED_ACCENTS`. The registry carries 29 rows — 6 products, 17 services, 6 surfaces — each with
+  a `subdomain:`; the newest is `pool`, `kind: 'service'` with `inSwitcher: false` and
+  `markId: null`, because `brand` has no asset set for it and naming a mark that does not exist
+  renders nothing.
 - `./seo` — `surfaceMeta()`, `metaTags()`, `applyHead()`, `canonicalHref()`, `robotsDirective()`,
   `INDEXABLE_SURFACES`.
 - `./sitemap` — `sitemapUrls()`, `sitemapXml()`, `robotsTxt()`, all *functions of an origin* rather
@@ -642,7 +750,7 @@ repositories say it "becomes a registry version ('^1.0.0') the day it is".
 ### 5.2 `web-template` — the second spine
 
 **Purpose.** The scaffold every CloudsForge SPA is cut from. Not a published package: a
-copy-source that fixes, once, the decisions each of the estate's seventeen frontends would
+copy-source that fixes, once, the decisions each of the estate's eighteen frontends would
 otherwise get wrong independently — runtime host resolution with no build-time configuration, the
 nested error envelope and single-flight token refresh, the Lantern RUM envelope, the four-state
 resource reducer, an nginx config whose unknown paths answer 404, and the browser-journey harness.
