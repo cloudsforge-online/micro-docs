@@ -53,6 +53,12 @@ micro-org#282, merged 2026-08-09. Both are described from their source and their
 rather than from a live HTTP measurement, because neither is running — §2.5 says why, and the
 `pool-web` row in §5 says the same for its console.
 
+Read that at the right confidence, because it is weaker than every other entry here in a way worth
+naming. Only the *registry rows* merged. The code of both repositories sits on an open pull request
+— micro-pool#1 and micro-pool-web#1, both open on 2026-08-09 — so `main` in each is still the empty
+repository it was initialised as, and everything §2.5 and the `pool-web` row describe was read from
+a branch. A branch is a claim about what will merge.
+
 The estate is live. Mainnet surfaces answer at `<surface>.cloudsforge.online` (chain 7411),
 testnet at `<surface>-testnet.cloudsforge.online` (chain 7412), with apexes at
 `cloudsforge.online` and `testnet.cloudsforge.online`. The earlier two-label
@@ -314,10 +320,12 @@ kill loses up to one flush interval — is stated in the file rather than hidden
 is written and tested now, called by nothing, so that whoever implements crediting cannot invent a
 second idempotency key alongside the one `wallet/src/deposits.ts` already established.
 
-**Deployed state.** **Not deployed, and it could not start if it were.** Its compose block exists
-only on an unmerged branch (micro-deploy#15, open on 2026-08-09), behind `profiles: ["pool"]`, so a
-plain `up` brings up no pool; bringing it up takes `COMPOSE_PROFILES=pool`. Two required values do
-not exist yet, and both are decisions rather than oversights. `POOL_LTC_PAYOUT_ADDRESS` needs a
+**Deployed state.** **Not deployed, and it could not start if it were.** Nothing on the path is
+merged: the service's own code is micro-pool#1, its compose block is micro-deploy#15, and both were
+open on 2026-08-09 — so `micro-pool`'s `main` is an empty repository and the estate compose has no
+pool in it at all. When that compose does land, the service sits behind `profiles: ["pool"]`, so a
+plain `up` still brings up no pool; bringing it up takes `COMPOSE_PROFILES=pool`. And even then two
+required values do not exist yet, and both are decisions rather than oversights. `POOL_LTC_PAYOUT_ADDRESS` needs a
 custody key with a `pool` purpose that custody does not have — micro-custody#4 is open and unmerged
 — and the existing `treasury` purpose must not be borrowed, because a treasury-purpose key on
 ltc/mainnet is a rotation candidate for settlement's pinned treasury and every block the pool had
@@ -679,7 +687,7 @@ stale artefact, not a deployment gap.
 | `admin-web` | The operator console; renders what admin-api enforces | 11 routes plus the nested `/foresight` section | Yes — `admin.<apex>` |
 | `explorer-web` | The block explorer; the estate's most linkable public artefact | 7 routes over indexer's anonymous reads | Yes — `explorer.<apex>` |
 | `network-site` | The chain's front door; hosts the testnet faucet form | 5 routes: `/`, `/chain`, `/mine`, `/node`, `/faucet`; in-browser miner | Yes — `network.<apex>` |
-| `pool-web` | The mining pool's console; an instrument panel, not a product page | 3 routes: `/`, `/workers` (and `/workers/:chain/:account`), `/blocks`; no account menu, no sign-in | No — its compose service carries no profile, but that compose is micro-deploy#15, open |
+| `pool-web` | The mining pool's console; an instrument panel, not a product page | 3 routes: `/`, `/workers` (and `/workers/:chain/:account`), `/blocks`; no account menu, no sign-in | No — the bundle is micro-pool-web#1 and its compose service micro-deploy#15, both open; that service carries no profile, so it starts with the estate the day both land |
 | `market-web` | Forge Market's front door | 6 routes: browse, listing, collections, sell, orders, fees | Yes — `market.<apex>` |
 | `mint-web` | Forge Create: order, pay, deploy, project page | 6 routes incl. the public `/projects/:id` | Yes — `create.<apex>` |
 | `trade-web` | Forge Trade: strategies, backtests, bots | 7 routes; everything but `/` is gated | Yes — `trade.<apex>` |
