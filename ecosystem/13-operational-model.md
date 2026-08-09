@@ -409,6 +409,32 @@ Three tiers. Windows are rolling 28 days unless stated. Availability SLIs are co
 `http_server_requests_total`; latency SLIs from the duration histogram; journey SLIs from
 `beacon_journey_status`.
 
+> **This section defines what a tier means and what each one is held to. It is no longer the
+> list of which services are in which tier.** That list is
+> [`deploy/prometheus/tiers.yaml`](https://github.com/cloudsforge-online/micro-deploy/blob/main/prometheus/tiers.yaml)
+> in micro-deploy, and it is read at deploy time: the Prometheus scrape list is rendered from
+> the release manifest and stamps a `tier` label on every target, which is what
+> `prometheus/rules/slo.yaml` selects on (micro-org#308).
+>
+> Membership moved because it has to be **executable** by the thing that applies it, and this
+> document is not on the deploy host — `/home/malf/dev/cloudsforge` holds `org` and `deploy` and
+> nothing else, measured 2026-08-09. A prose list here and a machine list there is two lists, and
+> the two-list version of this had already drifted: `slo.yaml` selected Tier 1 with
+> `service=~"…|billing"` while the paragraph below correctly calls `billing` Tier 2. Nobody
+> noticed for as long as it existed, because Prometheus was scraping no estate service at all, so
+> the expression that regex filtered had no series in it to be wrong about.
+>
+> The tables below therefore keep their **per-service SLIs and objectives**, which are decisions
+> and belong in a document. Read them as "if a service is Tier 1, this is what Tier 1 costs" —
+> and read `tiers.yaml` for who is.
+>
+> Two services carry a Tier 1 objective that this section never assigned them, recorded with
+> their reasoning in that file: `pricing` (the USD price oracle — four-source median, fails
+> closed on staleness; every conversion and every withdrawal valuation reads it) and `policy`
+> (the single risk-decision authority — freezes, limits, velocity, holds). Neither appears in
+> either list below, which is itself the defect: a money-path service that no tier names gets no
+> objective at all.
+
 ### Tier 1 — money services
 
 | Service | SLI | Objective | 28d budget |
