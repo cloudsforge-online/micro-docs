@@ -124,6 +124,40 @@ publishes a surface for a hostname the estate no longer serves.
 
 ---
 
+## 0.2. Correction, 2026-08-10: mainnet has grown, and the testnet has stopped
+
+**§0 and §0.1 are five days old and both are now wrong in one bullet each.** Left above rather
+than edited, for the reason §0.1 already gives: this file is cited from other repositories, and a
+bullet that quietly changes meaning is worse than one superseded in writing.
+
+**Measured 2026-08-10 17:56 UTC over the public internet, no credentials.**
+
+| | Mainnet `rpc.` | Testnet `rpc-testnet.` |
+|---|---|---|
+| `eth_chainId` | `0x1cf3` (7411) | `0x1cf4` (7412) |
+| `eth_blockNumber` | `0x2aeb` — **10,987** | `0x1e55` — **7,765** |
+| Tip timestamp | 2026-08-10 17:56:10 UTC | **2026-08-08 18:00:11 UTC** |
+| Moving? | yes, climbing across polls | **no — unchanged across polls** |
+
+**§0's "Mainnet is a few hundred blocks old" is superseded.** It was written when
+`eth_blockNumber` read `0x477` (1,143). Mainnet is now 10,987 blocks and just under six days old,
+still at the `GENESIS_TARGET` difficulty floor (`difficulty: 0x100`), and **still carrying zero
+transactions** — the last of those is the one that has not changed and the one that matters most.
+The mean interval from block 1 to the tip is **46.8 s** against a 15 s design target, which is what
+one miner at the difficulty floor produces.
+
+**§0.1's "the testnet is publicly reachable" is now only half true, and the half it loses is the
+one a reader depends on.** The hostname answers and serves reads; the chain produces nothing, and
+has produced nothing since 2026-08-08 18:00:11 UTC. **This is deliberate rather than a fault**: the
+host runs `bitcoind` and `dogecoind`, both still in initial block download, and testnet mining
+competes with them for the same disk and bandwidth — the decision is recorded in `micro-deploy`'s
+`docs/releasing.md` and in the estate runbooks. The consequence to write down is that **a
+transaction sent to testnet today will not confirm**, and a testnet faucet page that renders
+cannot pay out. "Reachable" and "producing blocks" are separate properties, and every document in
+this estate that asserts the first should be read as asserting only the first.
+
+---
+
 ## 1. The number
 
 Of the repositories this programme creates or changes — the 46 in
