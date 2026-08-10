@@ -141,10 +141,27 @@ bullet that quietly changes meaning is worse than one superseded in writing.
 
 **§0's "Mainnet is a few hundred blocks old" is superseded.** It was written when
 `eth_blockNumber` read `0x477` (1,143). Mainnet is now 10,987 blocks and just under six days old,
-still at the `GENESIS_TARGET` difficulty floor (`difficulty: 0x100`), and **still carrying zero
-transactions** — the last of those is the one that has not changed and the one that matters most.
-The mean interval from block 1 to the tip is **46.8 s** against a 15 s design target, which is what
-one miner at the difficulty floor produces.
+still at the `GENESIS_TARGET` difficulty floor (`difficulty: 0x100`). The mean interval from block
+1 to the tip is **46.8 s** against a 15 s design target, which is what one miner at the difficulty
+floor produces.
+
+**And the transaction count is not zero, which several documents in this estate — including a
+first draft of this very section — asserted without measuring.** Walking every block from 1 to
+10,987 on 2026-08-10 finds **62 transactions in 52 blocks**, a mean of one per 177 blocks, in three
+groups:
+
+| Blocks | When | What |
+|---|---|---|
+| 235–251 | 2026-08-04 | 18 transactions, of which **nine are successful contract creations** — `ForesightMarket` instances belonging to `micro-foresight`. They are live: `eth_getCode` at `0x49408b99deb3afaafd914ed9f0e71a89874b980e` returns **6,007 bytes** of runtime code and the creation receipt reports `status: 0x1` |
+| 1,323 · 1,506 · 1,518 | 2026-08-05 onward | 3 transactions, days apart |
+| 10,851–10,967 | 2026-08-10 17:19–17:23 UTC | 41 transactions, roughly one per block, **every one a plain value transfer with empty input between the same two addresses** — an automated sweep, not usage |
+
+The subtotal for blocks 1–6,872 is **21**, which reproduces exactly the independent walk recorded
+in `hearth`'s `MAP.md` §10 on 2026-08-08. So the figure was measurable, and was measured, and prose
+elsewhere still said zero for six days. **The claim that survives unqualified is narrower and is
+the one to quote: no block has ever been produced at production proof-of-work parameters, and no
+third party has ever transacted on this chain.** "Empty" is not the same as "ours", and only the
+second one is true.
 
 **§0.1's "the testnet is publicly reachable" is now only half true, and the half it loses is the
 one a reader depends on.** The hostname answers and serves reads; the chain produces nothing, and
