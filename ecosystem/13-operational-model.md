@@ -614,8 +614,25 @@ before, what it says after, what was adjusted, under whose dual approval, with w
 ## 12. Product analytics
 
 `cloudsforge-analytics` (AD-21) consumes the event bus alongside `activity`. Frontends emit
-`page_viewed`, `cta_clicked` and `form_abandoned` through the same envelope. No third-party tag,
-ever.
+`page_viewed`, `cta_clicked` and `form_abandoned` through the same envelope. **This pipeline uses
+no third-party tag** — an event leaves a browser for a CloudsForge address or it does not leave at
+all.
+
+**There is nevertheless a third-party tag on the estate, and this section used to deny it.** Until
+2026-08-10 the sentence above read "No third-party tag, ever." `@cloudsforge/ui` ships a consent
+banner (`consent.ts`) that injects Google Analytics from Google's own host, and sets
+`cf_consent_analytics` on the registrable domain to record the answer. It is *gated*: nothing is
+fetched and no analytics cookie exists before a reader presses Accept, Consent Mode is primed
+denied for every category on boot, and the measurement ID comes from a `<meta name="cf-analytics">`
+so an absent tag means analytics is simply off. That is a defensible design and it is not what the
+old sentence described. The same over-broad denial was published in the privacy notice and is
+[micro-org#313](https://github.com/cloudsforge-online/micro-org/issues/313); the notice was
+corrected rather than the code, for the reasons recorded in `37-legal-review-disposition.md`.
+
+The first-party pipeline and the consent-gated tag are separate things and should stay separate:
+GA counts page views for whoever accepted, and AD-21 is the product-analytics record. Nothing in
+AD-21 depends on the tag, and an estate that removed the tag tomorrow would lose no event
+described in this section.
 
 ### The pseudonymisation boundary
 

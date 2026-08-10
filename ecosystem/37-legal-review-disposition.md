@@ -122,7 +122,7 @@ was necessary at the time.
 
 ### 3.4 Two sentences that were true when written and are not now
 
-**(a) Cookies — corrected in a pull request, not yet in what is served.** The privacy notice carries
+**(a) Cookies — corrected, merged, and now the page a reader is served.** The privacy notice carried
 a `stated` section headed *"There are no cookies, on any CloudsForge site"*, and
 [#165](https://github.com/cloudsforge-online/micro-org/issues/165) recorded the absence of a cookie
 policy as correct on the strength of it. The shared design system sets `cf_consent_analytics` on the
@@ -136,8 +136,23 @@ from the Accept handler alone. So the mechanism is honest and the *sentence* was
 rewrites the notice rather than removing the analytics, and holds it there with a test that reads
 the design system's own source. Tracked as
 [#313](https://github.com/cloudsforge-online/micro-org/issues/313); the change is
-`cloudsforge-online/micro-site#6`, open and unmerged, so **as of today the deployed page still
-denies the cookie it sets.**
+`cloudsforge-online/micro-site#6`, merged 2026-08-09 and carried out by the releases cut after it.
+
+**Re-measured 2026-08-10, from the bundle the public apex hands a browser** rather than from the
+repository — the same method that found the defect, applied to the fix. Fetching
+`https://cloudsforge.online/` and then the hashed `assets/index-*.js` it references:
+`cf_consent_analytics` is still there (the cookie was never the problem); the sentence *"There are
+no cookies, on any CloudsForge site"* is **gone**; and the section that replaced it, *"Cookies: one
+that records your answer, and more only if you accept"*, is **present**. The served HTML carries
+`<meta name="cf-analytics">` and **no** Google tag `<script>`, which is the gate holding. So the
+published page no longer denies the cookie it sets, and this sub-section is a record rather than an
+outstanding item.
+
+Two things this correction did **not** reach, both filed rather than folded in: the banner's copy
+says *"you can change your mind at any time"* while `revokeConsent` is called by none of the
+surfaces that render it — there is no withdrawal control in the interface, and the notice now says
+so plainly and tells the reader to clear site data instead; and §3.4b below, which is the same
+class of defect on the same page and is still true.
 
 **(b) Mail — still uncorrected on the page.** `/privacy` says *"No mail provider is configured at
 present"*, and the `Sharing, and transfers out of your territory` brief repeats it. A third-party
