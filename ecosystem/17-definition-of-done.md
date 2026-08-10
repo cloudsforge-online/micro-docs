@@ -284,6 +284,12 @@ Stated because each of these has a precedent in this estate.
   user, or explicitly recorded as built-and-off with the enabling condition named.
 - **A test that was muted to go green.** A muted journey is not a passing journey; it is an
   unmeasured one. The count is a gate precisely so that muting costs something.
+- **A check nobody has watched go red.** Green is not evidence that a check works; it is the
+  output a check produces when it measures nothing, and twenty-seven issues in this tracker are
+  that exact shape ([14](14-testing-strategy.md) §17). A guard is done when somebody has broken
+  the thing it protects, seen it fail, and read the diagnosis to confirm it named what was
+  actually broken — then restored it. Until that has happened the guard is a promise, and it is
+  worse than no guard because it is counted as coverage.
 - **A doc that describes intent rather than behaviour.** Five documents in this estate describe a
   system that does not exist, including one claiming there is no signing-key rotation when there
   is, and one describing Hearth as a UTXO chain after it became an account-model EVM. A document
