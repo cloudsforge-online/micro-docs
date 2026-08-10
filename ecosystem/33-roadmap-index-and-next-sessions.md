@@ -510,6 +510,215 @@ in the body is dead"* — plus [27](27-cloud-deployment.md):638 and
 
 ---
 
-*Written 2026-08-07. If this file and [18-build-status](18-build-status.md) disagree about whether
-something exists, 18 is right.*
+## 6. Session log: release 2.5.14, and working several repositories at once
+
+*Appended 2026-08-10. Same job as §5 — what a session actually hit, not what it planned. §5 is
+about one release that could not publish; this one is about a release that did, and about the
+mechanics of running four streams of work over 66 repositories without them colliding. Read §6.1
+before cutting a release and §6.5 before spawning a second worker.*
+
+### 6.0 The operating mode this session ran in, because it changes what is safe
+
+Two standing decisions were taken by the owner and both invert instructions written elsewhere in
+these documents:
+
+- **Testnet is paused** so that the host's `bitcoind` can finish its initial block download.
+  Changes therefore go **straight to mainnet** and are merged to `main` after they have been
+  measured there. Anything in these documents that says "deploy testnet first" does not apply
+  while that holds, and every item gated on testnet — the testnet administrator rotation, testnet
+  `SMTP_*` — is **blocked, not skipped**, and must be picked up when testnet restarts.
+- **A green CI run authorises the deploy and the merge**, in that order: deploy, verify on the
+  live estate, then merge the pull requests. §5's ordering constraint still binds underneath it —
+  an image publishes on `main` only — so the release branches merge before `cfctl release` pins a
+  manifest.
+
+### 6.1 The release procedure that worked, in the order it has to happen
+
+Release 2.5.14 went out end to end: **48 repositories bumped, 48 pull requests merged,
+`releases/2.5.14.yaml` pinned with 48 of 48 digests and `--verify` green,
+[micro-org#337](https://github.com/cloudsforge-online/micro-org/pull/337) merged, deployed to
+mainnet and verified on the host.** The sequence, with the two steps that are easy to get wrong
+marked:
+
+1. `pnpm -s cfctl bump <version>` from `org/` — one `release/<version>` branch per repository. It
+   refuses a dirty tree and refuses a checkout that is not on `main`.
+2. Push the branches, open one pull request per repository, and get CI green on each.
+3. **Merge to `main`.** Nothing publishes from a branch (§5.2). This is still the only ordering
+   constraint in a release.
+4. `pnpm -s cfctl release <version>` — pins every image by digest into `releases/<version>.yaml`
+   in `org`, and `--verify` re-resolves them. Merge that manifest pull request.
+5. On the host, `git pull` in **both** `org` and `deploy`, then
+   `./scripts/release-deploy.sh <version>`. ⚠ It invokes `release-render.py` itself; running the
+   renderer standalone fails with `error: the following arguments are required: manifest` and
+   there is no separate render step to run.
+6. ⚠ `./scripts/estate-verify.sh` needs the estate administrator password in the environment and
+   will exit immediately with `ADMIN_PASSWORD (or ESTATE_ADMIN_PASSWORD) is not set` without it.
+   Run it as `bash -c "set -a; . compose/estate/tokens.env; set +a; ./scripts/estate-verify.sh"`.
+   The file is untracked and host-only, which is why no repository check can tell you this.
+
+**Never deploy with a bare `docker compose up -d`.** Compose bakes a container's environment at
+**create** time; a container that is already running keeps the environment it was created with no
+matter what the env files now say. Only `--force-recreate` re-reads them, and
+`release-deploy.sh` is the path that does it — a bare `up` also drops `mainnet.env`, at which
+point the public hostnames silently revert to `localtest.me`.
+
+`backup-runner` is **not in any release manifest**: its compose entry is a `build:` context, so it
+is rebuilt on the host and a release cannot regress or advance it. Anything that ships in it ships
+outside this procedure.
+
+`estate-verify.sh` finished with exactly one failure, and it is the **known** one:
+`market.listings is EMPTY`. The four seeded listings are all `draft`, and they are draft because
+publishing one needs `micro-ledger` to escrow the ITEM asset. That is §3's package 18 territory
+and not a regression from this release.
+
+### 6.2 An assertion that pins a literal in another repository decays into a false alarm
+
+Two repositories were red. Neither was red for the reason the failure named.
+
+**`micro-activity` — one omission, three compiler errors.** A `TS1360` on the classifier table's
+`satisfies` clause and two `TS7053`s in the test file were all downstream of a single missing entry
+for `wallet.deposit.token_uncredited`. Fixing the table cleared all three. Two decisions inside
+that entry are worth carrying because both are invisible from the topic name:
+
+- The event **declares no `amount`**, deliberately, so that the field is dropped at ingest. The
+  record's `amount` column is rendered as a decimal beside an asset code; the payload carries the
+  token's *smallest units, unscaled*, because the emitting service does not know the token's
+  decimals. Rendering it would print a wrong number confidently.
+- It resolves the user with `userFromPayload`, not `userFromKey`, because the topic is keyed by
+  `wallet_id` — a uuid. `userFromKey` would not fail; it would return a well-formed **wrong** id.
+
+**`micro-pool-web` — a stale cross-repo assertion, not a defect.** Its contract test asserted that
+`micro-pool`'s server published the two literals `payoutsImplemented: false`. `micro-pool` had
+since replaced both with `deps.payoutsImplemented`, derived from `CUSTODY_BACKING_CLOSED` — the
+correct change — and the guard went red for it. The test now asserts the **derivation**: that both
+publication sites read the derived value, that `CUSTODY_BACKING_CLOSED` is still `false`, and that
+the payouts path still throws.
+
+> **The rule.** A test that pins a *literal* in another repository's source is a test that holds
+> only for as long as somebody keeps typing the word. Assert the derivation, or assert the
+> behaviour; never assert the spelling. And when you rewrite a guard, **mutation-prove it** —
+> temporarily reintroduce the defect it exists to catch and confirm it goes red — because a
+> rewritten assertion that is merely green has proved nothing. This one was proved by reverting a
+> handler to the literal, watching the test fail, and restoring from a copy taken first.
+
+### 6.3 Three tools that lie about what happened
+
+- **`cfctl bump` reports a false refusal when the release branch already exists.** It reads the
+  version from the *current* checkout (`main`), then switches to the existing `release/<v>` branch,
+  where the bump is already applied — so the rewrite finds nothing to change and it prints
+  `package.json parses as <old>, but the first "version" line does not say that`, alongside its
+  generic `::error::the estate ships ONE version across every deployable`. Nothing is wrong, and
+  it leaves the repository **on the release branch**. Check `git branch -r --list 'origin/release/<v>'`
+  before believing that message.
+- **`gh run rerun --failed` does not pick up a new base.** Release branches went red on a defect
+  that had already been merged to `main`; re-running reused the same stale merge ref and they
+  stayed red. The fix is to merge `origin/main` into the release branch and push — a re-run cannot
+  change what it is testing.
+- **`grep -q` exits 0 on a file that no text tool will show you.** A guard test in `site` carried a
+  NUL byte, which made the whole file binary: `rg` skipped it, `grep -rIl` did not list it, and the
+  CI check that greps it kept passing. The guard was unreadable and green at the same time. This is
+  the same failure class as package 9's `UnreadableSourceError`, from the other side — there, one
+  NUL byte aborted a sweep loudly; here it silenced one.
+
+### 6.4 Never put a regular expression over an environment **value**
+
+Reading deployed configuration means reading it from the running container (§4's third caveat), and
+this session established, twice the hard way, how not to print it.
+
+| Attempt | What leaked |
+| --- | --- |
+| `sed -E "s#://[^@]*@#://***:***@#g"` | `[^@]*` runs across a JSON object and collapses two entries into one, printing a credential from the middle |
+| `grep -iE "ember"` on the environment | matched a substring of a *name* and printed `EMBERKIN_IDENTITY_CREDENTIAL` in full |
+| filtering by name shape | missed `CUSTODY_DATABASE_URL` and printed the shared postgres password |
+
+**Print names only: `printenv | sed -E 's/=.*//'`.** For one specific value known not to be secret,
+`printenv VAR`. To compare a secret across two places without revealing it, compare a
+`sha256sum | cut -c1-12` fingerprint. One caveat that is not obvious: the names-only technique
+still prints the *continuation lines* of a multi-line value, so it is unsafe for any variable
+holding JSON. Related: a URL redaction that works is
+`sed -E "s#//[^:/@\"]+:[^@\"]+@#//***:***@#g"`, and an RPC URL that carries a password should not be
+echoed at all.
+
+### 6.5 Running four streams over 66 repositories
+
+Most of this session's work ran as concurrent workers, and the discipline that made it safe is
+one rule: **a repository has exactly one owner at a time.** The streams were partitioned by
+repository before any of them started — the trading engine took `trade`, `trade-web` and
+`contracts`; the Hearth coinbase work took `hearth`, `hearth-wallet-core`, `emberkin` and
+`emberkin-web`; the frontend stream took `ui` and the fifteen `*-web` surfaces; the release and
+sweep work took everything else. Two consequences:
+
+- **Never check out a second branch in a tree somebody else is working in.** Use
+  `git worktree add <path> -b <branch> origin/main`. This document's own change was made that way,
+  because `docs` was checked out on another stream's branch at the time.
+- **A stream that needs a repository it does not own asks for it rather than taking it.** Handing
+  `hub-web` between streams mid-flight worked; two streams editing it would have produced a merge
+  neither of them could review.
+
+Two small mechanical notes that cost time: **heredocs do not survive as `git`/`gh` message
+bodies** — use `git commit -F <file>`, `gh pr create --body-file <file>`,
+`gh issue comment --body-file <file>` (a heredoc *writing* the file first is fine) — and
+`head -n -N` and `timeout` **do not exist on macOS**.
+
+### 6.6 What was decided, filed and dispositioned
+
+- **The chain/application split** — moving the application plane to a second machine on the network
+  and leaving the chain nodes on the current host — is planned in
+  [micro-org#338](https://github.com/cloudsforge-online/micro-org/issues/338). It is a plan, not
+  work in progress. It bears directly on §3 package 2: a split that leaves the block store on one
+  unbacked-up volume has not changed the failure mode it exists to fix.
+- **The mainnet estate administrator password is rotated**, and the rotated value exists only in
+  `compose/estate/tokens.env` on the host as `ESTATE_ADMIN_PASSWORD`; no literal remains in any
+  repository. What is *not* done is the **testnet** administrator
+  ([micro-org#276](https://github.com/cloudsforge-online/micro-org/issues/276) item 3), blocked on
+  the paused testnet — and the more interesting gap: **the rotation procedure exists only as a
+  comment on an issue.** It is in none of the 29 runbooks and not in `releasing.md`. A procedure
+  that lives in an issue comment is a procedure the next session will re-derive.
+- **[micro-org#313](https://github.com/cloudsforge-online/micro-org/issues/313)** (the privacy
+  notice) had already been fixed by an earlier change and was verified live before closing — which
+  is the only way a sweep should close anything it did not itself write.
+
+New key material generated during this work used `openssl rand -base64 48` (or `os.urandom(48)`),
+was never printed, never pasted into a terminal whose scrollback is captured, and never written
+into a commit message.
+
+### 6.7 Findings raised and deliberately not actioned
+
+Recorded here so they are not rediscovered as new. None is scheduled.
+
+| Finding | Why it matters |
+| --- | --- |
+| `deploy`'s CI never runs `backup/`'s tests | The backup runner has eight test files and no pipeline executes them. §3 package 3 depends on that code being correct |
+| The promtool unit test for `BackupDestinationFilesystemErrors` was written and never committed | An alert rule with no test, in the same area |
+| `aetherholm-web`'s mechanic-claims test is now vacuously green | It asserts over a set that has become empty; it passes and guards nothing |
+| `custody-v1-disclosure.md` §4 omits the nine mainnet deployer keys | [micro-org#25](https://github.com/cloudsforge-online/micro-org/issues/25) |
+
+**Owner-only, and no session can close them:** reissuing `SMTP_PASS` at Mailtrap
+([#156](https://github.com/cloudsforge-online/micro-org/issues/156)), the custody artefact C backup
+([#25](https://github.com/cloudsforge-online/micro-org/issues/25) §4), and the production `age`
+identity ([#214](https://github.com/cloudsforge-online/micro-org/issues/214)).
+
+**Chain state, as at 2026-08-10.** The UTXO nodes are host processes, not containers. Litecoin is
+synced; Bitcoin is at 917,518 of 961,839 and Dogecoin is roughly 1.13M blocks behind. Two
+configuration changes are held on that: `POOL_LTC_AUX_CHAINS=doge` once `dogecoind` leaves IBD, and
+adding `btc` to `POOL_CHAINS` once `bitcoind` reports `initialblockdownload: false`. Neither is a
+code change and neither should be made early — a pool advertising a chain whose node is still in
+IBD advertises work it cannot validate.
+
+### 6.8 What the next session picks up
+
+1. Merge the frontend, trading-engine and Hearth-coinbase pull requests as their CI goes green,
+   then cut **2.5.15** by §6.1. They are separate releases only if they land days apart.
+2. Put the administrator-rotation procedure into a runbook and into `releasing.md`, then rotate the
+   **testnet** administrator when testnet restarts.
+3. Rotate the host's `CUSTODY_MASTER_SECRET_V3` to V4.
+4. Rename the `cfmicro` gateway compose project to `cloudsforge-estate` on mainnet. It is a
+   project rename and therefore recreates containers; do it in its own window, not inside a release.
+5. Then §3's table resumes at its own order — packages 1 and 2 remain the only two whose delay
+   compounds.
+
+---
+
+*Written 2026-08-07, §6 appended 2026-08-10. If this file and
+[18-build-status](18-build-status.md) disagree about whether something exists, 18 is right.*
 
