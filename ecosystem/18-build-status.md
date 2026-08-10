@@ -124,6 +124,57 @@ publishes a surface for a hostname the estate no longer serves.
 
 ---
 
+## 0.2. Correction, 2026-08-10: mainnet has grown, and the testnet has stopped
+
+**§0 and §0.1 are five days old and both are now wrong in one bullet each.** Left above rather
+than edited, for the reason §0.1 already gives: this file is cited from other repositories, and a
+bullet that quietly changes meaning is worse than one superseded in writing.
+
+**Measured 2026-08-10 17:56 UTC over the public internet, no credentials.**
+
+| | Mainnet `rpc.` | Testnet `rpc-testnet.` |
+|---|---|---|
+| `eth_chainId` | `0x1cf3` (7411) | `0x1cf4` (7412) |
+| `eth_blockNumber` | `0x2aeb` — **10,987** | `0x1e55` — **7,765** |
+| Tip timestamp | 2026-08-10 17:56:10 UTC | **2026-08-08 18:00:11 UTC** |
+| Moving? | yes, climbing across polls | **no — unchanged across polls** |
+
+**§0's "Mainnet is a few hundred blocks old" is superseded.** It was written when
+`eth_blockNumber` read `0x477` (1,143). Mainnet is now 10,987 blocks and just under six days old,
+still at the `GENESIS_TARGET` difficulty floor (`difficulty: 0x100`). The mean interval from block
+1 to the tip is **46.8 s** against a 15 s design target, which is what one miner at the difficulty
+floor produces.
+
+**And the transaction count is not zero, which several documents in this estate — including a
+first draft of this very section — asserted without measuring.** Walking every block from 1 to
+10,987 on 2026-08-10 finds **62 transactions in 52 blocks**, a mean of one per 177 blocks, in three
+groups:
+
+| Blocks | When | What |
+|---|---|---|
+| 235–251 | 2026-08-04 | 18 transactions, of which **nine are successful contract creations** — `ForesightMarket` instances belonging to `micro-foresight`. They are live: `eth_getCode` at `0x49408b99deb3afaafd914ed9f0e71a89874b980e` returns **6,007 bytes** of runtime code and the creation receipt reports `status: 0x1` |
+| 1,323 · 1,506 · 1,518 | 2026-08-05 onward | 3 transactions, days apart |
+| 10,851–10,967 | 2026-08-10 17:19–17:23 UTC | 41 transactions, roughly one per block, **every one a plain value transfer with empty input between the same two addresses** — an automated sweep, not usage |
+
+The subtotal for blocks 1–6,872 is **21**, which reproduces exactly the independent walk recorded
+in `hearth`'s `MAP.md` §10 on 2026-08-08. So the figure was measurable, and was measured, and prose
+elsewhere still said zero for six days. **The claim that survives unqualified is narrower and is
+the one to quote: no block has ever been produced at production proof-of-work parameters, and no
+third party has ever transacted on this chain.** "Empty" is not the same as "ours", and only the
+second one is true.
+
+**§0.1's "the testnet is publicly reachable" is now only half true, and the half it loses is the
+one a reader depends on.** The hostname answers and serves reads; the chain produces nothing, and
+has produced nothing since 2026-08-08 18:00:11 UTC. **This is deliberate rather than a fault**: the
+host runs `bitcoind` and `dogecoind`, both still in initial block download, and testnet mining
+competes with them for the same disk and bandwidth — the decision is recorded in `micro-deploy`'s
+`docs/releasing.md` and in the estate runbooks. The consequence to write down is that **a
+transaction sent to testnet today will not confirm**, and a testnet faucet page that renders
+cannot pay out. "Reachable" and "producing blocks" are separate properties, and every document in
+this estate that asserts the first should be read as asserting only the first.
+
+---
+
 ## 1. The number
 
 Of the repositories this programme creates or changes — the 46 in
