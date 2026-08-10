@@ -33,6 +33,36 @@ Measured on the estate host 2026-08-08 unless stated.
 The owner's stated sync order is **BTC, then DOGE, then ETC**. That is the operational sequence.
 It is deliberately *not* the code sequence — see §4.
 
+### 1.0 That table is three days old, and two of its rows have turned over
+
+Re-measured **2026-08-11**. The rows above are left exactly as written because a plan that quietly
+rewrites its own premises cannot be audited afterwards; this is what is true now.
+
+| Chain | Then (2026-08-08) | Now (2026-08-11) |
+| --- | --- | --- |
+| BTC | syncing, 0.749 | **at tip.** 961,930 / 961,930, `initialblockdownload:false`, 866 GB on disk. `txindex` synced. `blockfilterindex` still building — 918,038, ~280 blocks/min |
+| DOGE | not running | **running and in IBD.** dogecoind 1.14.9, 5,069,524 / 6,326,797 headers, `verificationprogress` 0.410 |
+| LTC | 3,156,491 | 3,157,723, still at tip |
+| ETC | not running | not running. Unchanged |
+
+Two things follow that this document could not have said on 2026-08-08:
+
+**BTC is no longer blocked on a sync.** §3.1 ends "blocked only on the sync finishing", and it is
+finished. What remains there is exactly the configuration list §3.1 gives, in the order §4 gives,
+and the ordering constraint in §6.1 — a chain must not be observable before it is payable — is now
+enforced in code rather than documented, by `wallet/src/observability.ts`'s `payableChainsOnly`.
+Turning `INDEXER_CHAINS` on for `btc:mainnet` no longer opens BTC deposits by itself.
+
+**The chain host is not the estate host any more.** This table says "measured on the estate host".
+Since micro-org#338 those are two machines: the daemons stayed on the original box and the
+application stack moved to a second one, reaching the RPCs over WireGuard. Anything in this document
+that reads a chain daemon and an estate container as neighbours on one Docker bridge is describing
+the arrangement before that move.
+
+Ground truth for the daemons themselves is `micro-indexer`'s `nodes/` directory, which as of
+micro-org#373 item 8 matches the running configuration byte for byte and includes `dogecoin.conf`,
+which did not exist when this was written.
+
 ### 1.1 The single source of truth, and the twenty places that copy it
 
 `contracts/packages/chain/src/index.ts` is the source of truth: `ChainFamily` (:24),
@@ -144,6 +174,34 @@ What is missing is **configuration, not code**: `INDEXER_RPC_BTC_MAINNET`, an `I
 entry, a start height, a `SETTLEMENT_RPC_URLS.btc` entry, a `WALLET_FEE_QUOTES` figure measured
 from `estimatesmartfee`, a pinned and booked treasury, and finally the `LEDGER_RECONCILE_ASSETS`
 flip. Blocked only on the sync finishing.
+
+**Update 2026-08-11 — the sync has finished, and two claims in the paragraph above did not survive
+contact with the node.** See §1.0 for the state. Two corrections:
+
+- `estimatesmartfee` **does not answer on this node**, so the figure cannot be measured the way
+  this paragraph says. Re-measured 2026-08-11 against the daemon at tip:
+
+  ```
+  estimatesmartfee 6  ->  -32603  Fee estimation disabled
+  listunspent         ->  -32601  Method not found
+  getmempoolinfo      ->  loaded: true, size: 0, bytes: 0
+  ```
+
+  Neither is a fault. `blocksonly=1` means the node sees no mempool and has nothing to estimate
+  from, and `disablewallet=1` means there is no wallet to select coins out of — both are settings
+  this estate chose on purpose and documented in `nodes/README.md`. But they are also the two RPCs
+  `settlement`'s BTC PSBT adapter is built on, which is why micro-org#373 §6.1 concludes BTC must
+  not become observable before it becomes payable. Until a fee source and a UTXO source exist,
+  `payableChainsOnly` keeps BTC deposits shut — the correct order, not an obstacle.
+- The parenthetical "`indexer/nodes/bitcoin.conf` already exists (rpcport 50001, `disablewallet=1`,
+  `blockfilterindex=1`, the same posture as Litecoin's)" was true of the **daemon** and not of the
+  **committed file**, which on 2026-08-08 carried neither of those settings and stated `txindex=0`
+  against a node running `txindex=1`. It is true of both as of micro-org#373 item 8.
+
+There is also an ordering constraint that is easy to get backwards: the rename of `BTC_RPC_URL` to
+`INDEXER_RPC_BTC_MAINNET` cannot land on its own — the indexer's mirror check refuses to boot —
+and the `INDEXER_CHAINS` entry must not land before a wallet carrying `payableChainsOnly` is
+deployed. Both go in one change, after that release.
 
 ### 3.2 DOGE — a UTXO chain that is not Litecoin
 
@@ -382,12 +440,43 @@ say that too.
   in micro-org#253 — `bitcoin.ts` computes the watched set already and spends it gating the
   *event* rather than the *row*, and the selective source that `btcsource.ts` was designed around
   is built but unreferenced.
+
+  **Update 2026-08-11: the 52 days is wrong, and the reason is that the disk moved.** The paragraph
+  above measures a filesystem the indexer database no longer sits on. Since micro-org#338 the
+  application stack — Postgres included — runs on a second machine, and the snap Docker root on
+  `/dev/sda2` it describes belongs to a host that now runs only chain daemons. Re-measured on the
+  app host:
+
+  | | then (2026-08-09, chain host) | now (2026-08-11, app host) |
+  |---|---|---|
+  | filesystem holding the indexer DB | `/dev/sda2`, 440 GB, **268 GB free** | `/dev/sdf`, 1007 GB, **945 GB free** |
+  | indexer database | 3790 MB | 3558 MB |
+  | whole cluster | — | 4045 MB across every estate database |
+
+  At the same measured rates the runway is **about 184 days for LTC and BTC together**, and 233
+  days for BTC alone — not 52. So this **no longer gates §4**, and BTC may be followed before
+  micro-org#253 is fixed rather than after.
+
+  It does not make micro-org#253 go away, and the shape of the database says why. Of the 3558 MB,
+  `address_activity` is 1901 MB, `spent_outpoints` 940 MB and `transactions` 698 MB, against a
+  `watched_addresses` table of **120 kB**. The estate is storing gigabytes of rows about addresses
+  it does not watch in order to serve a few hundred it does. The move bought months, not a fix; and
+  a six-month runway is still a date, so the ticket should be closed on its merits rather than
+  because the pressure came off.
 - **Dogecoin is 2.6 years behind, and syncing it competes with Bitcoin.** The node holds 112 GB
   with `txindex=1` and a config repaired on 2026-08-08, but its tip is height 5,008,594 dated
   2023-12-16 — roughly 1.37M blocks short. Bitcoin is at 75.3% (868,781 of 961,638) and gaining
   about 126 blocks/hour, so ~31 days out on its own. The two share one spindle and one uplink, so
   DOGE stays stopped until BTC is done. That is the stated order anyway (§4), but it is now a
   measured constraint rather than a preference.
+
+  **Update 2026-08-11.** Both estimates were pessimistic and the sequencing worked. Bitcoin did not
+  take 31 days — six `addnode` peers took its block rate from 17/min to 39/min and it reached tip on
+  2026-08-10, because Core caps *automatic* outbound peers at 10 regardless of `maxconnections` and
+  the node was bandwidth-starved rather than disk-starved. Dogecoin was then started and is at
+  5,069,524 of 6,326,797 headers (`verificationprogress` 0.410), with ten hand-added peers for the
+  same reason. `/data` holds 943 GB of 2.0 TB. The measured lesson is worth keeping: on this host an
+  IBD that looks disk-bound has usually been peer-bound.
 
 ---
 
