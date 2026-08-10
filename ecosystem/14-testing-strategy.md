@@ -530,3 +530,179 @@ The same reasoning governs skips. A journey without its credentials reports `ski
 reason and is never counted green; a unit suite where 29 of 56 tests silently skip because a
 laptop has no Postgres is green in a way that means nothing. Both are the same mistake wearing
 different clothes, and both are answered by counting skips out loud.
+
+---
+
+## 17. A check that cannot fail is not a check
+
+§16 says when a repository is green. This section is about when that green is worth reading.
+
+The largest single class of defect this estate has found is not a check that failed. It is a check
+that **could not have failed** — one that went green having measured nothing, and had the green
+read as evidence. The incident roster lives in the tracker, as a list of incidents should
+(micro-org#38, opened 2026-08-05 with nineteen instances and back-filled to twenty-two inside the
+week). What belongs in a strategy document is the rule, the corollaries the estate had to pay for
+separately, and the obligation that makes any of it enforceable. Re-counted on **2026-08-10**:
+twenty-seven issues carry the `vacuous-check` label, and the four newest were all found in the
+five days before that count.
+
+The detail that should change how these are read: in nearly every instance **the number was
+already in the output.** `ok — all 0 compose pins match`, matching 0 of 44. `groups: []`.
+`seeding skipped`. Nobody was denied the evidence. Every reader parsed the word `ok` and never
+read the count beside it, which is why the remedy below is a property of the check rather than a
+habit asked of the reader.
+
+### 17.1 The rule, and the four corollaries
+
+> **A check must fail when it measures nothing.**
+
+Every check names the non-zero cardinality it expects and goes red on zero. §1's requirement that
+the test glob discover as many files as the repository holds `*.test.ts` files is one instance of
+this, and §16's insistence that skips are a first-class number rather than a component of the pass
+count is another; they are not separate ideas, and neither is a special case.
+
+Four consequences the parent rule does not reach, each of which had to be learned from a defect
+that walked past it:
+
+**Assert the derivation, or the behaviour — never the spelling.** A test that pins a constant to
+its own current value is green for every possible value. The estate has now filed that tautology
+twice under its own name — a test asserting that a client posted to the URL the client was written
+to post to (micro-org#31), and then a frontend suite asserting that a hostname constant equalled
+itself and appeared in the registry, both true, while the hostname had no DNS record at all
+(micro-org#146). Its mirror image is just as bad and is harder to spot, because it goes red rather
+than green: a guard that greps one file for the name of a mechanism fails the day the mechanism
+moves somewhere better. `micro-emberkin`'s inbound-signature guard grepped `src/server.ts` for
+`timingSafeEqual`; the comparison moved into
+`@cloudsforge/contracts-events`, which is exactly where it belongs, and the guard read the correct
+fix as *"the check is gone"* and failed the commit that repaired the thing it existed to protect.
+**A guard that fails on the correct fix teaches people to delete the guard.** It now asserts the
+property it always meant — that the route calls `verifyInbound`, that the call precedes the first
+`JSON.parse` of the raw body, that a failure answers 403, and that the scheme is imported from the
+contract rather than re-implemented locally.
+
+**A check that enumerates a surface must also say which surfaces must NOT be there.** An
+allow-list that only ever grows is a list of things somebody once wanted, not a specification.
+This is the worst variant in the roster because it does not merely fail to catch a defect, it
+affirmatively certifies one: `estate-verify.sh` enumerated a faucet page and asserted a 200 with
+the app shell, against a testnet faucet live on a **mainnet** hostname (micro-org#147). The check
+was correct about its own question, and the question was the wrong one.
+
+**A fake is a claim about the thing it fakes, and the fields it omits are the claims it cannot
+make.** A test double that drops a field cannot disagree with the real thing about that field, so
+every assertion over it is silently out of scope, and the suite reports the coverage anyway.
+
+**"Could not run" is not "ran and found nothing."** They are different states and a check must
+return different exit codes for them. `estate-bootstrap.sh` printed `ok` for *"seeding skipped: no
+node on this machine"*, every time, for months (micro-org#13); a skipped conformance suite counted
+as a passed one and opened a release gate on no evidence (micro-org#83). The same mistake in a
+frontend suite is an `existsSync` early return that renders as a pass, named as the anti-pattern
+in `micro-ui`'s `packages/ui/src/cite.ts`.
+
+### 17.2 The proof obligation — mutate it, watch it go red, restore
+
+None of the above is enforceable by review, because every one of these checks looked correct to
+the person who wrote it. A check is not trusted because it is green. **It is trusted because
+somebody broke the thing it guards, watched it go red, and read the diagnosis it printed to
+confirm it named what was actually broken.** Anything less is a promise.
+
+The estate already does this in its strongest places, and those are the places to copy:
+
+- **The response-body scan plants a known-bad before it grades the real tree.** Every `estate-ci`
+  run injects private key material into a route and requires the sweep to go red *and name the
+  injected file, route and field*, then removes it and requires green again — because a scan that
+  is measuring nothing prints exactly the same clean report as a clean estate. The canary's own
+  result is published beside the scan's, and neither is accepted as the other's evidence.
+- **`micro-mint`'s indexer route cross-check is a CI job that mutates its own checkout** and
+  requires the job to go red, because a job that graded a file it failed to fetch looks identical
+  to a job that passed.
+- **`micro-billing`'s fee-recycle guards were each watched go red on 2026-08-10** before the change
+  was accepted — the ledger metadata keys restored to their old spelling produced
+  `actual: ['grossShards', 'periodStart', 'recycleBps', 'refundedShards']`, in red — and each was
+  restored to green afterwards.
+
+Two ways the obligation is itself got wrong, both already paid for here:
+
+- **A mutation that hardcodes the value it mutates goes stale exactly when the thing it guards
+  changes, and then fails with a diagnosis that is false.** `micro-mint-web`'s CI bent one route
+  citation by naming the line; the day `micro-mint`'s table moved, the mutation applied to nothing,
+  the suite passed unmutated, and the step reported that the cross-check had accepted a wrong
+  citation ([18](18-build-status.md) §3.3o). It reads the value now, and refuses to grade a file it
+  did not change.
+- **A mutation must break the property, not the syntax.** The interesting mutations are the ones
+  that stay valid. Renaming `$labels.device` to `$labels.disk` in an alert annotation does not
+  error — it renders the page as *"ext4 has recorded 3 error(s) on , which holds every backup"* —
+  and `promtool check rules` is green on it. A mutation set made only of syntax errors proves the
+  parser works.
+
+### 17.3 The four newest instances, and what each one adds
+
+Measured between 2026-08-05 and 2026-08-10. They are recorded here rather than left in the tracker
+because each one names a shape the roster did not already have.
+
+| The check | Why it could not fail | Repaired |
+| --- | --- | --- |
+| `micro-emberkin`'s CI grepped `src/server.ts` for `timingSafeEqual` as a proxy for "the inbound signature is verified" | It asserted a spelling in one file. The scheme moved into `@cloudsforge/contracts-events` and the guard failed the commit that fixed the defect it guarded | Asserts the property — `verifyInbound` called, before the first parse, 403 on failure, scheme imported not re-implemented. Checked both ways round: passes on the tree, fails on a copy with the verify call removed |
+| `micro-aetherholm-assets`' README stated which pictures illustrate mechanics the built game does not have — as a hand-written paragraph | The claim about another repository was **written down instead of measured**, so it was green whatever that repository did. Section 11 recorded four gaps and none of them was the real one; it also held `private-skerry` back as unbuilt while `provisioning.ts` was raising skerries against paid entitlements | `gaps.py` measures the service's own non-test source every run, in **both** directions — a picture whose mechanic has since been built fails as loudly as one whose mechanic is missing. It asserts it read something before grading, and exits `2` rather than `0` when there is no sibling checkout. Red on three of four before the change, green after (micro-org#186, 2026-08-10) |
+| Three deployed alert rules were valid YAML that could never fire — `BackupAgeExceeded`, `LedgerReconciliationDrift` and `ChainHeightSpreadSustained` read metric names that do not exist among the 1,329 the mainnet Prometheus holds | `promtool check rules` validates syntax, not reachability, and every one of the three had a runbook. `make check-rules` had been in the Makefile the whole time and had never been in CI | The rules are restated or retired against measured metric names, and `prometheus/rules/alerts.test.yaml` is the first promtool unit test in the estate — mutation-proved on 2026-08-10 by three edits that each took `promtool` from exit 0 to exit 1, then restored (micro-org#310, micro-org#207) |
+| `micro-billing`'s `fakeLedger` did not record `metadata` at all | The recycle wrote a retired asset's name into the **permanent** audit metadata of an EMBER ledger entry, and nothing in the repository could see the keys. The suite stayed green while disagreeing with the ledger it modelled | `testsupport.ts` records `metadata`, with the reason written at the field: a ledger entry is never edited — corrections are reversals — so a wrong key there is wrong for ever, which is exactly the kind of thing a fake has to expose (micro-org#336, 2026-08-10) |
+
+The alert row carries a structural note worth keeping separately, because it is the enumeration
+corollary in its live form. `prometheus/rules/` is bind-mounted whole into the container while
+`prometheus.yml` names its rule files one by one, so **presence in the mount is not loading** and
+nothing compares the two sets. `alerts.test.yaml` is outside the enumeration deliberately and the
+commit that added it says so. Measured against the mainnet Prometheus on 2026-08-10 — two rule
+files present in the mount, the same two loaded, 17 groups, 48 rules — so nothing is orphaned
+today. The hazard is that the next file dropped into that directory would be mounted, unloaded and
+indistinguishable from a rule that is simply not firing.
+
+### 17.4 This repository is not exempt, and neither is any other
+
+`docs` runs one check of its own, `tools/check-dead-patterns.mjs`, which fails a document that
+still instructs a reader to build something the estate has retired. Until 2026-08-10 it printed
+`dead-patterns: clean` and exited 0 whether it had read forty-three documents or none: it walked
+from a path derived at import time, and a walk that returned an empty list produced the same
+output as a clean sweep. That is the `ok — all 0 compose pins match` shape exactly, in the
+repository that states the rule.
+
+It now plants its own known-bad before it grades anything, the way the response-body sweep does,
+and it reports what it read:
+
+```
+dead-patterns: canary ok — the scanner named all 2 planted specimens, and both escapes silenced it
+dead-patterns: clean — 43 documents, 27674 lines, mentions: testnet-two-label 8, worlds-api-rename 26
+```
+
+Those figures are a measurement taken on 2026-08-10 and they will move with the corpus; that is
+the point of printing them. The old output carried a verdict and no denominator, and a verdict
+with no denominator is the one thing a reader cannot check.
+
+The canary drives the real scanning function rather than a re-typed copy of it, because
+micro-org#238 was a duplicated predicate that drifted until CI was verifying the copy instead of
+the one that ran. It asserts both directions — an uncorrected mention is named, and each of the
+two deliberate escapes silences it — since a guard that cannot be silenced on purpose gets deleted
+by the first person it inconveniences.
+
+Proved by mutation on 2026-08-10 rather than asserted. Four edits, each taking the check from
+exit 0 to a non-zero exit, each restored:
+
+| Mutation | Result |
+| --- | --- |
+| An uncorrected retired hostname appended to a real document | **exit 1**, naming the file, the line and the correction to apply |
+| One pattern's regex rotted by a character | **exit 2** — *"THE CHECK CANNOT BE SHOWN TO FAIL — refusing to grade the corpus"*, and no verdict on the corpus is printed at all |
+| The walk pointed at a tree holding no documents | **exit 2** — *"read 0 documents … nothing was measured, and that is not a pass"* |
+| A pattern whose retired thing has left the corpus entirely | **exit 2**, naming the pattern and requiring a person to decide between retiring it and repairing it |
+
+The last one is the least obvious and the most valuable: a pattern that matches nothing anywhere
+is guarding nothing, and it is silent about it in exactly the way a clean corpus is. It is also
+the shape that makes a recorded exception announce its own expiry: `micro-org`'s
+`tools/estate-topics.mjs` fails the run when a recorded gap stops matching anything — *"the record
+no longer describes the estate — the gap is closed, or it has changed shape. Delete it"* — because
+a record that outlives its finding is the permanent allow-list the check exists not to become.
+
+The three exit codes are three states and are never collapsed. `0` is a clean corpus, `1` is a
+document prescribing a retired thing, and `2` is *the check could not run, or could not be shown
+able to fail* — because a check that passes when it cannot run is worse than no check, and that is
+the whole of micro-org#13.
+
+A document that tells the rest of the estate to prove its checks can fail, guarded by a check
+nobody had ever proved could fail, is the same defect one level up.
