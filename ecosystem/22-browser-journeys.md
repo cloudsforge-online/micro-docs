@@ -1233,8 +1233,15 @@ caught this one, and catches the next. The footer is derived from `SURFACES`
 ### 11.5 What this section deliberately does not ask for
 
 - **A check that the apex serves a signed-in bar.** It must not. `localStorage` is per-origin and
-  the estate has no cookies at all, so a session established on `hub.<apex>` is genuinely not
-  present on `<apex>`. The mechanism that is *supposed* to cross that boundary is the SSO hand-off,
+  no session material of any kind is kept in a cookie, so a session established on `hub.<apex>` is
+  genuinely not present on `<apex>`. *(Corrected 2026-08-10: this bullet used to say "the estate
+  has no cookies at all", which stopped being true when `@cloudsforge/ui` gained its consent
+  banner. `cf_consent_analytics` IS set, on the registrable domain, and is deliberately visible to
+  every subdomain — `consent.ts` in that package explains why. It carries the reader's analytics
+  answer and nothing else, so the conclusion here is unchanged and its premise had to be narrowed
+  to the one that actually holds. The published privacy notice made the same over-broad claim and
+  is [micro-org#313](https://github.com/cloudsforge-online/micro-org/issues/313).)* The mechanism
+  that is *supposed* to cross that boundary is the SSO hand-off,
   and on 2026-08-05 it was refusing every origin — `POST /auth/handoff` answered 403 `forbidden`
   for `https://cloudsforge.online`, `https://hub.cloudsforge.online` and
   `https://market.cloudsforge.online` alike, which is the signature of an empty
