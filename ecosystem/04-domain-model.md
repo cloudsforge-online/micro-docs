@@ -143,8 +143,21 @@ Append-only. The financial source of truth.
 **Entry kinds** — the closed set, which is also the audit vocabulary:
 `deposit_credited · withdrawal_requested · withdrawal_settled · withdrawal_refunded ·
 conversion · transfer · purchase · subscription_charge · fee_charged · reward_granted ·
-market_escrow · market_settled · royalty_paid · trading_fill · performance_fee ·
-creator_payout · treasury_spend · adjustment · reconciliation_correction · reversal`.
+item_issue · market_escrow · market_settled · royalty_paid · trading_fill ·
+performance_fee · creator_payout · treasury_spend · adjustment ·
+reconciliation_correction · reversal`.
+
+**Closed means a caller may not invent one, and two services have proved what that costs.**
+`foresight.settlement_fee` posted nothing for months; `item_issue` — micro-tessera's object
+issuance — was refused on every attempt, so not one Tessera object was ever brought into the
+books. Both were invisible because the kind is a `string` on the client's request type: the
+compiler had nothing to say, and micro-ledger's `validateEntryRequest` answered `400
+invalid_entry` at runtime. A client whose `kind` field is typed `EntryKind` cannot compile the
+mistake, and that — not a wider vocabulary — is the remedy. Adding a kind is a deliberate act
+in three places at once: `ENTRY_KINDS` in `contracts-money`, a **new** micro-ledger migration
+re-declaring `journal_entries_kind_chk` (migration text is checksummed, so an applied one may
+never be edited), and this list. `ledger/src/migrations.test.ts` asserts the first two are
+equal in both directions, so a half-done change is red rather than silent.
 
 ### 2.3 `balance` — owned by `ledger`
 
