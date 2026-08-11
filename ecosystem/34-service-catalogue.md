@@ -320,23 +320,39 @@ kill loses up to one flush interval — is stated in the file rather than hidden
 is written and tested now, called by nothing, so that whoever implements crediting cannot invent a
 second idempotency key alongside the one `wallet/src/deposits.ts` already established.
 
-**Deployed state.** **Not deployed, and it could not start if it were.** Nothing on the path is
-merged: the service's own code is micro-pool#1, its compose block is micro-deploy#15, and both were
-open on 2026-08-09 — so `micro-pool`'s `main` is an empty repository and the estate compose has no
-pool in it at all. When that compose does land, the service sits behind `profiles: ["pool"]`, so a
-plain `up` still brings up no pool; bringing it up takes `COMPOSE_PROFILES=pool`. And even then two
-required values do not exist yet, and both are decisions rather than oversights. `POOL_LTC_PAYOUT_ADDRESS` needs a
-custody key with a `pool` purpose that custody does not have — micro-custody#4 is open and unmerged
+**Deployed state.** **Deployed on mainnet and serving two chains, measured 2026-08-11.** The
+paragraph that follows is the 2026-08-09 record and is kept because its *reasoning* about what
+blocked the deploy is still the reasoning; its status line is not. As at 2026-08-09 nothing on the
+path was merged: the service's own code was micro-pool#1, its compose block was micro-deploy#15,
+and both were open — so `micro-pool`'s `main` was an empty repository and the estate compose had no
+pool in it at all. Even landed, the service sits behind `profiles: ["pool"]`, so a plain `up`
+brings up no pool; bringing it up takes `COMPOSE_PROFILES=pool`. And two required values did not
+exist yet, both decisions rather than oversights. `POOL_LTC_PAYOUT_ADDRESS` needed a
+custody key with a `pool` purpose that custody did not have — micro-custody#4 was open and unmerged
 — and the existing `treasury` purpose must not be borrowed, because a treasury-purpose key on
 ltc/mainnet is a rotation candidate for settlement's pinned treasury and every block the pool had
 mined to it would become unbooked custody inflow. `POOL_FEE_BASIS_POINTS` is the unmade product
 decision above, and `requiredInteger` means the service exits at import without it. So does
-`pool-migrate`, which imports the same eager `env.ts`, so the database is not created either.
-`POOL_CHAINS` defaults to `ltc` alone, and that default is a measurement rather than a preference:
-the compose block records litecoind synced and bitcoind still in initial block download on
+`pool-migrate`, which imports the same eager `env.ts`, so the database was not created either. Both
+of those are now answered, and the running service is the evidence rather than anything read here:
+a micro-pool that answers `GET /v1/pool` at all is one that got past that eager `env.ts`.
+
+`POOL_CHAINS` defaults to `ltc` alone, and that default was a measurement rather than a preference:
+the compose block recorded litecoind synced and bitcoind still in initial block download on
 2026-08-09, and `getblocktemplate` against a node in IBD returns work for a tip no other miner has
-seen. That figure is read from the deploy branch, not taken here — this document did not touch the
-host. Stratum is raw TCP, so neither Traefik nor the Cloudflare Tunnel can carry it: the port is
+seen. That figure was read from the deploy branch, not taken here — this document did not touch the
+host. **The measurement has since expired and the default has been overridden.** bitcoind finished
+its initial block download on 2026-08-10; measured 2026-08-11 at height 961,975, difficulty
+1.2748e14, mainnet has run `POOL_CHAINS=ltc,btc` since release 2026.08.16 and `GET /v1/pool` returns
+both chains `ready: true`, ltc at height 3,157,960. **BTC is served to mining hardware and refused
+to browsers, deliberately** ([micro-org#360](https://github.com/cloudsforge-online/micro-org/issues/360),
+closed): it carries `browserMining: {available: false}` with the pool's own sentence for why, and
+`websocketEndpoint: null`, because that difficulty is about 793 EH/s of purpose-built SHA-256
+silicon and a browser tab cannot produce a share this pool could turn into a block. The refusal is
+a property of the chain rather than of a deployment setting, which is why it travels as its own
+field and not as a missing endpoint.
+
+Stratum is raw TCP, so neither Traefik nor the Cloudflare Tunnel can carry it: the port is
 published directly by the container and binds loopback unless an operator widens it on purpose, and
 `pool.<apex>` will therefore serve the page that describes the connection and never the connection
 itself.

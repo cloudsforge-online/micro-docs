@@ -164,14 +164,24 @@ third party has ever transacted on this chain.** "Empty" is not the same as "our
 second one is true.
 
 **§0.1's "the testnet is publicly reachable" is now only half true, and the half it loses is the
-one a reader depends on.** The hostname answers and serves reads; the chain produces nothing, and
-has produced nothing since 2026-08-08 18:00:11 UTC. **This is deliberate rather than a fault**: the
-host runs `bitcoind` and `dogecoind`, both still in initial block download, and testnet mining
-competes with them for the same disk and bandwidth — the decision is recorded in `micro-deploy`'s
-`docs/releasing.md` and in the estate runbooks. The consequence to write down is that **a
-transaction sent to testnet today will not confirm**, and a testnet faucet page that renders
-cannot pay out. "Reachable" and "producing blocks" are separate properties, and every document in
-this estate that asserts the first should be read as asserting only the first.
+one a reader depends on.** The hostname answers and serves reads; the chain produced nothing from
+2026-08-08 18:00:11 UTC onward. **That was deliberate rather than a fault**: the host ran
+`bitcoind` and `dogecoind`, both then in initial block download, and testnet mining competed with
+them for the same disk and bandwidth — the decision is recorded in `micro-deploy`'s
+`docs/releasing.md` and in the estate runbooks. The consequence to write down was that **a
+transaction sent to testnet while that held would not confirm**, and a testnet faucet page that
+rendered could not pay out. "Reachable" and "producing blocks" are separate properties, and every
+document in this estate that asserts the first should be read as asserting only the first.
+
+**The reason has expired, measured 2026-08-11, and the second property now has to be measured on
+its own rather than inferred from the first.** `bitcoind` left initial block download on 2026-08-10
+and stood at height 961,975, so it is no longer competing with anything for that disk; `dogecoind`
+alone is still in IBD. Nor is testnet stopped: under micro-org#338 it moved off that box to the
+application host and runs there, 48 containers, all healthy. What has **not** been re-measured is
+the testnet chain's own tip, and that is the only thing that settles "producing blocks" — so this
+document does not yet say it produces them. Take that measurement by reading the tip twice a few
+minutes apart, not once: EMBER sits at its difficulty floor, and a single height proves neither a
+halted chain nor a running one.
 
 ---
 

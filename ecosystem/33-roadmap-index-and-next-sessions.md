@@ -522,11 +522,19 @@ before cutting a release and §6.5 before spawning a second worker.*
 Two standing decisions were taken by the owner and both invert instructions written elsewhere in
 these documents:
 
-- **Testnet is paused** so that the host's `bitcoind` can finish its initial block download.
-  Changes therefore go **straight to mainnet** and are merged to `main` after they have been
-  measured there. Anything in these documents that says "deploy testnet first" does not apply
-  while that holds, and every item gated on testnet — the testnet administrator rotation, testnet
-  `SMTP_*` — is **blocked, not skipped**, and must be picked up when testnet restarts.
+- **Testnet was paused** so that the host's `bitcoind` could finish its initial block download.
+  Changes therefore went **straight to mainnet** and were merged to `main` after they had been
+  measured there. Anything in these documents that says "deploy testnet first" did not apply
+  while that held, and every item gated on testnet — the testnet administrator rotation, testnet
+  `SMTP_*` — was **blocked, not skipped**.
+
+  **That pause has lifted, and both halves of its premise are gone (measured 2026-08-11).**
+  `bitcoind` finished its initial block download on 2026-08-10 and stood at height 961,975 the
+  next day, so there is nothing left for testnet to yield the disk to. And testnet did not restart
+  on the box it was paused on: under micro-org#338 the application stack moved to a second machine
+  and testnet went with it, where it runs 48 containers, all healthy. The original box is the chain
+  daemons and nothing else. So "deploy testnet first" binds again, and the items above are
+  unblocked — undone rather than impossible.
 - **A green CI run authorises the deploy and the merge**, in that order: deploy, verify on the
   live estate, then merge the pull requests. §5's ordering constraint still binds underneath it —
   an image publishes on `main` only — so the release branches merge before `cfctl release` pins a
@@ -700,17 +708,29 @@ identity ([#214](https://github.com/cloudsforge-online/micro-org/issues/214)).
 
 **Chain state, as at 2026-08-10.** The UTXO nodes are host processes, not containers. Litecoin is
 synced; Bitcoin is at 917,518 of 961,839 and Dogecoin is roughly 1.13M blocks behind. Two
-configuration changes are held on that: `POOL_LTC_AUX_CHAINS=doge` once `dogecoind` leaves IBD, and
+configuration changes were held on that: `POOL_LTC_AUX_CHAINS=doge` once `dogecoind` leaves IBD, and
 adding `btc` to `POOL_CHAINS` once `bitcoind` reports `initialblockdownload: false`. Neither is a
 code change and neither should be made early — a pool advertising a chain whose node is still in
 IBD advertises work it cannot validate.
+
+**Chain state, re-measured 2026-08-11: the second of those two changes has been made, the first has
+not.** `bitcoind` finished its initial block download on 2026-08-10 and stood at height 961,975,
+difficulty 1.2748e14, so mainnet has run `POOL_CHAINS=ltc,btc` since release 2026.08.16 and
+`GET /v1/pool` returns `btc` with `ready: true` beside `ltc` at height 3,157,960. BTC is offered to
+mining **hardware** over Stratum and refused to the **browser** miner on purpose
+([micro-org#360](https://github.com/cloudsforge-online/micro-org/issues/360), closed): the chain
+comes back with `browserMining: {available: false}` and the pool's own sentence for why, because
+that difficulty is about 793 EH/s of purpose-built SHA-256 silicon and a tab cannot produce a share
+this pool could ever turn into a block. `dogecoind` is still in IBD, so `POOL_LTC_AUX_CHAINS` is
+held exactly as written above and for exactly the reason written above.
 
 ### 6.8 What the next session picks up
 
 1. Merge the frontend, trading-engine and Hearth-coinbase pull requests as their CI goes green,
    then cut **2.5.15** by §6.1. They are separate releases only if they land days apart.
 2. Put the administrator-rotation procedure into a runbook and into `releasing.md`, then rotate the
-   **testnet** administrator when testnet restarts.
+   **testnet** administrator. This no longer waits on anything: testnet is running on the
+   application host, 48 containers healthy, measured 2026-08-11.
 3. Rotate the host's `CUSTODY_MASTER_SECRET_V3` to V4.
 4. Rename the `cfmicro` gateway compose project to `cloudsforge-estate` on mainnet. It is a
    project rename and therefore recreates containers; do it in its own window, not inside a release.
