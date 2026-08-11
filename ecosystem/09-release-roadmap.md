@@ -10,6 +10,27 @@
 > Do not plan from this document. Plan from
 > [33-roadmap-index-and-next-sessions](33-roadmap-index-and-next-sessions.md). The one live item it
 > still owns — the Beacon release gate that no pipeline calls — is carried as 30 §C4.
+>
+> **Two mechanical details below have also since moved, and they are the ones an operator would
+> get wrong. Re-checked 2026-08-11.**
+>
+> **The manifest is at `org/releases/<version>.yaml`, not `stack/releases/`.** There is no
+> `stack` repository; the org/meta repository is `micro-org`. Everything this document says about
+> the manifest being the artefact, the digest being the real pin and `cfctl release` generating it
+> is accurate — only the path is wrong.
+>
+> **Releases are named by date, not by semver.** §1.2's `v0.6.3` / `v1.0.0` and §1.3's
+> `v0.6.0-rc.N` describe a scheme that was retired. A release name is now the date it was cut:
+> `2026.08.21`. Per-repository semver did not change and is still not coordinated — this is only
+> about the name of the *set*, which is exactly the thing §1.1 says the manifest exists to be.
+>
+> That naming carries one trap, and it has already cost a release. **`2026.08.12` sorts *after*
+> `2026.08.11` lexicographically while being a day earlier by the numbering that generates it**,
+> because the day component is not zero-padded — `ls org/releases/` puts `2026.08.21` above
+> `2026.08.6`. Sorting manifests as strings once shipped six-day-stale image pins. `micro-org`
+> carries `release-order.test.ts` to make that a build failure rather than a deploy (micro-org#384),
+> and `./scripts/release-deploy.sh --list` prints them in the order they were actually cut. Never
+> derive "the latest release" from a directory listing.
 
 
 How thirty-one independently versioned repositories become one thing a person can deploy, roll

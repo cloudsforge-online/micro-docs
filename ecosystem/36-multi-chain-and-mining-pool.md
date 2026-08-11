@@ -127,6 +127,22 @@ moment. `indexer/src/custody.ts:133-135`: **naming an asset in `LEDGER_RECONCILE
 build that cannot observe it freezes that asset permanently**, because only a clean *observed* run
 lifts a freeze. So the flip is last, not first, and it is gated on a real observed run.
 
+**2.1a and 2.2a — both of the above are fixed. Re-measured 2026-08-11.** Kept above as written,
+per §1.0's convention.
+
+`settlement/src/registry.ts` no longer builds its client on `parsed.origin` alone. It now derives
+an `Authorization: Basic …` header from the userinfo the origin discards (`basicAuthorization`,
+:443-481, whose header comment carries the 401-versus-200 measurement quoted in §2.1), and it keys
+the client cache on chain rather than on origin — because two chains can share an origin with
+different `rpcuser`s, and an origin-keyed cache would hand the second chain the first one's
+credential for the life of the process. micro-org#267 is closed. LTC and BTC withdrawals build and
+broadcast; the estate no longer takes custody of a coin it cannot send back.
+
+`deploy/compose/docker-compose.estate.yml:1299` now reads `LEDGER_RECONCILE_ASSETS:
+"SHARD,EMBER,LTC"`. G6 is closed for Litecoin, and it was closed in the order §2.2 demands — the
+flip came after a real observed run, not before it, because naming an asset a build cannot observe
+freezes it permanently. BTC and DOGE are not named yet and must not be until the same gate is met.
+
 **2.3 The remaining Litecoin items**, each smaller:
 
 - ~~`WALLET_FEE_QUOTES` carries `LTC: 10000` … "REVISIT once `estimatesmartfee` answers". Now that
@@ -329,7 +345,10 @@ A pool for real hardware. Miners with ASICs and GPUs point at CloudsForge over S
 shares against a difficulty we set, and are credited in ledger balances they can then spend
 anywhere in the ecosystem. Nothing about it requires a claim that is not true.
 
-**Nothing of this exists today.** Measured across all 66 repositories: zero hits for
+**Nothing of this exists today** — *written 2026-08-08; it shipped on 2026-08-21 and §5.3.1 below
+records what was actually built. The paragraph is left as written, per the convention §1.0
+establishes: a plan that quietly rewrites its own premises cannot be audited afterwards.* Measured
+across all 66 repositories: zero hits for
 `getblocktemplate`, `submitblock`, `getwork`, `stratum` (the single hit is
 `hearth/node/src/mining.js:12-13` *denying* that it is a stratum server), `auxpow`, `ethash`,
 `randomx`. There is no share concept anywhere — `hearth/node/src/chain/header.js:257` accepts only
@@ -358,6 +377,48 @@ applies here more sharply than anywhere, because this one is about money. And **
 say, in its own voice, that browser mining is EMBER-only and why** — `copy.ts:517-523` already says
 "None exists, and nothing in the protocol prevents one from being built", which is the honest
 sentence to replace when one does exist.
+
+### 5.3.1 It was built. What shipped, and where it diverged from this section
+
+Shipped in release **2026.08.21** as `micro-pool` and `micro-pool-web`, and live on both networks:
+`https://pool.cloudsforge.online` and `https://pool-testnet.cloudsforge.online` both answered `200`
+on 2026-08-11. Both services carry pinned image digests in `org/releases/2026.08.21.yaml:336-347`.
+
+What matches §5.3 as written: Stratum v1 over raw TCP, `getblocktemplate` against the estate's own
+daemons, per-connection vardiff, share validation against a share target with the block target as
+the win condition, PPLNS over a sliding window, ledger credit reusing the `credit_key` idempotency
+shape, and a published fee derived from the same constant the accounting uses.
+
+Four divergences, each of which the reader of this section would otherwise get wrong:
+
+- **The chain list is a refusal table, not a wish list.** `pool/src/chains.ts` serves BTC (port
+  3333) and LTC (3334) and refuses three chains *by name*, each with the reason attached, so a
+  refused name in `POOL_CHAINS` is a boot failure rather than a silent no-op. This section's
+  four-chain framing — BTC, DOGE, ETC beside LTC — survives for exactly one of the three.
+- **Dogecoin is mined, and it is not one of the chains.** DOGE is merge-mined as an *auxiliary* of
+  Litecoin under AuxPoW, as it has been since 2014: its blocks are won by a Litecoin header
+  carrying a commitment to them, so there is no `getblocktemplate` path and no stratum port for it.
+  It is configured as `POOL_LTC_AUX_CHAINS=doge`, not as a member of `POOL_CHAINS`. An aux chain
+  has no port, no template, no share accounting and no vardiff of its own; it is a second thing the
+  miner's Litecoin work is simultaneously worth. §3.2's "DOGE is a UTXO chain that is not Litecoin"
+  costing is therefore about *addresses and payout*, not about a mining path.
+- **ETC is refused**, on the reasoning §3.3 already implies: Etchash over an account-model chain has
+  no `getblocktemplate`, no coinbase transaction to build and no merkle branch of the shape this
+  pool computes. It shares no code with this track and is filed as its own work.
+- **EMBER is refused by name, and that is the open decision of §7.4 answered "not yet"** rather than
+  an omission. It competes with the browser miner for the same blocks, and §5.2 says nothing in
+  this track may weaken that.
+
+One thing this section did not anticipate at all: **MWEB is mandatory on Litecoin.** The template
+call must be made with `rules: ["mweb", "segwit"]` or Litecoin Core refuses it outright — `error
+code -8`, not a degraded template — and the returned template carries a mandatory MWEB integrating
+transaction (the HogEx) and a top-level extension block even against an empty mempool. The
+commitment is the HogEx's witness-version-8 output; the coinbase is unchanged by MWEB, so none of
+the work landed where a first reading would put it. Bitcoin keeps `['segwit']` alone, because a
+rule name `bitcoind` does not know is a rule it refuses the call for in the same way.
+
+`network-site`'s `copy.ts:517-523` — *"None exists, and nothing in the protocol prevents one from
+being built"* — is the sentence §5.3 above marks for replacement when one exists. One exists.
 
 ### 5.4 The pool needs a surface, and it is not like the other surfaces
 
