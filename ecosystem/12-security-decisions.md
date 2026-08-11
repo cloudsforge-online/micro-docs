@@ -681,3 +681,34 @@ Every knowingly accepted risk, and the condition that forces it to be revisited.
 | SDR-10 | Policy fail-closed creates availability risk on withdrawals | Correct trade for a custodial platform | Policy availability falls below its SLO |
 | SDR-11 | Org security defaults are off on nine **public** repositories | Nothing but inattention | **Immediately** — P2 |
 | SDR-12 | No KYC/AML | Not currently required at this scale | A jurisdiction, a threshold, or a fiat on-ramp says otherwise. Seams are designed in P13 |
+
+### Two revisit conditions have fired — 2026-08-11
+
+**The estate spans hosts.** It is no longer one machine. The application stack — both estates,
+their Postgres, both gateways and the telemetry plane — runs on an *app host*; the chain daemons
+(`bitcoind`, `litecoind`, `dogecoind`, as host processes with datadirs under `/data/chains`), the
+Hearth seed nodes and the EMBER miners stayed on the original box, now the *chain host*. The two
+are joined by WireGuard, and application containers reach the daemons' RPC over that link
+(micro-org#338).
+
+That is the exact condition **SDR-04** names, and it fires it:
+
+- SDR-04's justification — *"Single host, network namespace is the boundary"* — is **no longer
+  true**. A Docker network namespace does not extend across a WireGuard tunnel. Service-to-service
+  traffic inside one host is still namespace-bounded and the acceptance still holds for it; the
+  traffic that now crosses the wire is bounded by **WireGuard's** encryption and peer
+  authentication instead, which is a different control with a different failure mode and a
+  different key to rotate. SDR-04 as written describes a boundary that covers less of the estate
+  than it did when it was written, and the register does not yet say so anywhere else.
+- Chain-daemon RPC is the traffic that crosses. It is HTTP with HTTP Basic userinfo credentials —
+  see 36 §2.1a — so the credential is in a header on the wire, and WireGuard is the only thing
+  protecting it. If the tunnel is ever bypassed, downgraded or replaced by a routed path, this
+  entry stops being an accepted risk and becomes an incident.
+
+**SDR-01**'s revisit condition — *"The estate moves to more than one host"* — has also fired, and
+is the milder of the two: custody and the Docker socket it holds did not move; they are on the app
+host, and no custody container reaches across the tunnel. The entry is unchanged in substance, but
+its trigger has been met and it is owed a re-reading rather than a renewal by default.
+
+Neither entry is edited above. A debt register whose rows are rewritten when the world moves cannot
+be audited against what was actually accepted, and by whom.

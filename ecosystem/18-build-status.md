@@ -185,6 +185,78 @@ halted chain nor a running one.
 
 ---
 
+## 0.3. Correction, 2026-08-11: the testnet produces blocks, and six things shipped
+
+§0.2 left one question open and named exactly how to settle it — *"read the tip twice a few minutes
+apart, not once"*. Done. **Measured 2026-08-11 14:45–14:47 UTC over the public internet, no
+credentials, two polls 70 seconds apart:**
+
+| | Mainnet `rpc.cloudsforge.online` | Testnet `rpc-testnet.cloudsforge.online` |
+|---|---|---|
+| `eth_chainId` | `0x1cf3` (7411) | `0x1cf4` (7412) |
+| `eth_blockNumber`, first poll | `0x36e8` — **14,056** | `0x1f66` — **8,038** |
+| `eth_blockNumber`, 70 s later | `0x36ea` — **14,058** | `0x1f6b` — **8,043** |
+| Producing? | **yes** | **yes** |
+| `web3_clientVersion` | `Hearth/v0.3.0/linux-x64/node22.23.1` | `Hearth/v0.3.0/linux-x64/node22.23.1` |
+
+**§0.2's open question is closed and §0.1's claim is whole again.** Testnet is reachable *and*
+producing. It moved five blocks in seventy seconds — a 14 s mean against the 15 s design target,
+which is what the chain looks like when nothing is competing with it. A testnet faucet can pay, and
+a transaction sent to testnet confirms. §0's "**One machine**" bullet is superseded below.
+
+Six things landed since §0.2 that a ledger has to record, because other documents in this directory
+are still written as though none of them had:
+
+1. **A mining pool exists.** `micro-pool` and `micro-pool-web`, released 2026.08.21, live at
+   `https://pool.cloudsforge.online` and `https://pool-testnet.cloudsforge.online` — both `200` on
+   2026-08-11. Stratum v1 over raw TCP: BTC on 3333, LTC on 3334. **Dogecoin is mined, but it is
+   not one of the chains** — it is merge-mined as an *auxiliary* of Litecoin under AuxPoW, which is
+   how Dogecoin has been mined since 2014, so it has no port and no template of its own. ETC and
+   EMBER are refused by name, each with the reason attached. This closes the "nothing of this
+   exists today" finding at 36 §5.3; 36 §5.3.1 records where the build diverged from the plan.
+2. **Litecoin and Bitcoin are payable, not merely observable.** `bitcoind` reached the tip, and
+   settlement now sends the HTTP Basic `Authorization` header that `URL.origin` was silently
+   discarding, so a UTXO withdrawal can be built and broadcast (36 §2.1a). MWEB is handled on every
+   Litecoin template — it is mandatory there, not optional. `LEDGER_RECONCILE_ASSETS` names `LTC`.
+3. **Registration is complete and defended.** Cloudflare Turnstile on the registration form;
+   identity issues and consumes an email-verification token, and refuses sign-in to an unverified
+   account. Both are user-visible behaviour that no document in this directory mentions.
+4. **EMBER has an emergency difficulty rule, and it is a consensus fork.** Hearth 0.3.0: a block
+   whose own timestamp is more than eight target intervals — 120 s — past its parent's may be mined
+   at `MAX_TARGET`, and the maximum future drift a node will accept drops from 7,200 s to 30 s. It
+   activates at **mainnet height 20,000**, which is ahead of the 14,058 measured above. **A node
+   still on 0.2.x will reject the first eased block as `wrong difficulty target` and stop following
+   the chain**, and Hearth is distributed as `.deb`, `.rpm`, AppImage, `.dmg` and MSI installers, so
+   there are copies in the field. This is the one item on this list with a deadline attached to it.
+   `hearth/docs/mining.md` carries the operator-facing version.
+5. **The estate spans two hosts.** §0's "One machine" bullet is no longer true. The application
+   stack — both estates, ~107 containers between them, their Postgres, both gateways and the
+   telemetry plane — runs on an *app host*; `bitcoind`, `litecoind` and `dogecoind` (host processes,
+   datadirs under `/data/chains`), the Hearth seed nodes and the EMBER miners stayed on the original
+   box, now the *chain host*. They are joined by WireGuard. The rest of that bullet still stands:
+   no redundancy, no failover. **The backup situation got worse rather than better** — the dedicated
+   backup device is still in the chain host, and the machine that now holds the data has none;
+   `micro-deploy`'s `docs/estate-backup-restore.md` records that as an open gap. This fires the
+   revisit condition on **SDR-04** and **SDR-01** in
+   [12-security-decisions](12-security-decisions.md).
+6. **Releases are named `<year>.<month>.<sequence>`.** `2026.08.21`, in
+   `org/releases/<version>.yaml`, is the twenty-first release cut in August 2026 — not 21 August;
+   it was cut on 2026-08-11. The semver-style estate names (`2.5.x`) are retired, but they are
+   still in the directory, so **a release name cannot be sorted**: the sequence is not zero-padded
+   (`2026.08.21` sorts before `2026.08.6`) and the two lineages are not comparable to each other at
+   all. Ordering manifests by filename once deployed a six-day-stale set — 45 services rolled back,
+   the indexer by 87 commits, with every container healthy and every digest real, found five days
+   later. Order by the `generated` field. `micro-org`'s `release-order.test.ts` makes a backwards
+   manifest a build failure (micro-org#384). See 09's header note.
+
+**What has still not changed, and is the thing an overstatement would be inherited from:** EMBER
+has no market, no listing, no liquidity and no price. No block on either chain has been produced at
+production proof-of-work parameters. And no third party has ever transacted on either chain — the
+accounts on both networks are Beacon's synthetic registrations and test residue, so a cold-start
+problem should be described as a cold start and not as an outage.
+
+---
+
 ## 1. The number
 
 Of the repositories this programme creates or changes — the 46 in

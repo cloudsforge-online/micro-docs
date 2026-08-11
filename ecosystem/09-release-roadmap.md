@@ -10,6 +10,35 @@
 > Do not plan from this document. Plan from
 > [33-roadmap-index-and-next-sessions](33-roadmap-index-and-next-sessions.md). The one live item it
 > still owns — the Beacon release gate that no pipeline calls — is carried as 30 §C4.
+>
+> **Two mechanical details below have also since moved, and they are the ones an operator would
+> get wrong. Re-checked 2026-08-11.**
+>
+> **The manifest is at `org/releases/<version>.yaml`, not `stack/releases/`.** There is no
+> `stack` repository; the org/meta repository is `micro-org`. Everything this document says about
+> the manifest being the artefact, the digest being the real pin and `cfctl release` generating it
+> is accurate — only the path is wrong.
+>
+> **Releases are named `<year>.<month>.<sequence>`, not by semver.** §1.2's `v0.6.3` / `v1.0.0` and
+> §1.3's `v0.6.0-rc.N` describe a scheme that was retired. `2026.08.21` is the **twenty-first
+> release cut in August 2026** — it is not 21 August; it was cut on 2026-08-11. Per-repository
+> semver did not change and is still not coordinated: this is only about the name of the *set*,
+> which is exactly the thing §1.1 says the manifest exists to be.
+>
+> **A release name cannot be sorted, and believing otherwise has already cost a deploy.** Two
+> things break it. The sequence is not zero-padded, so `2026.08.21` sorts *before* `2026.08.6` as
+> a string. And `org/releases/` holds **two incomparable lineages** — the dated one and the semver
+> one the estate also used, `2.3.0` to `2.5.19` — so no comparison of two filenames can order them
+> at all. `2026.08.12` looks like the successor of `2026.08.11` and is one in time, while being six
+> days behind `2.5.19`, and deploying it rolled 45 services back — the indexer by 87 commits —
+> with every container healthy, every image existing and every digest real. It was found five days
+> later by reading `org.opencontainers.image.version` off the running containers.
+>
+> **Order by the `generated` field, never by the name.** It is the only field that orders the two
+> lineages against each other, because it records when a human cut the file rather than what they
+> called it. `micro-org`'s `release-order.test.ts` makes a backwards manifest a build failure
+> (micro-org#384), and `./scripts/release-deploy.sh --list` prints manifests in the order they were
+> actually cut. Never derive "the latest release" from a directory listing.
 
 
 How thirty-one independently versioned repositories become one thing a person can deploy, roll
