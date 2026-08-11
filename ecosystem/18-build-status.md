@@ -239,11 +239,15 @@ are still written as though none of them had:
    `micro-deploy`'s `docs/estate-backup-restore.md` records that as an open gap. This fires the
    revisit condition on **SDR-04** and **SDR-01** in
    [12-security-decisions](12-security-decisions.md).
-6. **Releases are named by date.** `2026.08.21`, in `org/releases/<version>.yaml`. The semver-style
-   estate names (`2.5.x`) are retired. The day component is not zero-padded, so `2026.08.21` sorts
-   *before* `2026.08.6` as a string — sorting manifests by filename once deployed six-day-stale
-   pins, and `micro-org`'s `release-order.test.ts` now makes that a build failure (micro-org#384).
-   See 09's header note.
+6. **Releases are named `<year>.<month>.<sequence>`.** `2026.08.21`, in
+   `org/releases/<version>.yaml`, is the twenty-first release cut in August 2026 — not 21 August;
+   it was cut on 2026-08-11. The semver-style estate names (`2.5.x`) are retired, but they are
+   still in the directory, so **a release name cannot be sorted**: the sequence is not zero-padded
+   (`2026.08.21` sorts before `2026.08.6`) and the two lineages are not comparable to each other at
+   all. Ordering manifests by filename once deployed a six-day-stale set — 45 services rolled back,
+   the indexer by 87 commits, with every container healthy and every digest real, found five days
+   later. Order by the `generated` field. `micro-org`'s `release-order.test.ts` makes a backwards
+   manifest a build failure (micro-org#384). See 09's header note.
 
 **What has still not changed, and is the thing an overstatement would be inherited from:** EMBER
 has no market, no listing, no liquidity and no price. No block on either chain has been produced at

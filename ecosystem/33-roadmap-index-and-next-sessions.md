@@ -729,11 +729,14 @@ held exactly as written above and for exactly the reason written above.
 1. Merge the frontend, trading-engine and Hearth-coinbase pull requests as their CI goes green,
    then cut a release by §6.1. They are separate releases only if they land days apart.
    *(Superseded 2026-08-11: this said "cut **2.5.15**". Estate releases are no longer named by
-   semver — a release is named for the day it was cut, `2026.08.21`, and the manifest lives at
-   `org/releases/<version>.yaml`. The day component is not zero-padded, so `2026.08.21` sorts
-   before `2026.08.6` as a string; never take "the latest release" from a directory listing, use
-   `./scripts/release-deploy.sh --list`. `micro-org`'s `release-order.test.ts` exists because
-   sorting them as strings once shipped six-day-stale pins — micro-org#384. See 09's header note.)*
+   semver. A release is `<year>.<month>.<sequence>` — `2026.08.21` is the twenty-first cut in
+   August 2026, not 21 August — and the manifest lives at `org/releases/<version>.yaml`. **Never
+   take "the latest release" from a directory listing**: the sequence is not zero-padded, so
+   `2026.08.21` sorts before `2026.08.6`, and the retired semver names are still in the same
+   directory and are not comparable to the dated ones at all. Use
+   `./scripts/release-deploy.sh --list`, and order by the manifest's `generated` field.
+   `micro-org`'s `release-order.test.ts` exists because ordering them by name once shipped
+   six-day-stale pins — micro-org#384. See 09's header note.)*
 2. Put the administrator-rotation procedure into a runbook and into `releasing.md`, then rotate the
    **testnet** administrator. This no longer waits on anything: testnet is running on the
    application host, 48 containers healthy, measured 2026-08-11.
