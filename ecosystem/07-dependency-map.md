@@ -176,10 +176,51 @@ Topic naming is `<service>.<aggregate>.<past-tense-verb>` (AD-10). Ordering is g
 | `mint.deploy.confirmed` | mint | `token_id` | activity, market, notify, analytics |
 | `market.listing.sold` | market | `listing_id` | worlds, billing, ledger, activity, notify, analytics |
 | `market.listing.removed` | market | `listing_id` | activity, notify |
+| `trade.bot.created` | trade | `bot_id` | activity |
+| `trade.bot.started` | trade | `bot_id` | activity, admin-api (audit mirror) |
+| `trade.bot.paused` | trade | `bot_id` | activity, notify — stopping is the half of a bot's lifecycle that happens while the owner is not watching |
+| `trade.fill.settled` | trade | `fill_id` | activity, admin-api (audit mirror) |
+| `trade.fee.settled` | trade | `settlement_id` | activity, notify, admin-api (audit mirror) |
+| `trade.order.filled` | trade | `order_id` | activity, admin-api (audit mirror) |
+| `trade.transfer.settled` | trade | `transfer_id` | activity, notify, admin-api (audit mirror) |
 | `worlds.reward.granted` | worlds | `user_id` | ledger, activity, notify, analytics |
 | `community.proposal.executed` | community | `proposal_id` | ledger, activity, notify |
 | `policy.decision.recorded` | policy | `subject` | admin-api, analytics (pseudonymised) |
 | `*.audit.recorded` | every service | `resource_urn` | admin-api (hash-chained tamper-evident mirror) |
+
+**Trade's seven, and the four keys that are not the bot.** `trade` held exactly one entry in the
+registry — `trade.bot.paused` — until micro-org#345 adopted the other six from the producer's own
+quarantine verbatim, `keyedBy` included, because the key is the ordering partition and is
+therefore contract rather than a producer's preference. Three of the seven key on the bot and the
+rest do not, and each difference is load-bearing. A fill keys on the fill, because two fills for
+one bot have no ordering relationship to each other and keying on the bot would serialise a bot
+behind its own history. An exchange fill keys on the **taker's** order, because one order can
+cross many makers in a single pass and a per-trade key would print an unbounded burst for one
+customer action. A fee keys on the settlement row rather than the bot, there being one such row per
+assessed period. A transfer keys on the transfer, which is the idempotency subject: one transfer,
+one journal entry, one event.
+
+**Five are audited and reach admin-api's mirror; the two that are not each say why.** `TOPIC_AUDIT`
+(`contracts/packages/events/src/audit.ts`) carries `trade.bot.started` — the moment the platform
+reserves a customer's capital through the ledger, and the reservation entry id it returns is the
+only handle anybody has on where the allocation went — and the four after it, every one of which
+carries a journal entry or a balance movement. `trade.bot.created` and `trade.bot.paused` are
+unaudited on the test the rest of that table uses: no posting is made on either, and both are
+always the owner acting on their own automation, so there is no operator authority to reconstruct
+afterwards. `notify` draws a narrower line again and interrupts for three — `bot.paused`,
+`fee.settled` and `transfer.settled`, the ones that happen while the user is not on the screen —
+and records a written reason against each of the other four rather than leaving an absence to be
+inferred from a missing rule.
+
+**The last two are registered ahead of the feature they describe.** `trade.order.filled` and
+`trade.transfer.settled` belong to the order book, which is behind `TRADE_EXCHANGE_ENABLED` and
+off on both networks. They are named here anyway rather than held back, because the day the flag
+is turned on is the worst day to discover that the estate cannot read the events. An unregistered
+topic is not merely absent from this table: `activity` files it as `unclassified`, which carries
+90-day quarantine retention rather than the 1825 days a financial record gets, and
+`classifyEnvelope` cannot check producer ownership without a `TopicSpec` at all — so an envelope
+claiming a trade topic under another service's name would be shelved with an empty defect list
+instead of refused.
 
 **The broker trigger, restated because this table is what will cross it.** AD-10 adopts NATS
 JetStream when a topic exceeds 50 events/second sustained, more than six consumers subscribe to

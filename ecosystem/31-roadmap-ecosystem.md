@@ -638,6 +638,16 @@ quarantine spec: foresight 7, nda 16, studio 5, custody 4, admin-api 3, worlds 3
 in an explicit `AWAITING_REGISTRATION` quarantine (`market/src/topics.ts:102-229`); `mint` holds 4
 (`mint/src/topics.ts:115-160`); `trade` holds 4.
 
+> **Trade's share of this sweep is done — micro-org#345, 2026-08-10.** The census above counted
+> four in `trade`'s quarantine; it held six by the time it was emptied, and contracts adopted all
+> six into `TOPICS` verbatim, `keyedBy` read off each emit site, with a `TOPIC_AUDIT` decision
+> recorded for every one. `trade` now owns all seven of the topics it emits, its
+> `AWAITING_REGISTRATION` map is empty — which is that table emptying itself exactly as designed,
+> because `adoptedProposals()` fails while a registered topic is still proposed — and `activity`
+> holds a classifier for each while `notify` holds either a rule or a written reason for having
+> none. The seven are catalogued in [07-dependency-map.md](07-dependency-map.md) §3. Market's 7,
+> mint's 4, worlds' 3 and custody's 1 are what remains of item 1.
+
 **Why it pays off.** An unregistered topic is not merely undocumented — it cannot be consumed
 safely. `contracts/packages/events/src/index.test.ts:451-457` pins that an unregistered topic fails
 `validateEnvelope`, so any consumer that validates envelopes refuses it on arrival, and
@@ -652,11 +662,13 @@ role gets no feed entry and the record is retained for 90 days.
 function — so the work is one contracts commit followed by a sweep.
 
 1. Copy the quarantined specs verbatim into `TOPICS` in
-   `contracts/packages/events/src/index.ts`: market's 7, mint's 4, trade's 4, worlds' 3
+   `contracts/packages/events/src/index.ts`: market's 7, mint's 4, ~~trade's 4~~, worlds' 3
    (`worlds.inventory.granted`, `worlds.inventory.listed`, `worlds.achievement.unlocked` — the last
    is the one worlds event that actually flows today) and custody's `custody.export.cancelled`.
    `keyedBy` is read off the emit site and is contract, not preference.
-   (`identity.password.reset_requested` was the sixth on this list and is done — micro-org#263.)
+   (`identity.password.reset_requested` was the sixth on this list and is done — micro-org#263.
+   Trade's are done too, and there were six of them rather than four — micro-org#345, catalogued
+   in [07-dependency-map.md](07-dependency-map.md) §3.)
 2. Add the matching `TOPIC_AUDIT` rows in `contracts/packages/events/src/audit.ts` in the same
    commit — `trade.fill.settled` and `trade.fee.settled` are the two that move money and are
    currently the least classified; `worlds.achievement.unlocked` is unaudited and so never reaches
