@@ -91,7 +91,7 @@ production.
 Two different sets, and conflating them is the mistake to avoid:
 
 - **★ in the catalogue = release-gate.** A release candidate does not promote until every ★
-  scenario is green. 119 of the 318 scenarios are ★.
+  scenario is green. 128 of the 349 scenarios are ★.
 - **§7.1 = continuously-run.** A much smaller set, because each one holds a browser open against
   production every few minutes. It is currently **eleven scenarios plus the fifteen 404
   assertions**, and it is small for the reason beacon already gives: a declared journey that can
@@ -464,6 +464,49 @@ it is the single richest T1 group in the catalogue.*
 | BJ-TRD-11 | Bot list equity column | labelled a mark, not a settlement | P | T1 | — |
 | BJ-TRD-12 | Fee settlements panel | one row per settlement and no duplicate settlement id — 05 journey 9's double-billing defect, asserted as presentation against the response | P | T3 | trade, billing |
 | BJ-TRD-13 | Another customer's bot id | the not-found screen (owner-scoped 404) | N | T3 | trade |
+| BJ-TRD-14 ★ | The book is **off** (`TRADE_EXCHANGE_ENABLED` false) | the service's own refusal is quoted, and **no** `/v1/exchange/` market request is made at all | C | T1 | — |
+| BJ-TRD-15 | An order-book block **absent** from capabilities — a `trade` older than the exchange | absent reaches the same conclusion as off, from silence | P | T1 | — |
+| BJ-TRD-16 ★ | The capability read **failed** | "we could not check", with a retry — never the words that say the exchange is switched off. Collapsing this into BJ-TRD-14 tells a customer about their own deployment on the strength of a timeout | P | T1 | — |
+| BJ-TRD-17 | The book is on | the terminal opens | P | T1 | — |
+| BJ-TRD-18 ★ | Depth ladder, sides and spread | asks above the spread above bids | P | T1 | — |
+| BJ-TRD-19 | The spread as a figure | it is checkable against the two sides shown, not asserted in prose | P | T1 | — |
+| BJ-TRD-20 | The cumulative total column | accumulated in the base asset's own decimals | P | T1 | — |
+| BJ-TRD-21 | The published size caveat | the screen says in words that the size shown may be less than the real one | P | T1 | — |
+| BJ-TRD-22 | An empty book | a state of the market, distinguishable from a failure and from a loading screen — 05's "a zero and an unknown must not look identical" | P | T1 | — |
+| BJ-TRD-23 | A one-sided book | it says there is no spread to report rather than printing one | P | T1 | — |
+| BJ-TRD-24 ★ | Press a ladder price | it copies the **decimal** into the ticket and sends nothing. Regression: the button shipped copying the wire amount, a hundredfold price error | C | T1 | — |
+| BJ-TRD-25 | The ticket's controls | built from the vocabularies the deployment published, not from a hard-coded list | P | T1 | — |
+| BJ-TRD-26 | Cost restated before sending | in the market's own units, on the screen, before anything is sent | P | T1 | — |
+| BJ-TRD-27 | A quantity off the lot grid | warned about and **not blocked** — the engine owns the refusal, and a client that blocks it hides a rule the customer cannot then read | P | T1 | — |
+| BJ-TRD-28 ★ | Place a limit order | integer-minor-unit **strings** on the wire, and exactly one `Idempotency-Key` under a double submit | C | T1 | — |
+| BJ-TRD-29 | The receipt | what the engine did with it is rendered, not a toast that disappears | P | T1 | — |
+| BJ-TRD-30 ★ | The receipt survives the refresh it triggers itself | the five-second poll does not unmount the ticket and what was typed is still in the boxes. Regression: it did | P | T1 | — |
+| BJ-TRD-31 | A refresh that fails | the stale figures stay up and are labelled stale; placing and cancelling still work | P | T1 | — |
+| BJ-TRD-32 | A refused order | the ticket keeps its values and the refusal quotes the request id | P | T1 | — |
+| BJ-TRD-33 ★ | Every explanation is a real control | a `<button>` in the tab order, never a `title` attribute | P | T1 | — |
+| BJ-TRD-34 | Opening one | it announces itself as a `role="tooltip"` and describes its own trigger | P | T1 | — |
+| BJ-TRD-35 | Escape dismisses it | SC 1.4.13, without moving the pointer | P | T1 | — |
+| BJ-TRD-36 | The trigger toggles | pressing it again closes what it opened, so one control both opens and shuts | P | T1 | — |
+| BJ-TRD-37 | Every trigger names its term | a button list is navigable without opening anything | P | T1 | — |
+| BJ-TRD-38 | What changes what an order *does* is not behind a bubble | it is explained in the open. A tooltip is for a definition, not for a consequence | P | T1 | — |
+| BJ-TRD-39 ★ | Colour is never the only channel | the tape spells which side crossed the spread, in words | P | T1 | — |
+| BJ-TRD-40 | The chart has a table view | carrying the same numbers the chart draws | P | T1 | — |
+| BJ-TRD-41 | The market list | each market links to its own terminal and states its fees from the response, not from a constant | P | T1 | — |
+| BJ-TRD-42 ★ | Cancel an open order | `DELETE` carries **no** idempotency key — the id in the path is the key — and the button names the order it cancels | C | T1 | — |
+| BJ-TRD-43 | An order's event trail | every state it passed through, in the order the engine wrote them | P | T1 | — |
+| BJ-TRD-44 | Exchange balances | the service's own total is rendered rather than two decimal strings added in the browser | P | T1 | — |
+
+**BJ-TRD-14 … 44 are T1, and that is a correction to what micro-org#346 proposed.** The issue
+offered thirteen grouped rows at T2 and T3, on the reading that an order book needs a running
+exchange. It does not, and the code already proves it: all thirty-one live in
+`trade-web/test/terminal.test.ts` against stubbed responses, they are green today, and they were
+green on the day the issue was filed. Assigning them T3 would have taken thirty-one passing
+scenarios and marked them ⛔ against a flag that is off everywhere (§8.9) — trading real coverage
+for a specification. **The tier is where a scenario runs, not where its subject lives.**
+
+Thirty-one ids rather than thirteen, for the same reason: the catalogue's unit is a scenario, and
+`journeys.ts` carries one entry per id under a meta-test that holds the two sets equal. Grouping
+would have forced tests to be merged to fit the register, which is the register bending the work.
 
 ---
 
@@ -861,7 +904,7 @@ one in both directions.
 
 ## 8. What no scenario can cover, because the functionality does not exist
 
-Forty-eight of the 318 scenarios are marked ⛔, **and that number is now too high** — §8.1, the
+Forty-eight of the 349 scenarios are marked ⛔, **and that number is now too high** — §8.1, the
 largest blocker, has closed, so every scenario blocked only by it is runnable. The marks below have
 not been swept. They are specified rather than omitted, because a
 scenario that exists and cannot run is a gap somebody can close, and an absent scenario is a gap
@@ -991,6 +1034,29 @@ including the eleven in §7.1. That is a smaller piece of work than §8.1 and it
   and the browser tier needs the *responses* those tests produce, captured as fixtures, not a live
   estate with services stopped one at a time.
 
+### 8.9 The exchange has thirty-one scenarios and no deployment to run them against
+
+`TRADE_EXCHANGE_ENABLED` is **off on both networks**, and there is no `trade.exchange_*` row on
+either. BJ-TRD-14 … 44 are all T1 for that reason and they are honest at T1 — thirty-one green
+assertions against stubbed responses is thirty-one more than the surface had before — but T1 cannot
+answer the one question the flag makes interesting: **does the terminal talk to the engine the way
+the engine expects?**
+
+The three things only a running exchange can settle:
+
+- `Idempotency-Key` is asserted at T1 as *what the browser sent*. That the engine **honours** it —
+  one order, not two, under a double submit — is a T3 assertion and unmade.
+- Integer minor units are asserted as the shape on the wire. That the engine reads them at the
+  scale the terminal meant is the hundredfold-error class BJ-TRD-24 exists for, and a stub cannot
+  disagree with the client about a decimal.
+- The five-second poll is stubbed. Whether the real book moves under a ticket somebody is typing
+  into is a race no fixture reproduces.
+
+This is not §8.7's problem — these need no frontend container, they need the flag on somewhere.
+micro-org#344 has the flag. When it goes on in testnet, BJ-TRD-28, 30 and 42 get T3 twins; until
+then the row for the exchange in the tier table is thirty-one T1 and nothing above it, and this
+section is the reason rather than an oversight.
+
 ---
 
 ## 9. Corrections to documents 05 and 14
@@ -1040,15 +1106,15 @@ names, and stale as a statement about the estate. A note has been added beside i
 
 ## 10. The catalogue in numbers
 
-**318 numbered scenarios.** 303 in the tables above, plus the fifteen `BJ-<KEY>-404` rows (§5.1).
+**349 numbered scenarios.** 334 in the tables above, plus the fifteen `BJ-<KEY>-404` rows (§5.1).
 The adversarial matrix expands: its 21 form rows are one scenario per applicable hazard, so the
-runnable case count is **373**.
+runnable case count is **404**.
 
 | By tier | | | By status | |
 | --- | ---: | --- | --- | ---: |
-| T1 — nothing up | 169 | | Runnable once §8.7 is closed | 270 |
+| T1 — nothing up | 200 | | Runnable once §8.7 is closed | 301 |
 | T2 — one surface | 62 | | ⛔ blocked on §8 | 48 |
-| T3 — the estate | 86 | | ★ release-gate | 119 |
+| T3 — the estate | 86 | | ★ release-gate | 128 |
 | split (BJ-ADV-01) | 1 | | continuously-run (§7.1) | 26 |
 
 T2 includes the fifteen `BJ-<KEY>-404` rows. **More than half the catalogue is T1** — it needs a
@@ -1062,7 +1128,7 @@ where everything needs the whole estate is a catalogue that runs never."
 | Dashboard, portfolio, activity | `BJ-DSH` | 23 | §1.4, §1.12, J19 |
 | Forge Create | `BJ-CRE` | 11 | §1.5, J7 |
 | Forge Market | `BJ-MKT` | 18 | §1.7, J8, J15 |
-| Forge Trade | `BJ-TRD` | 13 | §1.6, J9 |
+| Forge Trade | `BJ-TRD` | 44 | §1.6, J9 |
 | Forge Worlds | `BJ-WLD` | 8 | §1.6, §1.8, J10 |
 | Emberkin | `BJ-EMB` | 14 | — (postdates 05) |
 | Aetherholm | `BJ-AET` | 12 | — (postdates 05) |
@@ -1091,7 +1157,7 @@ remainder are specified and blocked, and §8 says on what.
 | everything that touches **key material** | BJ-WAL-02, BJ-WAL-18..20, BJ-DEV-05..08, BJ-DEV-10, BJ-DEV-14, BJ-ADV-21, BJ-A11Y-04, BJ-A11Y-14 |
 | everything that **commits money** | §6.19's fifteen forms |
 | every **degradation** assertion | BJ-DSH-02..10, BJ-ACC-14, BJ-MKT-02, BJ-ADM-18, BJ-STA-03, BJ-NET-07, BJ-EMB-10 |
-| every **idempotency** assertion | BJ-MKT-04..06, BJ-CRE-07, BJ-TRD-07, BJ-EMB-02, BJ-AET-07, BJ-ADM-20, BJ-DEV-11, BJ-NET-10, and every H1 in §6.19 |
+| every **idempotency** assertion | BJ-MKT-04..06, BJ-CRE-07, BJ-TRD-07, BJ-TRD-28, BJ-EMB-02, BJ-AET-07, BJ-ADM-20, BJ-DEV-11, BJ-NET-10, and every H1 in §6.19 — plus BJ-TRD-42, which asserts the **absence** of a key, because a `DELETE` whose path carries the id already has one |
 | every **irreversible** moment | BJ-DEV-05..07, BJ-DEV-10, BJ-DEV-14, BJ-ADM-06..08, BJ-FADM-07..09, BJ-WAL-18 |
 
 ---
