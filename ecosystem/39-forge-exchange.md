@@ -196,7 +196,7 @@ check.
 
 | Phase | Deliverable | Gate |
 | --- | --- | --- |
-| **A. Multisig** | a minimal *m*-of-*n* in `hearth/contracts/src/`, with its own tests | signers rotate and a threshold change succeeds on the in-process harness |
+| **A. Multisig** ✅ | a minimal *m*-of-*n* in `hearth/contracts/src/`, with its own tests | signers rotate and a threshold change succeeds on the in-process harness — **met**, see below |
 | **B. Readability** | deploy `tools/explorer-api` or teach `micro-explorer-web` `eth_*`, plus `tools/verify` | a stranger can read a deployed contract's source and its calls without our help |
 | **C. Testnet deployment** | WEMBER, factory, router, Multicall3 on 7412, `feeToSetter` = the phase-A multisig | `pairCodeHash()` matches the router's constant, recorded in the deployment note |
 | **D. Testnet market** | one EMBER pair seeded from testnet mining, swapped both ways by a wallet that is not ours | a full cycle — add, swap, swap back, remove — from the browser extension |
@@ -207,6 +207,28 @@ check.
 
 Phases A and B are prerequisites in the strict sense: neither is exchange work, both are cheap
 relative to the rest, and skipping either produces a deployment that cannot be handed to anybody.
+
+### Phase A, done
+
+`hearth/contracts/src/HearthMultisig.sol`, gated by `hearth/node/test/multisig.js` — 143 checks on
+the in-process EVM, run in CI's `contracts` job. The gate's two named conditions are the fifth and
+sixth groups of that suite: a signer confirms a proposal to threshold, is rotated out with
+`replaceOwner`, and the proposal falls back below threshold and stops executing; then
+`changeRequirement(3)` executes and binds a proposal that already had two confirmations under the
+old threshold.
+
+Four decisions in that contract diverge from the Gnosis wallet it resembles, each argued in the
+source. The one that matters here is that `confirmationCount` walks the live owner list on every
+read instead of keeping a tally, which is what makes a rotated-out signer's vote stop counting the
+moment they are removed rather than at some later reconciliation.
+
+It also drives a real `HearthV2Factory` end to end: the deploying EOA is refused with the factory's
+own `FORBIDDEN` throughout, the wallet sets `feeTo` at full threshold, and `feeToSetter` is handed
+to a successor multisig — the operation §2's trap 2 says cannot be recovered if the holder is a key
+we do not control. Gas for that handover is 88,384.
+
+Phase C consumes this: the multisig is deployed **first**, and its address is the constructor
+argument to the factory. It cannot be retrofitted, which is why it is not phase Z.
 
 ---
 
