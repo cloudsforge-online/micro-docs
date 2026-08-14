@@ -8,6 +8,14 @@ below is left as it was written — see the correction immediately following for
 the two places where reality took a different route, one of which changes every
 testnet hostname in this document.
 
+**Status on 2026-08-14: the two-environment FRONTEND model this document plans is
+historical.** Release 2026.08.37 moved the estate to the combined view — one set
+of frontends on the mainnet hostnames serving both networks through an in-app
+switcher, one shared identity, and the testnet frontends retired behind 302s
+while the testnet money tier and its `/v1` APIs live on. Doc 38 is the record;
+everything below stands as the accurate history of how the two-environment
+deployment was built and why.
+
 The target is an **HP ProLiant MicroServer Gen10**, running **two environments**:
 mainnet at `cloudsforge.online` and testnet at `testnet.cloudsforge.online`,
 behind **Cloudflare Tunnel**, with **no mining on the box**.
