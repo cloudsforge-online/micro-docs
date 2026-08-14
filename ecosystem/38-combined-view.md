@@ -57,6 +57,16 @@ provisioned in the mainnet `service_credentials` table under label `testnet`. Th
 string is identical on both estates by construction (`http://identity:4000`), so only the JWKS
 and exchange URLs moved (`CF_IDENTITY_JWKS_URL` / `CF_IDENTITY_URL` in `compose/testnet.env`).
 
+**The `net` on an exchanged token comes from the credential row, never from the minting
+deployment.** `service_credentials.network` (identity migration 14, release 2026.08.38) names the
+estate each credential mints for, read the same way the service name is and for the same reason —
+a caller must not be able to name its own estate. This was the combined view's first live defect:
+for the hours between .37 and .38 the shared identity stamped its own `IDENTITY_NETWORK` on every
+exchange, so testnet custody refused testnet settlement ("token minted for network mainnet, this
+deployment is testnet") in a remint loop, while the same token would have *passed* at the mainnet
+ledger — both directions of wrong at once. Null `network` falls back to the deployment's own,
+which is what every pre-combined-view credential meant, so mainnet's rows needed no backfill.
+
 ## Why the flip was one deploy, not two
 
 Once testnet services trust the mainnet keys, a token the **testnet** identity mints fails
