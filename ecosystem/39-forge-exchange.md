@@ -3,6 +3,17 @@
 **Status when written:** planned. Nothing is deployed on either network, no repository serves it,
 and the hostname the registry reserves resolves nowhere on purpose. Written 2026-08-14.
 
+**Status 2026-08-15:** the first three sentences above are no longer true, and the last one still
+is. Phases A, C and D are done and phase B is deployed; **the full set is live on testnet 7412 with
+one funded, traded pool.** Nothing is on mainnet, no frontend serves it, and `exchange.<apex>` still
+resolves nowhere — which is why §6's phase table, not this line, is where the state is kept. Read
+that table first: it now carries what each gate proved and, for phase D, the half of its gate that
+is **not** met.
+
+The deployment note is [`deploy/docs/hearth-exchange.md`](https://github.com/cloudsforge-online/micro-deploy/blob/main/docs/hearth-exchange.md)
+— addresses, reserves, the four failures already paid for, and how to run the seeder. This document
+stays the plan; that one is the record of what is on the chain.
+
 **Design authority** for Forge Exchange. Where it disagrees with
 [`hearth/docs/evm-spec.md` §7](https://github.com/cloudsforge-online/hearth/blob/main/docs/evm-spec.md),
 that document wins on the contracts and this one wins on the product, the liquidity and the order
@@ -197,9 +208,9 @@ check.
 | Phase | Deliverable | Gate |
 | --- | --- | --- |
 | **A. Multisig** ✅ | a minimal *m*-of-*n* in `hearth/contracts/src/`, with its own tests | signers rotate and a threshold change succeeds on the in-process harness — **met**, see below |
-| **B. Readability** | deploy `tools/explorer-api` or teach `micro-explorer-web` `eth_*`, plus `tools/verify` | a stranger can read a deployed contract's source and its calls without our help |
-| **C. Testnet deployment** | WEMBER, factory, router, Multicall3 on 7412, `feeToSetter` = the phase-A multisig | `pairCodeHash()` matches the router's constant, recorded in the deployment note |
-| **D. Testnet market** | one EMBER pair seeded from testnet mining, swapped both ways by a wallet that is not ours | a full cycle — add, swap, swap back, remove — from the browser extension |
+| **B. Readability** ✅ | deploy `tools/explorer-api` or teach `micro-explorer-web` `eth_*`, plus `tools/verify` | a stranger can read a deployed contract's source and its calls without our help — **met**, see below |
+| **C. Testnet deployment** ✅ | WEMBER, factory, router, Multicall3 on 7412, `feeToSetter` = the phase-A multisig | `pairCodeHash()` matches the router's constant, recorded in the deployment note — **met** |
+| **D. Testnet market** ⚠ | one EMBER pair seeded from testnet mining, swapped both ways by a wallet that is not ours | a full cycle — add, swap, swap back, remove — from the browser extension — **half met**, see below |
 | **E. Read-through** | the contracts and the deployment read by somebody who did not write them | findings recorded and closed, in public |
 | **F. Mainnet, EMBER-only** | the same set on 7411, seeded from the two miners | the estate's own solvency reporting books the seeded liquidity |
 | **G. Wrapped assets** | one wrapped coin, issued against custody, satisfying **35** in full | a stranger can compare issued supply to reserves on-chain, and a redemption completes |
@@ -229,6 +240,85 @@ we do not control. Gas for that handover is 88,384.
 
 Phase C consumes this: the multisig is deployed **first**, and its address is the constructor
 argument to the factory. It cannot be retrofitted, which is why it is not phase Z.
+
+### Phase D, HALF met — and the missing half is the half that matters
+
+The mechanical half is done and measured. One pair, EMBER against a Forge Create token, seeded out
+of testnet mining and put through a full cycle at block 16792:
+
+| | |
+| --- | --- |
+| forward swap | filled at **exactly** the quoted 1,239.348445 FTEST |
+| reverse swap | filled at **exactly** the quoted 24.851047 EMBER |
+| round trip cost | 0.148952 EMBER — the 0.30% fee, charged twice, as it should be |
+| *k* | rose on both legs |
+| withdrawal | 3,181.980515 LP burned; price held at ~50 FTEST/EMBER across a proportional exit |
+
+The gate does not say that. It says **"swapped both ways by a wallet that is not ours"** and
+**"a full cycle … from the browser extension"**, and neither has happened. Every transaction above
+was signed by `deploy/scripts/hearth-dex-seed.js` with the key that is also the chain's coinbase.
+That is not a technicality:
+
+- **A script is not a user.** It builds calldata the router expects because the same author wrote
+  both. The extension has its own encoder, its own gas estimation and its own idea of a deadline,
+  and *those* are what a stranger's swap goes through. Phase H is where the frontend is built, but
+  the extension exists today and can call a router today — the gate was written to catch exactly the
+  class of defect that only appears when a second implementation talks to the contracts.
+- **One wallet cannot observe slippage against itself.** Every measurement above is a pool with a
+  single participant, so nothing in it has been exposed to a second trade arriving between quote and
+  settlement — which is the one thing an AMM's users actually experience.
+
+So phase D is recorded as ⚠ rather than ✅, and closing it needs no new contract work: a second
+funded key, the browser extension pointed at 7412, and the four operations run from it. Until then
+the honest claim is **"the contracts work"**, not **"the market works"**.
+
+### Phase B, done
+
+Two services from `hearth/tools/`, deployed by `compose/docker-compose.hearth-devkit.yml` and routed
+at `rpc.<apex>` — `Path(/api)` for the Etherscan-compatible index, `Path(/verify)`, `/contracts` and
+`/compilers` for the verifier. `explorer.<apex>` was the obvious home and was unavailable: testnet
+web hostnames are retired, so `explorer-testnet.<apex>` 302s to the combined view and would have
+shadowed any router placed there.
+
+The gate is "a stranger can read a deployed contract's source and its calls without our help", and
+both halves were measured before the phase was called done:
+
+- **its calls** — the index followed 7412 to head 16820 with lag 0 and returned the pool's entire
+  history over `/api`: the 250,000 FTEST seed at 16753, the swap out at 16763, the swap back at
+  16767, the `removeLiquidity` at 16771, the second cycle at 16785. That question — *every*
+  transaction touching an address — is the one a JSON-RPC node cannot answer at all.
+- **its source** — the verifier recompiled the Forge Create token and returned `matchType: "exact"`
+  with `metadataMatched` true. With `HEARTH_VERIFY_URL` set, the index's `getsourcecode` went from
+  `"Contract source code not verified"` to 37,989 bytes of Solidity and an 18-entry ABI.
+  `constructorArgumentsVerified` is **`0`**, and correctly so: the submission carried no creation
+  transaction, so the arguments are recorded and not checked. Re-submitting with `--tx` once the
+  index reaches the deployment block flips it.
+
+**Verifying once covers every Forge Create token ever sold — after a defect, found by testing the
+claim rather than restating it.** The reasoning is sound: the verifier matches on *runtime*
+bytecode, and runtime bytecode carries no constructor arguments, so every token a paid order
+deploys is the same bytes with different arguments. `deploy/scripts/hearth-verify-submit.mjs` builds
+the input, walking the import graph and inlining all 11 sources, because mint's build resolves
+OpenZeppelin through a callback that a verifier compiling in a sandbox does not have.
+
+The software did not do it. NEFELI (`0xf0f009AB…`) and FTEST (`0x71550efb…`) return byte-identical
+`eth_getCode` — 1,859 bytes each, diffed — and asking the deployed verifier for NEFELI's source
+answered `"Contract source code not verified"`, because `tools/verify` kept one record per address
+and every lookup keyed on the address alone. The claim was true about the chain and false about the
+service, in this document and in `docker-compose.hearth-devkit.yml`'s header.
+
+[hearth#24](https://github.com/cloudsforge-online/hearth/pull/24) makes it true. Each verified
+record is indexed by the code deployed at it, under two keys — the code's hash, and the hash of the
+code with its `immutable` slots zeroed, which is what lets a token with 8 decimals resolve against
+one with 18. A lookup for an unverified address reads its code and tries both, and a hit returns the
+twin's source, compiler and ABI with `twinOf` naming the origin, its own immutable values, and **no
+constructor arguments** — those being precisely the part that differs per deployment. A directly
+verified record always wins over a derived one, and `/contracts` still lists only submissions.
+
+Phase B stays ✅ on its own gate, which one verified contract already met. The line to watch is
+NEFELI's: until the devkit pin moves to an image carrying that change,
+`getsourcecode&address=0xf0f009AB…` still answers `"Contract source code not verified"`, and the
+sentence in bold above is a claim about the pull request rather than about the testnet.
 
 ---
 
