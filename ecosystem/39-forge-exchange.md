@@ -219,7 +219,7 @@ check.
 | **C. Testnet deployment** ✅ | WEMBER, factory, router, Multicall3 on 7412, `feeToSetter` = the phase-A multisig | `pairCodeHash()` matches the router's constant, recorded in the deployment note — **met** |
 | **D. Testnet market** ✅ | one EMBER pair seeded from testnet mining, swapped both ways by a wallet that is not ours | a full cycle — add, swap, swap back, remove — from the browser extension — **met**, blocks 17022–17034, see below |
 | **E. Read-through** ✅ | the contracts and the deployment read by somebody who did not write them | findings recorded and closed, in public — **met**, two of them, hearth#25 and hearth#26, see below |
-| **F. Mainnet, EMBER-only** | the same set on 7411, seeded from the two miners | the estate's own solvency reporting books the seeded liquidity |
+| **F. Mainnet, EMBER-only** ✅ | the same set on 7411, seeded from the two miners | the estate's own solvency reporting books the seeded liquidity — **met**, entry `01a007bc-bb37-7000-8f87-361426a1e9ff`, 24,750.590760 EMBER measured at block 39010, see below |
 | **G. Wrapped assets** | one wrapped coin, issued against custody, satisfying **35** in full | a stranger can compare issued supply to reserves on-chain, and a redemption completes |
 | **H. Surface** | a frontend, a router entry, the `EXPECTED_UNROUTED` deletion, the site chip moving on its own | `beacon` drives a swap through the real gateway |
 
@@ -475,6 +475,115 @@ It is the one `PathPrefix` on that host — the address *is* the path, so no exa
 and it carries what the Etherscan shape cannot: `twinOf`, the immutable values read out of the
 deployed code, and a `constructorArgumentsNote` saying why the arguments are absent rather than
 missing.
+
+### Phase F, done — a mainnet market, and the entry that says where the coin went
+
+**The deployment.** Five contracts on chain 7411, in the order §2 requires, from `main` rather than
+from a copy of what testnet is running — `git diff` over `node/src/chain/transaction.js` and
+`node/src/crypto/` between the pinned image and `main` is empty, so the signing code that produced
+these transactions is the signing code in the repository.
+
+| | address | block | gas |
+| --- | --- | --- | --- |
+| `HearthMultisig` | `0x39b1743338c9d356030480e484cb1078456c290c` | 38840 | 2,257,657 |
+| `WEMBER` | `0xdae7f901bc0ea6cb8a77c160e355007981e351e1` | 38841 | 682,499 |
+| `HearthV2Factory` | `0x8e41e083cd664a5d65d047198338e5f110ee883f` | 38843 | 2,907,275 |
+| `HearthV2Router02` | `0x74a991fedb2e09aa23faffa9bdf4ca5dbbeb0527` | 38845 | 4,591,711 |
+| `Multicall3` | `0xe1636b08ff1edde24b2642a3cb388d4e97dfe0bc` | 38847 | 843,792 |
+
+Every check re-read from the chain afterwards: `pairCodeHash()` equals the router's constant
+`0x46b4122a…7a537` (§2 trap 1); `feeToSetter()` is the multisig, set in the factory's constructor
+and never held by an EOA for a single block (§2 trap 2); `feeTo()` is unset, so the whole 0.30%
+accrues to liquidity providers; the wallet is 2-of-3; `router.factory()`, `router.WETH()` and
+`router.WEMBER()` all point where they should; `multicall3.getChainId()` returns 7411.
+
+**The market.** One pair against a Forge Create token — `FXR`, "Forge Exchange Reference",
+`0x5ad2f3c60ce75ff7b4c1f533d351dde4db9ec8f9`, deployed at 38849 from `micro-mint`'s own generated
+contract source so it is byte-identical to what a paid order produces and inherits phase B's
+verification for free.
+
+| | |
+| --- | --- |
+| seeded, block 38853 | 25,000 EMBER / 1,000,000 FXR — the entire supply, opening price 1 EMBER = 40 FXR |
+| LP minted | 158,113.883008, all of it the estate's; 1000 wei burned to `address(0)` on the first mint |
+| forward swap | 100 EMBER filled at **exactly** the quoted 3,972.159029 FXR |
+| reverse swap | filled at **exactly** the quoted 99.403272 EMBER |
+| round trip | cost 0.596727 EMBER — the 0.30% fee, charged twice, and *k* rose on both legs |
+| withdrawal, block 38861 | 1,581.138830 LP burned, 1% of the position, returned proportionally |
+| after all of it | 24,750.590760 EMBER / 990,000.000000 FXR, 1 EMBER = 39.999045 FXR |
+
+**§7.2 is answered in practice: 25,000 EMBER.** The question was the depth below which a pool is a
+worse product than no pool, and the number was chosen against the one order size the estate can
+predict — a Forge Create purchase, ~100 EMBER. That swap filled 0.696% below mid, of which 0.30% is
+the fee, so the price impact a real buyer meets is about four tenths of a percent. After a full
+round trip and a 1% withdrawal the mid price is 39.999045 against the 40 it opened at, 0.0024%
+away. Below roughly 5,000 EMBER the same order moves the mid by more than 2% and the quote starts
+to look like a bug, which is §3's warning made numeric.
+
+**§7.3 is not answered, and phase F shipped anyway.** The mainnet wallet is 2-of-3 over the miner
+coinbase and two keys generated for the testnet deployment, all three of them files on the chain
+host at mode 0600. Two of three keys on one filesystem is a threshold in the contract and not in
+the world: whoever has root there has quorum. What that quorum can do is bounded — `feeToSetter`
+sets `feeTo` and nothing else, it cannot touch reserves, and the LP tokens are held by the deployer
+EOA, not the wallet — so the exposure is the protocol fee switch, not the liquidity. It is recorded
+here rather than left implicit because the phase-A section claims a multisig, and on mainnet today
+that claim is about the code, not about the key custody. Fixing it means deciding who signs and on
+what devices, then `replaceOwner` from the current threshold.
+
+**The gate: the estate's books now say where the coin is.** `deploy/scripts/hearth-dex-book.js`
+posts one entry, and the design decision inside it is what the gate was really asking for:
+
+```
+DEBIT   platform/EMBER/reserved   (asset)    the position: owned, illiquid
+CREDIT  platform/EMBER/treasury   (equity)   mining income, now recognised
+```
+
+**Not `custody`, and the pair is not registered with the indexer.** `ledger/src/reconcile.ts`
+compares exactly `(type = 'asset', subject = 'custody')` against every address the indexer watches
+under `deposit:`/`treasury:`, and EMBER's tolerance is zero. An AMM reserve is a number nobody
+controls — it moves in the same block a stranger swaps — so putting it on either side of an
+equality with no slack would freeze every EMBER withdrawal on the estate the first time somebody
+traded, and the freeze would be *correct*. [35](35-chain-solvency-invariant.md) G1 calls the
+opposite mistake, an address watched but not booked, "an invented insolvency"; this is its mirror
+image. The script asserts it rather than asserting about it: it reads `custody/EMBER` before and
+after and fails if the number moved, and the service token it mints carries `ledger:post` and
+`ledger:read` only — the indexer scope is the one power it exists to refuse.
+
+The amount is the estate's **claim**, `reserveEMBER × lpHeld ÷ lpTotalSupply`, read at one block
+with the head taken either side and the whole read repeated if it moved. Not "what was sent to
+`addLiquidity`", because the seeding run removes part of the position on purpose and a stranger's
+swap changes the split immediately — and because a claim is recomputable by anyone with an RPC
+endpoint, which is the property **35** is built on. Every input is in the entry's metadata.
+
+The entry that closed the gate is `01a007bc-bb37-7000-8f87-361426a1e9ff`, recorded 2026-08-15
+23:23:24Z: **24,750.590760116509394297 EMBER** into `platform/EMBER/reserved` against
+`platform/EMBER/treasury`, measured at block 39010 with `reserveEmber`, `lpHeld`, `lpTotalSupply`,
+`lpHolder`, `contributedEmber` and `contributedAtBlock` all in its metadata, so the arithmetic can
+be redone from the chain without trusting the script. `custody/EMBER` read 79,724.826387545 EMBER
+before it and 79,724.826387545 after; the last EMBER reconciliation is clean at drift 0 and no
+asset is frozen. Re-running the script is a no-op — `hearth-dex-book:7411:<pair>:seed` is the
+idempotency key, so the position cannot be booked twice by a second operator repeating the runbook.
+
+This required a new entry kind. `treasury_spend` is a payment to somebody and the pool pays nobody;
+`conversion` is one asset becoming another at a rate and liquidity puts *both* sides in;
+`transfer` needs two subjects who each still hold what they held. So `liquidity_seed` was appended
+to `ENTRY_KINDS` (micro-contracts#13, `@cloudsforge/contracts-money` 1.3.0, one accepted
+`.length` break), admitted to `journal_entries_kind_chk` by ledger migration 17 (micro-ledger#20),
+and released as 2026.08.54. The ledger's own test asserts the SQL list and the tuple are equal in
+both directions, so the two halves cannot ship apart — and before the release the running service
+answered the entry with `400 unknown entry kind: liquidity_seed`, which is the constraint working.
+
+It then refused a second time, and that refusal is worth recording too. The script first posted
+under `originatingService: 'deploy'` and got `403 missing required authority: attribution to
+'deploy' (this token was minted for 'wallet')`. There is no `deploy` principal, and inventing one
+so a hand-run script could sign its own byline would have been the wrong repair: an entry's
+originating service is a claim about who moved the money, and the ledger is right to hold a token
+to the service it was minted for. The entry posts under `wallet` — the service that already debits
+and credits the estate's own chain positions, and what `ember-seed.js` books the mining income
+under for the same reason.
+
+What this does **not** do is track the position. It books the opening claim once, and a heavily
+traded pool will drift from it; closing that gap is proof-of-reserves work, phase G.
 
 ---
 

@@ -143,9 +143,17 @@ Append-only. The financial source of truth.
 **Entry kinds** — the closed set, which is also the audit vocabulary:
 `deposit_credited · withdrawal_requested · withdrawal_settled · withdrawal_refunded ·
 conversion · transfer · purchase · subscription_charge · fee_charged · reward_granted ·
-item_issue · market_escrow · market_settled · royalty_paid · trading_fill ·
+item_issue · liquidity_seed · market_escrow · market_settled · royalty_paid · trading_fill ·
 performance_fee · creator_payout · treasury_spend · adjustment ·
 reconciliation_correction · reversal`.
+
+`liquidity_seed` is the estate's own coin entering an automated market maker — Forge Exchange
+([39](39-forge-exchange.md) §6 phase F). It debits `platform/<asset>/reserved` and credits
+`platform/<asset>/treasury`, and it may never touch a `custody` account: `reconcile.ts` compares
+exactly `(type = asset, subject = custody)` against what the indexer observes, EMBER's tolerance
+is zero, and a pool reserve moves whenever an outsider trades. Booking a pool as custody would
+freeze every withdrawal of that asset the first time a stranger swapped —
+[35](35-chain-solvency-invariant.md) G1's failure in mirror image.
 
 **Closed means a caller may not invent one, and two services have proved what that costs.**
 `foresight.settlement_fee` posted nothing for months; `item_issue` — micro-tessera's object
