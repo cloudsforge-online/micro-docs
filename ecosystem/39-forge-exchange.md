@@ -324,6 +324,23 @@ node --import tsx --test --test-concurrency=1 --test-timeout=900000 test/e2e/exc
 
 The honest claim is now **"the market works"**, for one pair, one trader and one client.
 
+**And it is a gate rather than an anecdote.** A cycle run once by hand proves the day it ran; the
+same six tests now run on every pull request to `micro-wallet-extension`, against a market the CI job
+stands up itself — `hearth/contracts` compiled with the pinned solc, the pool's token taken from
+micro-mint's committed catalogue, and both `hearth-dex-deploy.js` and `hearth-dex-seed.js` invoked
+from `micro-deploy` rather than reimplemented in the test repository, so a change to how the estate
+deploys an exchange breaks the wallet's CI instead of drifting quietly away from it. The suite refuses
+to invent a market: with no deployment file to read it throws, so a chain without a pool fails the run
+rather than skipping the only tests that trade. First green run, 2026-08-15: **39 tests, 0 failures**,
+the same four operations at 120,268 / 146,785 / 112,569 / 179,067 gas — gas identical to testnet's,
+which is what one expects from identical bytecode and is worth recording as the check that it is.
+
+What CI does *not* reproduce is the key separation. Its chain is minutes old and has exactly one
+funded account, so there the funder is the coinbase; the trader is still generated inside the
+extension, and the test asserts the three addresses differ rather than assuming it, which is why that
+assertion is a test. **"A wallet that is not ours" stays proved by the testnet run above**, and CI
+proves the browser half of it continuously.
+
 ### Phase B, done
 
 Two services from `hearth/tools/`, deployed by `compose/docker-compose.hearth-devkit.yml` and routed
