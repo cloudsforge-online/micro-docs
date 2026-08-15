@@ -315,10 +315,18 @@ twin's source, compiler and ABI with `twinOf` naming the origin, its own immutab
 constructor arguments** — those being precisely the part that differs per deployment. A directly
 verified record always wins over a derived one, and `/contracts` still lists only submissions.
 
-Phase B stays ✅ on its own gate, which one verified contract already met. The line to watch is
-NEFELI's: until the devkit pin moves to an image carrying that change,
-`getsourcecode&address=0xf0f009AB…` still answers `"Contract source code not verified"`, and the
-sentence in bold above is a claim about the pull request rather than about the testnet.
+Deployed the same day, and measured through Cloudflare rather than through the container. Asking for
+NEFELI — an address nobody ever submitted — now returns `HearthMatchType: twin-exact`, `HearthTwinOf:
+0x71550efb…`, the same 37,989 bytes of source and the same 18-entry ABI as FTEST. The verifier
+logged `runtime index backfilled {indexed: 1, pending: 1}` at boot, so the record that predates the
+index was picked up without anyone re-submitting it.
+
+One more gap closed with it: `GET /contract/0x…`, which the verifier documents on its own home page,
+was never routed and fell through to the RPC as `{"code":-32600,"message":"JSON-RPC requires POST"}`.
+It is the one `PathPrefix` on that host — the address *is* the path, so no exact term can name it —
+and it carries what the Etherscan shape cannot: `twinOf`, the immutable values read out of the
+deployed code, and a `constructorArgumentsNote` saying why the arguments are absent rather than
+missing.
 
 ---
 
