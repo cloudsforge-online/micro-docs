@@ -101,6 +101,13 @@ deploy only three committed ERC-20 variants (`fixed`, `mintable`, `foundry`), so
 one either. Writing, testing and deploying a minimal *m*-of-*n* is therefore a prerequisite of the
 factory, not a follow-up, and it is the first genuinely new Solidity this project would own.
 
+The trap has a second mouth, found in phase E and recorded as
+[hearth#25](https://github.com/cloudsforge-online/hearth/issues/25): the switch can be **deleted**
+as well as redirected. `setFeeToSetter(address(0))` succeeded, and after it the role does not exist
+rather than belonging to someone else — same unrecoverable cost as above, reachable by pasting a
+truncated address into a proposal. The factory now refuses zero there, and still allows it in
+`setFeeTo`, where zero is what "fee off" means.
+
 **Trap 3 — the estate cannot read its own contracts.** `micro-explorer-web` reads
 `micro-indexer`'s REST routes rather than `eth_*`, and has no contract disassembly; the
 EVM-aware explorer that did have it stayed behind in `hearth/` when the surface moved out on
@@ -211,7 +218,7 @@ check.
 | **B. Readability** ✅ | deploy `tools/explorer-api` or teach `micro-explorer-web` `eth_*`, plus `tools/verify` | a stranger can read a deployed contract's source and its calls without our help — **met**, see below |
 | **C. Testnet deployment** ✅ | WEMBER, factory, router, Multicall3 on 7412, `feeToSetter` = the phase-A multisig | `pairCodeHash()` matches the router's constant, recorded in the deployment note — **met** |
 | **D. Testnet market** ✅ | one EMBER pair seeded from testnet mining, swapped both ways by a wallet that is not ours | a full cycle — add, swap, swap back, remove — from the browser extension — **met**, blocks 17022–17034, see below |
-| **E. Read-through** | the contracts and the deployment read by somebody who did not write them | findings recorded and closed, in public |
+| **E. Read-through** ✅ | the contracts and the deployment read by somebody who did not write them | findings recorded and closed, in public — **met**, two of them, hearth#25 and hearth#26, see below |
 | **F. Mainnet, EMBER-only** | the same set on 7411, seeded from the two miners | the estate's own solvency reporting books the seeded liquidity |
 | **G. Wrapped assets** | one wrapped coin, issued against custody, satisfying **35** in full | a stranger can compare issued supply to reserves on-chain, and a redemption completes |
 | **H. Surface** | a frontend, a router entry, the `EXPECTED_UNROUTED` deletion, the site chip moving on its own | `beacon` drives a swap through the real gateway |
@@ -341,6 +348,78 @@ extension, and the test asserts the three addresses differ rather than assuming 
 assertion is a test. **"A wallet that is not ours" stays proved by the testnet run above**, and CI
 proves the browser half of it continuously.
 
+### Phase E, done — and the second finding is one this document had asserted was impossible
+
+The gate is *"findings recorded and closed, in public"*. Two findings,
+[hearth#25](https://github.com/cloudsforge-online/hearth/issues/25) and
+[hearth#26](https://github.com/cloudsforge-online/hearth/issues/26), both fixed in
+[hearth#27](https://github.com/cloudsforge-online/hearth/pull/27), merged and closed on 2026-08-15.
+
+**Who did the reading, said plainly, because the deliverable says "somebody who did not write
+them".** Slither 0.11.6 against solc 0.8.26 under this repository's own settings — `--optimize
+--optimize-runs 999999 --evm-version shanghai`, since a contract analysed under different settings
+is a different contract — 139 results across 34 files, every High and Medium walked line by line,
+plus a re-read of the two contracts this project actually owns. **That is a tool and a re-read, not
+a bought audit**, and the difference decides what this phase is worth: an analyser does not share
+the author's assumptions, which is most of the value; it also cannot tell you a design is wrong,
+which is most of what an audit is for. Nearly every High and Medium is a structural false positive
+of a faithful V2 port — the `lock` modifier reads as reentrancy, the balance-before/after design
+that makes fee-on-transfer tokens work reads as an unchecked transfer, `block.timestamp % 2**32`
+reads as timestamp dependence, and the pair's own LP `transferFrom` reverts rather than returning
+false. Of the two that were real, one is the kind of thing a linter mentions in passing — a
+parameter with no zero check, listed beside dozens of harmless ones, where the consequence is the
+finding and no detector knows the consequence — and the other is invisible to any tool, because it
+is a sentence in a docstring being false.
+
+**#25 — one mistyped proposal could delete the fee switch.** `setFeeToSetter(address(0))` succeeded.
+After it, no key on earth calls `setFeeTo` or `setFeeToSetter` again: the role is not stolen, it
+stops existing, and §2's trap 2 prices the recovery — a new factory, a new router, every pool
+migrated. V2 has no acceptance step, so the mistake is one transaction wide and permanent, and a
+truncated or empty address pasted into a multisig proposal lands on exactly zero. Fixed with two
+`require`s, in the constructor and in the setter. `setFeeTo` still accepts zero, because there zero
+is the meaningful "fee off" state; the asymmetry is the point and the tests assert both halves of it.
+
+**#26 — a signer rotated out under suspicion brought their old votes back with them.** The phase A
+section above says `confirmationCount` walking the live owner set is *what makes a rotated-out
+signer's vote stop counting the moment they are removed*. It stops counting. It was never erased —
+the flag was hidden behind the owner walk, and re-adding that address made every confirmation it had
+left on a still-pending proposal count again, with the returning signer sending nothing and never
+being shown what they now confirm. The rotate-out-and-back case is exactly the one a multisig holding
+`feeToSetter` exists for. A confirmation now records the epoch it was given in and counts only within
+its confirmer's current tenure; joining takes the next epoch, which is strictly higher than anything
+confirmed before it. **Per-owner, not one global cutoff** — a single counter would discard *all*
+outstanding confirmations on any owner change, un-confirming a signer who did not go anywhere and
+making routine rotations expensive enough to avoid, which is the wrong incentive on this contract.
+`confirmedBy` keeps its selector and return type, so nothing off-chain changes.
+
+**Both fixes are regression tests before they are fixes**, each run against the old bytecode first
+and failed there — `✗ the confirmation carol gave in her previous tenure is not a confirmation`,
+`✗ so the proposal did not gain a vote by her walking back in`, `✗ carol is not "already confirmed",
+so she can confirm again` — and all of it replayed through Hearth's own EVM rather than a foreign
+one. Green on the fixed source: 28/28 contract build checks, **195/195** in `node/test/multisig.js`,
+**167/167** in `node/test/dex.js`, all three in CI on every pull request.
+
+**The deployment was read too, live on 7412, and it reads clean:** `factory.feeToSetter()` is the
+multisig `0x51faced7…e4f8` and not an EOA, `feeTo()` is zero, the wallet is 2-of-3 with
+`transactionCount()` still 0, `router.factory()` is the documented factory, `router.WETH()` equals
+`router.WEMBER()`, and the one pair's address recomputed by CREATE2 from the router's hard-coded
+`INIT_CODE_HASH` matches the deployed pair exactly — trap 1, checked against the chain rather than
+against the deployment note. Nothing to remediate on-chain, which is what makes both findings
+pre-mainnet changes and not incidents.
+
+**Three things this phase deliberately did not turn into findings.** That all three testnet multisig
+keys sit on one host is a real weakness and is already written down, in `deploy/docs/hearth-exchange.md`
+§3 and in §7's question 3 below; `hearth-dex-deploy.js` refuses to generate owner keys on mainnet and
+demands `HEARTH_DEX_OWNERS`, so it cannot be repeated there by accident. Filing it again would be
+noise. Whether an outside audit is bought before phase F is question 6 below, and it is about money,
+not about code.
+
+**What testnet is running is the bytecode from before all this.** `INIT_CODE_HASH` is unchanged at
+`0x46b4122a…7a537` — `bytecodeHash: 'none'` means editing the factory cannot perturb the pair — so
+the router's constant still holds and the deployed market is not wrong. But the factory's and the
+multisig's own bytecode did change (the wallet grew 8,777 → 8,915 bytes), and **the 7412 deployment
+predates both fixes**. Phase F deploys from `main`, not from a copy of what is live.
+
 ### Phase B, done
 
 Two services from `hearth/tools/`, deployed by `compose/docker-compose.hearth-devkit.yml` and routed
@@ -414,6 +493,12 @@ missing.
 5. **Fee switch on or off.** V2's protocol fee is off by default; turning it on redirects a share
    of every swap to `feeTo`, and doing that on a project-owned pool is a transfer from one pocket
    to another until third-party liquidity exists.
+6. **Whether an outside audit is bought before phase F**, and if so of what. Phase E was a static
+   analyser and a re-read, and it found two real defects in the two contracts this project wrote
+   itself while finding nothing in the V2 port — which is the expected shape, the port being the
+   audited part. What that buys is a judgement on the new code and on the deployment procedure;
+   what it costs is money against a mainnet pool whose whole opening depth is in §3. This is the
+   last phase where the answer is cheap to act on.
 
 ---
 
