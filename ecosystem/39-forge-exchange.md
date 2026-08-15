@@ -4,11 +4,11 @@
 and the hostname the registry reserves resolves nowhere on purpose. Written 2026-08-14.
 
 **Status 2026-08-15:** the first three sentences above are no longer true, and the last one still
-is. Phases A, C and D are done and phase B is deployed; **the full set is live on testnet 7412 with
-one funded, traded pool.** Nothing is on mainnet, no frontend serves it, and `exchange.<apex>` still
-resolves nowhere — which is why §6's phase table, not this line, is where the state is kept. Read
-that table first: it now carries what each gate proved and, for phase D, the half of its gate that
-is **not** met.
+is. Phases A, B, C and D are **all met**; **the full set is live on testnet 7412 with one funded,
+traded pool, and a wallet that is not ours has completed the whole cycle through it from the browser
+extension** (blocks 17022–17034). Nothing is on mainnet, no frontend serves it, and
+`exchange.<apex>` still resolves nowhere — which is why §6's phase table, not this line, is where
+the state is kept. Read that table first: it carries what each gate proved and what each did not.
 
 The deployment note is [`deploy/docs/hearth-exchange.md`](https://github.com/cloudsforge-online/micro-deploy/blob/main/docs/hearth-exchange.md)
 — addresses, reserves, the four failures already paid for, and how to run the seeder. This document
@@ -210,7 +210,7 @@ check.
 | **A. Multisig** ✅ | a minimal *m*-of-*n* in `hearth/contracts/src/`, with its own tests | signers rotate and a threshold change succeeds on the in-process harness — **met**, see below |
 | **B. Readability** ✅ | deploy `tools/explorer-api` or teach `micro-explorer-web` `eth_*`, plus `tools/verify` | a stranger can read a deployed contract's source and its calls without our help — **met**, see below |
 | **C. Testnet deployment** ✅ | WEMBER, factory, router, Multicall3 on 7412, `feeToSetter` = the phase-A multisig | `pairCodeHash()` matches the router's constant, recorded in the deployment note — **met** |
-| **D. Testnet market** ⚠ | one EMBER pair seeded from testnet mining, swapped both ways by a wallet that is not ours | a full cycle — add, swap, swap back, remove — from the browser extension — **half met**, see below |
+| **D. Testnet market** ✅ | one EMBER pair seeded from testnet mining, swapped both ways by a wallet that is not ours | a full cycle — add, swap, swap back, remove — from the browser extension — **met**, blocks 17022–17034, see below |
 | **E. Read-through** | the contracts and the deployment read by somebody who did not write them | findings recorded and closed, in public |
 | **F. Mainnet, EMBER-only** | the same set on 7411, seeded from the two miners | the estate's own solvency reporting books the seeded liquidity |
 | **G. Wrapped assets** | one wrapped coin, issued against custody, satisfying **35** in full | a stranger can compare issued supply to reserves on-chain, and a redemption completes |
@@ -241,10 +241,10 @@ we do not control. Gas for that handover is 88,384.
 Phase C consumes this: the multisig is deployed **first**, and its address is the constructor
 argument to the factory. It cannot be retrofitted, which is why it is not phase Z.
 
-### Phase D, HALF met — and the missing half is the half that matters
+### Phase D, done — and this section is the record of how the second half was closed
 
-The mechanical half is done and measured. One pair, EMBER against a Forge Create token, seeded out
-of testnet mining and put through a full cycle at block 16792:
+**The mechanical half, first.** One pair, EMBER against a Forge Create token, seeded out of testnet
+mining and put through a full cycle at block 16792 by `deploy/scripts/hearth-dex-seed.js`:
 
 | | |
 | --- | --- |
@@ -254,23 +254,75 @@ of testnet mining and put through a full cycle at block 16792:
 | *k* | rose on both legs |
 | withdrawal | 3,181.980515 LP burned; price held at ~50 FTEST/EMBER across a proportional exit |
 
-The gate does not say that. It says **"swapped both ways by a wallet that is not ours"** and
-**"a full cycle … from the browser extension"**, and neither has happened. Every transaction above
-was signed by `deploy/scripts/hearth-dex-seed.js` with the key that is also the chain's coinbase.
-That is not a technicality:
+**That was not the gate**, and this document said so for a day. The gate says *"swapped both ways by
+a wallet that is not ours"* and *"a full cycle … from the browser extension"*, and every transaction
+in the table above was signed by the key that is also the chain's coinbase. A script is not a user:
+it builds calldata the router expects because the same author wrote both, whereas the extension has
+its own encoder, its own gas estimation and its own idea of a deadline, and *those* are what a
+stranger's swap goes through.
 
-- **A script is not a user.** It builds calldata the router expects because the same author wrote
-  both. The extension has its own encoder, its own gas estimation and its own idea of a deadline,
-  and *those* are what a stranger's swap goes through. Phase H is where the frontend is built, but
-  the extension exists today and can call a router today — the gate was written to catch exactly the
-  class of defect that only appears when a second implementation talks to the contracts.
-- **One wallet cannot observe slippage against itself.** Every measurement above is a pool with a
-  single participant, so nothing in it has been exposed to a second trade arriving between quote and
-  settlement — which is the one thing an AMM's users actually experience.
+**Closed on 2026-08-15, blocks 17022–17034**, by `wallet-extension/test/e2e/exchange.test.ts` — six
+tests, seven transactions, none of them signed by anything this repository can sign with.
 
-So phase D is recorded as ⚠ rather than ✅, and closing it needs no new contract work: a second
-funded key, the browser extension pointed at 7412, and the four operations run from it. Until then
-the honest claim is **"the contracts work"**, not **"the market works"**.
+*Three keys, on two machines, and the separation is the point:*
+
+| | | |
+| --- | --- | --- |
+| **coinbase** | `0x91a1…1d33` | the house. Mines the chain, deployed the exchange, seeded the pool. On the chain host. |
+| **funder** | `0x41Fb…c80E` | generated on the developer's Mac, never on a chain-host disk. Given 60 EMBER by `deploy/scripts/hearth-fund.js` — a plain transfer, which is all that script can do. |
+| **trader** | `0xc40b…522D` | created by the extension during onboarding *in that test run*, from a phrase nothing else ever saw. Funded with 12 EMBER by the funder. **The test never holds its private key and cannot sign for it.** |
+
+*What it did, all of it through `eth_sendTransaction` on an EIP-6963 provider with a human-shaped
+click on each approval window:*
+
+| block | gas | operation |
+| --- | --- | --- |
+| 17022 | 120,268 | `swapExactETHForTokens` — 4 EMBER → **199.191327 FTEST**, exactly the quote |
+| 17024 | 46,407 | `approve` the router for the token |
+| 17026 | 146,785 | `addLiquidityETH` — 99.595663 FTEST + 1.995969 EMBER → 14.098822 LP |
+| 17028 | 46,407 | `approve` the router to sell |
+| 17030 | 112,569 | `swapExactTokensForETH` — 99.595663 FTEST → **1.989005 EMBER**, exactly the quote |
+| 17032 | 46,196 | `approve` the router for the LP token |
+| 17034 | 179,067 | `removeLiquidityETH` — 14.098822 LP → 99.644671 FTEST + 1.994990 EMBER |
+
+*What the numbers say, beyond "it did not revert":*
+
+- **Both swaps filled at exactly the quoted amount**, and the quote itself was checked against the
+  constant product computed independently from `getReserves()` at a pinned block before either trade
+  was sent. A router that disagreed with its own reserves would have stopped the run before it spent
+  anything.
+- ***k* rose on both legs.** The 0.30% is charged twice and stays in the pool, which is the whole
+  economics of the thing; a round trip that returned more than it took would be a broken market, not
+  a generous one.
+- **The position earned while it was open.** 99.595663 FTEST went in and **99.644671** came out —
+  0.049008 FTEST of fee accrued to the trader *as a liquidity provider* from the reverse swap that
+  happened while they held it. That is the first time in this project's history that a fee has been
+  paid to somebody other than the house.
+- **The round trip cost the trader about 0.017 EMBER**, against 0.018 of fees charged, the
+  difference being their own LP share coming back — the arithmetic an AMM is supposed to produce.
+- **The senders were recovered from the signatures**, by `hearth/node/src/chain/transaction.js` —
+  the network's own decoder — from the raw bytes the extension put on the wire, captured by the
+  pass-through recorder the wallet's suite already uses. `eth_getTransactionByHash`'s `from` field
+  was deliberately not used: the node fills it in by doing the recovery, so trusting it would be
+  circular. All seven recovered to `0xc40b…522D`.
+
+*What is still not proved, stated so nobody has to guess:* the run was sequential, so no second
+trade arrived between a quote and its settlement. Slippage under contention is a phase-H property —
+it needs a frontend and more than one person — and the earlier version of this section was right
+that a single-participant pool cannot show it. What phase D asked for, and now has, is that a second
+implementation of the client, holding a key we do not, can complete the whole cycle.
+
+Reproducing it needs no chain-host access:
+
+```
+HEARTH_RPC_URL=https://rpc-testnet.cloudsforge.online/ HEARTH_CHAIN_ID=7412 \
+HEARTH_COINBASE_KEY=~/.cloudsforge/ember-testnet/e2e-funder.json \
+HEARTH_DEX_ROUTER=0xba2b9db822e1f2ec3039fe474644b8405268a9b4 \
+HEARTH_DEX_TOKEN=0x71550efb54bcaccbe84df3efcc3529eae4be8a32 \
+node --import tsx --test --test-concurrency=1 --test-timeout=900000 test/e2e/exchange.test.ts
+```
+
+The honest claim is now **"the market works"**, for one pair, one trader and one client.
 
 ### Phase B, done
 
