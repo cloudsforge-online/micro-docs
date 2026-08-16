@@ -220,7 +220,7 @@ check.
 | **D. Testnet market** ✅ | one EMBER pair seeded from testnet mining, swapped both ways by a wallet that is not ours | a full cycle — add, swap, swap back, remove — from the browser extension — **met**, blocks 17022–17034, see below |
 | **E. Read-through** ✅ | the contracts and the deployment read by somebody who did not write them | findings recorded and closed, in public — **met**, two of them, hearth#25 and hearth#26, see below |
 | **F. Mainnet, EMBER-only** ✅ | the same set on 7411, seeded from the two miners | the estate's own solvency reporting books the seeded liquidity — **met**, entry `01a007bc-bb37-7000-8f87-361426a1e9ff`, 24,750.590760 EMBER measured at block 39010, see below |
-| **G. Wrapped assets** | one wrapped coin, issued against custody, satisfying **35** in full | a stranger can compare issued supply to reserves on-chain, and a redemption completes |
+| **G. Wrapped assets** ✅ | one wrapped coin, issued against custody, satisfying **35** in full | a stranger can compare issued supply to reserves on-chain, and a redemption completes — **met on 7412**, `fLTC` at `0x5ff590f4…2f02`, and mainnet **refused** on a measured reserve of zero, see below |
 | **H. Surface** ✅ | a frontend, a router entry, the `EXPECTED_UNROUTED` deletion, the site chip moving on its own | `beacon` drives a swap through the real gateway — **met**, `0x5383d15c…1164`, `status 0x1`, see below |
 
 Phases A and B are prerequisites in the strict sense: neither is exchange work, both are cheap
@@ -663,6 +663,99 @@ gateway's own address with an `--add-host`, which is what the run above did, and
 scheduled browser runner cannot reach the surface at all. `estate-browser.sh` already declares both
 the `exchange` and `chain` addresses and prints, before each run, whether `BEACON_DEX_KEY` is set —
 so on the day the record exists, nothing needs editing to start measuring it continuously.
+
+### Phase G, done — and the headline is that mainnet refused itself
+
+The gate has two halves and they were closed in opposite directions. On the test network a receipt
+exists, publishes its backing, attests it against a named Litecoin block, and has had a redemption
+walked end to end. On the main network **nothing was deployed**, because the reserve was measured at
+zero and §4 above says a wrapped asset that cannot satisfy **35** must not be issued. The refusal is
+in the deployment script, not in a reviewer's judgement, and it is the more important half.
+
+**The measurement, which anybody can repeat.** Three platform-controlled Litecoin addresses back
+this receipt: two treasury-purpose and one pool-purpose. Per-user *deposit* addresses are
+deliberately excluded — coin in a user's deposit address is that user's, and counting it as backing
+would be pledging other people's money. The pool address is deliberately *included*, because
+pool-mined coin is platform-controlled coin and leaving it out would understate nothing and
+overstate the platform's discipline.
+
+```
+litecoin-cli scantxoutset start '["addr(ltc1qswwly0reyr85mr9xjx4ujtep5q7nndmulpmmnq)",
+                                  "addr(ltc1qc4uhej2g2tc2ytqc5qczxmfyun87gctafnjghp)",
+                                  "addr(ltc1qtkkwej6dwp0m58k99ckac76qp4agyu3pr0pqvp)"]'
+```
+
+That walks the whole UTXO set — about 53.8 million outputs, two to four minutes — and needs no
+wallet, no import, no index of ours and no permission. It is the one reading that requires nothing
+of us, which is what §4 means by *checkable on the chain by a stranger, without asking us*. Four
+separate runs on four different days returned **0.00000000 LTC**, at heights 3161006, 3161011,
+3161016, 3161026 and 3161029. No platform-controlled Litecoin address has ever received a litoshi.
+
+So the honest statement is not "the bridge is not ready yet". It is: **there is nothing to back a
+Litecoin receipt with, and the contract is built to refuse rather than to promise.**
+
+**What is on 7412.** Two contracts, both `hearth/contracts/src/ForgeReceipt.sol`:
+
+| | Address | Issuer | Attested reserve | Supply |
+| --- | --- | --- | --- | --- |
+| `fLTC` — Forge Receipt: Litecoin | `0x5ff590f4f6f29711706f485d9350666d2f8e2f02`, block 19411 | the phase-A multisig `0x51faced7…e4f8`, 2-of-3 | **0**, at Litecoin height 3161026, ref `0x13526539…d325` | 0 |
+| `dEMBER` — Forge Receipt Drill: EMBER | `0x197f3dcb648abda5b7c678af5ac4d8042fcc8e6d`, block 19386 | the deployer EOA `0x91a11854…1d33` | 8907.039785 EMBER at chain height 19387 | 0 |
+
+`fLTC`'s issuer is the multisig because a reserve figure one key can publish alone is a reserve
+figure one key can lie about alone. Both of its issuer actions went through the full proposal
+round — submit, an independent confirmation, execute — as proposals 0 and 1, mined in blocks 19417
+and 19423.
+
+**The drill, and why it is not a fiction.** §4 requires the redemption path to be *exercised before
+issuance, not after*. On `fLTC` that clause is unfalsifiable: a truthful reserve of zero means it
+can never mint, so it can never burn. The tempting shortcut — attest a fictional testnet reserve —
+was rejected outright, because it is precisely the on-chain lie this contract exists to make
+expensive, told on the one artifact whose entire value is that its attestations are true.
+
+So the rehearsal was run on a receipt whose custodian is *legible*: `dEMBER` is backed by EMBER held
+at an address on the same chain, so its reserve settles with one `eth_getBalance` and nothing is
+taken on our word. The full lifecycle ran live:
+
+1. `setReserveAddresses` published the custodian.
+2. `attest` committed to 8907.039785 EMBER — **a tenth** of what the custodian held, not most of it.
+   An attestation is a floor the issuer commits to and it has to stay true after the drill spends
+   real coin paying the redemption out; understating costs nothing, overstating is the whole failure
+   this contract prevents.
+3. `issue` minted 2226.759946 dEMBER to a *different* key — `0xf88f0c5a…2db5`. A redemption from the
+   issuer's own balance never touches `_transfer` and proves nothing about a stranger holding it.
+4. That holder was funded 1 EMBER for gas. A receipt whose holder cannot afford the transaction that
+   redeems it is a receipt with a hidden gate.
+5. `redeem` **burned first**, then recorded: supply 2226759946290179767084 → 0, redemption 0 queued.
+6. The payout went out for real — 2226.759946 EMBER in `0xfc08d74d38b0dba86531741577f067dff6645c9fe436cff327120165c8ddfdf0`
+   — and `settleRedemption` recorded *that* hash. A settled txid nobody can look up is a settled
+   txid nobody should believe.
+7. `unsettledRedemptions()` is zero, and the custodian still held 86918.063887 EMBER — above the
+   8907.039785 it had attested, so paying the redemption did not quietly falsify the attestation
+   that authorised it.
+
+**The refusal, demonstrated rather than described.** On both contracts, on the live chain, an
+`eth_call` of `issue()` for one unit past the attested reserve reverts with `EXCEEDS_RESERVE`. On
+`fLTC`, where the reserve is zero, that means every possible issuance reverts. The contract has no
+pause, no freeze, no blacklist and no upgrade path, and its on-chain `statement()` says in the token
+itself that it is a receipt rather than a trustless bridge.
+
+**What a stranger does with this, in four steps and no help from us:** read `reserveAddresses()`;
+read `attestation()` for a reserve, a Litecoin height and that block's hash; run the `scantxoutset`
+above themselves at that block; compare the answer to `totalSupply()`. Today both are zero and the
+contract refuses to make the second one larger.
+
+**Two estate findings surfaced by the measurement**, neither of them exchange work, both filed:
+
+1. The LTC treasury is registered in custody and settlement but has **no row at all** in
+   `indexer.watched_addresses` — so the balance the solvency invariant would read is a balance
+   nothing is watching.
+2. A second treasury-purpose LTC address exists that nothing ever pinned into settlement, and the
+   pool-purpose address confirms the previously-flagged **35** hazard: pool-mined coin sits outside
+   the `deposit:,treasury:` prefix set reconciliation sweeps, so it is invisible to the invariant.
+
+**What phase G does not claim.** There is no mainnet receipt, no Litecoin in reserve, and therefore
+no LTC market on the exchange. The next thing is not code: it is coin arriving at a published
+address. On the day it does, the same script re-run lifts the refusal by itself.
 
 ---
 
