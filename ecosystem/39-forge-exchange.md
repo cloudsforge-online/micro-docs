@@ -221,7 +221,7 @@ check.
 | **E. Read-through** ✅ | the contracts and the deployment read by somebody who did not write them | findings recorded and closed, in public — **met**, two of them, hearth#25 and hearth#26, see below |
 | **F. Mainnet, EMBER-only** ✅ | the same set on 7411, seeded from the two miners | the estate's own solvency reporting books the seeded liquidity — **met**, entry `01a007bc-bb37-7000-8f87-361426a1e9ff`, 24,750.590760 EMBER measured at block 39010, see below |
 | **G. Wrapped assets** | one wrapped coin, issued against custody, satisfying **35** in full | a stranger can compare issued supply to reserves on-chain, and a redemption completes |
-| **H. Surface** | a frontend, a router entry, the `EXPECTED_UNROUTED` deletion, the site chip moving on its own | `beacon` drives a swap through the real gateway |
+| **H. Surface** ✅ | a frontend, a router entry, the `EXPECTED_UNROUTED` deletion, the site chip moving on its own | `beacon` drives a swap through the real gateway — **met**, `0x5383d15c…1164`, `status 0x1`, see below |
 
 Phases A and B are prerequisites in the strict sense: neither is exchange work, both are cheap
 relative to the rest, and skipping either produces a deployment that cannot be handed to anybody.
@@ -584,6 +584,85 @@ under for the same reason.
 
 What this does **not** do is track the position. It books the opening claim once, and a heavily
 traded pool will drift from it; closing that gap is proof-of-reserves work, phase G.
+
+### Phase H, done — and the gate is a measurement, not a screenshot
+
+The deliverable was four things and the gate was one, and the four are the easy half.
+
+`micro-exchange-web` is the frontend: pools, a swap page, and the constant-product arithmetic
+re-run in the browser against what the pair contract actually holds. It has no service behind it
+and never will — the whole data source is four numbers in a pair contract, so anything in front of
+them could only be a cache with an opinion. `deploy/gateway/dynamic/estate-web.yml` carries
+`cf-web-exchange` and, deliberately, a `# REMOVED: cf-api-exchange` line beside it so the next
+reader greps and finds the answer rather than the absence. `deploy/scripts/surface-routes.py` no
+longer lists `exchange` in `EXPECTED_UNROUTED`, and that deletion is the mechanism working rather
+than a tidy-up: the entry had promised in its own text that it would be "deleted in the same commit
+that adds the router", the check fails on a stale entry in BOTH directions, and leaving the line in
+place would have failed the deploy that made it untrue.
+
+The chip moved on its own, which was the point of writing it that way. `site/src/content/stages.ts`
+had `exchange` as the only entry its `planned` list has ever carried, and it sat there for two
+days. It did not leave because somebody remembered: micro-deploy added the router, declared the
+service and deleted the `EXPECTED_UNROUTED` entry in one commit, and three independent assertions
+went red on the next run. The chip reads `Running in-house` in the bundle currently served from
+`cloudsforge.online/products`. It does **not** read `Open to the public`, and §7 below is not where
+that is decided — see "what is still owner-only" at the end of this section.
+
+**The gate.** `beacon` has two DEX journeys now, in `beacon/src/browser/dexjourneys.ts`. BJ-DEX-01
+asserts the pool page holds what the pair contract holds, to the smallest unit, reading the chain
+itself rather than the page it was rendered on. BJ-DEX-02 is the gate: it finds a pool with the
+native coin on one side, chooses the token to receive **from the pair itself** rather than from a
+constant, connects, types an amount a reader would type, presses Swap, signs what the page built,
+and then reads the receipt off the node.
+
+On 2026-08-16 it went green in 46 seconds against testnet through the estate's own gateway:
+
+```
+pass  browser.bj-dex-02  46160ms  A swap signed in the browser reaches the chain and the receipt says it succeeded
+```
+
+The transaction is `0x5383d15cea5805242e6e180d6f7c6ac481f6d193058a0cc898097bf37f031164`, signed by
+`0xb0024e054619868e78D7Cb16D46F97571d6102F2`, executed by the testnet router
+`0xba2b9db822e1f2ec3039fe474644b8405268a9b4` against pair
+`0xd439a085d812b21de4b179fafe00281de50733a0`, `status 0x1`, spending exactly the 0.001 EMBER typed
+into "Amount to pay". Testnet and not mainnet because `deploy/scripts/hearth-fund.js` caps mainnet
+funding at zero by policy, and a journey that signs needs a funded key; on a deployment with no
+`BEACON_DEX_KEY` the journey SKIPS, loudly, naming the variable, rather than falling back to
+checking that a browser which cannot sign says it cannot sign.
+
+**Three defects stood between the journey and that measurement, and all three were in the harness.**
+They are recorded because each one is the same shape — a monitor that reported a working product
+broken, or a broken one working:
+
+1. The estate was serving an `exchange-web` bundle whose `DEPLOYMENTS` table knew only chain 7411,
+   so testnet had no deployment and `/pools` listed nothing. That one *was* in a published bundle:
+   `micro-exchange-web`'s CI had gone red on the commit that added 7412, no image was ever cut, and
+   the estate ran the older one for four hours with nothing saying so. Fixed in 2026.08.57.
+2. The injected provider was handed to Playwright's `addInitScript` as a **function**. Playwright
+   serialises those with `toString()`, and `tsx`/esbuild's `keepNames` had already rewritten the
+   closure to call `__name` — a helper that exists in the runner and in no page. The injection died
+   on a `ReferenceError`, `window.ethereum` was never assigned, and the swap page said, quite
+   correctly, that no wallet was installed. It is source text now, which nothing transpiles.
+3. The journey's own clock called two successful swaps failures. The tier's 120-second deadline
+   expired over `0xe52a2974…8207` (block 18188) and a 120-second receipt poll gave up on
+   `0x11a647bb…b2eb` 83 seconds before it mined in block 18199. EMBER testnet's intervals between
+   blocks 18185 and 18200 were 7, 15, 42, 79, 19, 13, 12, 14, 6, 59, 28, 132, 16, 83 and 75
+   seconds — a mean near 40 with a tail past two minutes. The poll is five minutes now and the
+   journey declares a `deadlineMs` of seven, the only journey in the catalogue that overrides the
+   tier default.
+
+Shipped in 2026.08.59. The injected provider is not interception: it supplies an input the
+environment owed — a browser wallet, which is an extension the monitor's Chromium has none of — and
+every request the page makes as a result goes to the real gateway and the real node.
+
+**What is still owner-only.** `exchange.cloudsforge.online` has no public DNS record and no tunnel
+ingress rule. Both are actions in the Cloudflare dashboard: the running tunnel is
+`cloudflared tunnel run --token-file`, so its ingress arrives from the dashboard over the API and no
+file in any repository here can add a rule. Until they exist the gate is driven against the
+gateway's own address with an `--add-host`, which is what the run above did, and the estate's
+scheduled browser runner cannot reach the surface at all. `estate-browser.sh` already declares both
+the `exchange` and `chain` addresses and prints, before each run, whether `BEACON_DEX_KEY` is set —
+so on the day the record exists, nothing needs editing to start measuring it continuously.
 
 ---
 
