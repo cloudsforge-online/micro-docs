@@ -145,10 +145,39 @@ blurb. The accent reinforces; it does not carry.
 | Lantern | `#f4a63c` (amber) | Unchanged. Note Lantern's own UI forces ember for chrome because amber collides with its WARN level |
 | Beacon | `#7fae5c` (signal) | New. Matches the chart `good` step, which is correct for a status tool |
 | Developer platform | `#4a86e0` (azure) | New. Reached from the footer, not the product switcher |
+| Forge Exchange | `#dcde5e` (lime) | **A switcher entry, and the only non-product one that is not `adminOnly`.** Last in the customer-facing run — see below |
 | Community | inherits the host surface | Community lives inside Hub and inside products; it is not a destination |
 
 Admin, Lantern and Beacon are `adminOnly` and render in a separate group below a separator, so
 they are never adjacent to a product entry.
+
+**Forge Exchange joined the switcher on 2026-08-16, and it is the exception the two rules above
+were written to make possible.** The owner's report was that it "is not available in the product
+menu". It is not a product — no verb, no mark, contracts CloudsForge does not operate — so it does
+not join the run whose order the separation search fixed. It sits AFTER that run and BEFORE the
+`adminOnly` separator: a signed-out visitor sees it last with `trade` above it, and an operator
+sees it between `trade` and `admin`.
+
+That placement is what lets rule 2 do the work. All-pairs separation against every accent in the
+estate is exactly what rule 2 says is unachievable, and a sweep confirmed it again — nothing clears
+ΔE 18 against all fifteen existing, retired and company hues. Scored against the two rows it
+actually touches, `#dcde5e` clears ΔE 21.2, four times the validator's default floor, while still
+holding ΔE 16.0 against everything else and 13.11:1 contrast on `#141110`. Reproduce with:
+
+```
+node scripts/find_exchange_accent.mjs        # the sweep itself, in ui/
+node scripts/validate_palette.mjs "#2a9e93,#dcde5e,#c2704f" --mode dark --surface "#141110"
+```
+
+The row is deliberately NOT wedged between two products, which was the other tempting position
+(the tokens traded here are Forge Create's). The ΔE 30 adjacency gate is computed over the products
+alone, so a non-product between two of them would change what a reader's eye compares while the
+gate went on measuring a pair that is no longer adjacent — green, and wrong.
+
+> The five-product table above is the ORIGINAL specification and has not been re-cut since. The
+> registry has added Forge Foresight (`#1e89c7`) and moved Forge Trade last by instruction.
+> `ui/packages/ui/src/surfaces.test.ts` holds the current order as an independent literal, and it
+> is the copy that fails when the two disagree.
 
 ### Migration from today's values
 
