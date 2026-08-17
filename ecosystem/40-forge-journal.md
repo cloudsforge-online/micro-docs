@@ -153,10 +153,10 @@ relative `og:image` is dropped by most unfurlers, so it is not a style preferenc
 known when the file is written.
 
 Every absolute URL is written to disk as the literal `__CF_ORIGIN__` and substituted per request by
-`sub_filter` in nginx with `$scheme://$host`. One image serves the mainnet archive, the testnet
-archive and a laptop, each telling a crawler the truth about where it was fetched from.
+`sub_filter` in nginx with `https://$host`. One image serves the archive on any hostname it is
+published on, telling a crawler the truth about where the page was fetched from.
 
-Three lines are load-bearing and each has a test:
+Four lines are load-bearing and each has a test:
 
 * `sub_filter_once off` — ON is the default and replaces only the FIRST match, shipping the other
   eleven placeholders in an article raw.
@@ -164,19 +164,54 @@ Three lines are load-bearing and each has a test:
   is `text/html` alone, so the feed and the sitemap would ship placeholders.
 * **the absence of `gzip_static`** — a pre-compressed file passes through the filter untouched, so
   every crawler that accepts gzip, which is all of them, would receive the placeholder.
+* **the scheme is the literal `https`, not `$scheme`.** This document said `$scheme://$host` when it
+  was written and that was wrong; the image probe in CI caught it on 2026-08-17. TLS ends at
+  Cloudflare, cloudflared speaks plain HTTP to the gateway and the gateway speaks plain HTTP to the
+  container, so `$scheme` is `http` for every reader who ever arrives over https — and a canonical
+  of `http://journal.<apex>/…` names a URL that 301s, which a search engine treats as a different
+  address and discards. `X-Forwarded-Proto` is no remedy: `deploy/gateway/` sets no
+  `forwardedHeaders.trustedIPs`, so Traefik overwrites the header with its own entrypoint's scheme.
+  The HOST stays per-request, which is the half that was ever in question.
+
+One more thing the same probe found, recorded here because it is a property of the route table
+rather than of the file: **a directory with no `index.html` in it must not be matched at all.**
+`dist/a/` is such a directory — the articles live one level below it and nothing is published at
+`/a` — and a `$uri/` element in the `try_files` chain matched it, so `/a` answered 301 and `/a/`
+answered 403. Neither says "there is nothing here", and a crawler follows both. The chain is
+`try_files $uri $uri/index.html =404` and nothing is lost: a trailing-slash request is served by the
+second element, and the first cannot match a directory, because nginx decides "this element is a
+directory test" from the literal trailing slash at config-parse time and not from what the variable
+expands to.
 
 Baking a hostname in at build time fails in the direction that does not look like a failure: the
 testnet archive would tell every crawler its articles really live on the mainnet host.
 
-### 4.2 The second archive must not compete with the first
+### 4.2 The second archive must not compete with the first — and it never gets the chance
 
-Every article is byte-identical on both networks — there is no chain data in an essay — so the two
-archives are not similar pages, they are the same page at two addresses. Left alone a search engine
-picks a canonical and suppresses the other, and which one it picks is not ours to decide.
+Every article is byte-identical on both networks — there is no chain data in an essay — so two
+archives would not be similar pages, they would be the same page at two addresses. Left alone a
+search engine picks a canonical and suppresses the other, and which one it picks is not ours to
+decide.
 
 `nginx.conf` maps `$host` to an environment label and, on every non-mainnet hostname, serves
 `Disallow: /` and 404s both `/sitemap.xml` and `/feed.xml`. A subscriber who found the feed on the
 testnet copy would be subscribed to something that can be taken down without notice.
+
+**CORRECTION, 2026-08-17.** The paragraph above described the container correctly and the ESTATE
+wrongly, and the first draft of this document (and its §6 and §7) went on to ask for a served
+testnet archive that cannot exist. There is no second archive. The estate retired every testnet
+FRONTEND hostname in the combined-view work of doc 38: the gateway's `cf-retired-web-sub` router,
+at priority 550, matches `^[a-z0-9-]+-testnet\.cloudsforge\.online$` — excluding only the
+`servesUi: false` service hostnames — and answers **302 to the mainnet host**. It is matched before
+any per-surface router, so a request for `journal-testnet.cloudsforge.online` is redirected at the
+gateway and never reaches this container at all.
+
+So the container's non-mainnet logic is defence in depth for a request the estate does not deliver.
+It stays, for two reasons: it is the only thing that would still be right if the retirement router
+were ever narrowed, and it is provable in CI — the image probe fetches `/robots.txt` with a
+`journal-testnet.` Host header and asserts `Disallow: /` on a container it booted itself. What it is
+not is an observation about the live estate, and reading it as one is what produced the wrong DNS
+ask in §6.
 
 *(A detail worth not copying: nginx does not process backslash escapes in a quoted string, so
 `return 200 'Disallow: /\n'` emits a literal backslash and an n. The version of this on exchange-web
@@ -251,9 +286,12 @@ Estate registration, all of which is required before this is reachable:
 1. `deploy/` compose services on both networks, and a gateway router per hostname.
 2. Deletion from `EXPECTED_UNROUTED`, and the witness row in `deploy/scripts/surface-routes.py`.
 3. Regenerated `deploy/cloudflared/*.yml`.
-4. **Two DNS records, which only the owner can create** — `journal.cloudsforge.online` and
-   `journal-testnet.cloudsforge.online`, proxied CNAMEs to `<tunnel-id>.cfargotunnel.com` on
-   `cf-mainnet-public` and `cf-testnet-public` respectively.
+4. **DNS, which only the owner can create.** One record matters: `journal.cloudsforge.online`, a
+   proxied CNAME to `<tunnel-id>.cfargotunnel.com` on `cf-mainnet-public`. A second,
+   `journal-testnet.cloudsforge.online` on `cf-testnet-public`, is optional and buys one thing —
+   per §4.2 that hostname serves nothing, it 302s to mainnet at the gateway, so the record exists
+   only so a guessed or pasted testnet link redirects instead of failing to resolve. The generated
+   `cloudflared` config carries the ingress entry either way; without the record it is inert.
 5. A tile, a description and a site-map entry on micro-site, with the mainnet and testnet links.
 
 ---
@@ -262,11 +300,15 @@ Estate registration, all of which is required before this is reachable:
 
 1. `journal.cloudsforge.online/a/nine-ways-people-lose-crypto` returns 200 **cold**, with the
    headline in the HTML source of the first response.
-2. The same address on `journal-testnet.` returns the same article with its own canonical, and
-   `journal-testnet.cloudsforge.online/robots.txt` says `Disallow: /`.
-3. `/a/an-essay-nobody-wrote` returns **404** with the designed page under it.
+2. `journal-testnet.cloudsforge.online/a/nine-ways-people-lose-crypto` answers **302 to the mainnet
+   address** — it is a retired frontend hostname like every other, per §4.2, and there is no second
+   archive to check. The container's own `Disallow: /` on a non-mainnet Host header stays an
+   invariant, proven by the image probe in CI rather than by a live fetch.
+3. `/a/an-essay-nobody-wrote` returns **404** with the designed page under it, and so do `/a` and
+   `/a/` — a directory that is not an address is not a redirect.
 4. `/feed.xml` validates and contains no `__CF_ORIGIN__`; `/sitemap.xml` lists thirteen addresses
-   and does not list `/search`.
+   and does not list `/search`. Every absolute URL in all three machine-readable files, and in every
+   article's head, begins `https://` and names the host it was fetched from.
 5. Pasting an article link into Slack shows that article's own card and that article's own title.
 6. Forge Journal appears in the footer of every bundle, in micro-site's product map, and in the
    site map — with working mainnet and testnet links.
