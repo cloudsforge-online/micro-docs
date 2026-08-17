@@ -145,7 +145,7 @@ blurb. The accent reinforces; it does not carry.
 | Lantern | `#f4a63c` (amber) | Unchanged. Note Lantern's own UI forces ember for chrome because amber collides with its WARN level |
 | Beacon | `#7fae5c` (signal) | New. Matches the chart `good` step, which is correct for a status tool |
 | Developer platform | `#4a86e0` (azure) | New. Reached from the footer, not the product switcher |
-| Forge Exchange | `#dcde5e` (lime) | **A switcher entry, and the only non-product one that is not `adminOnly`.** Last in the customer-facing run — see below |
+| Forge Exchange | `#d05870` (rose) | **A switcher entry, and the only non-product one that is not `adminOnly`.** Last in the customer-facing run — see below |
 | Community | inherits the host surface | Community lives inside Hub and inside products; it is not a destination |
 
 Admin, Lantern and Beacon are `adminOnly` and render in a separate group below a separator, so
@@ -161,13 +161,28 @@ sees it between `trade` and `admin`.
 That placement is what lets rule 2 do the work. All-pairs separation against every accent in the
 estate is exactly what rule 2 says is unachievable, and a sweep confirmed it again — nothing clears
 ΔE 18 against all fifteen existing, retired and company hues. Scored against the two rows it
-actually touches, `#dcde5e` clears ΔE 21.2, four times the validator's default floor, while still
-holding ΔE 16.0 against everything else and 13.11:1 contrast on `#141110`. Reproduce with:
+actually touches, `#d05870` clears ΔE 12.8, more than twice the validator's default floor, holds
+the same ΔE 12.8 against everything else, and measures 4.75:1 on `#141110`. Reproduce with:
 
 ```
 node scripts/find_exchange_accent.mjs        # the sweep itself, in ui/
-node scripts/validate_palette.mjs "#2a9e93,#dcde5e,#c2704f" --mode dark --surface "#141110"
+node scripts/validate_palette.mjs "#2a9e93,#d05870,#c2704f" --mode dark --surface "#141110"
 ```
+
+**The sweep gates legibility as well as separation, and it did not always.** Its first answer was
+`#dcde5e`, a lime that cleared every distance gate by a wide margin (ΔE 21.2 to its neighbours,
+13.11:1 on the dark panel) and then failed axe on the live `/products/exchange` with three serious
+`color-contrast` violations. `micro-site` sets type IN the accent and normalises it for a light
+ground by darkening it a fixed 68% toward black — and a fixed mix is a fixed *step*, not a fixed
+*result*. The six product accents land between 5.07:1 and 6.87:1 after that step; the lime landed
+at 2.63:1.
+
+So `find_exchange_accent.mjs` now applies both of the site's mixes and drops any candidate that
+falls under 4.5:1 on either ground, before it spends a subprocess on separation. Both directions
+are gated: run it with the light gate alone and the survivors are deep roses that then fail on the
+dark panel. `site/test/contrast.test.ts` was widened at the same time — it measured
+`PRODUCT_ACCENTS`, which by construction excludes every `kind: 'service'` entry, so it could not
+have seen this; it now measures whatever the site scopes.
 
 The row is deliberately NOT wedged between two products, which was the other tempting position
 (the tokens traded here are Forge Create's). The ΔE 30 adjacency gate is computed over the products
